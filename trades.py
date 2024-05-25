@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import argrelextrema
 
 # Fetching historical data for EUR/USD
-dataF = yf.download("GC=F", start="2024-04-07", end="2024-05-05", interval='1h')
+dataF = yf.download("GC=F", start="2024-04-07", end="2024-05-05", interval='5m')
 
 # Calculate EMAs
 dataF['EMA_short'] = dataF['Close'].ewm(span=12, adjust=False).mean()
