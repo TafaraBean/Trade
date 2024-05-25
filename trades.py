@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import argrelextrema
 
 # Fetching historical data for EUR/USD
-dataF = yf.download("GC=F", start="2024-04-07", end="2024-05-05", interval='5m')
+dataF = yf.download("GC=F", start="2024-05-07", end="2024-05-25", interval='30m')
 
 # Calculate EMAs
 dataF['EMA_short'] = dataF['Close'].ewm(span=12, adjust=False).mean()
@@ -52,8 +52,8 @@ for index, row in dataF.iterrows():
             resistance_levels.append(row['max'])
 
 # Only keep the most recent levels
-recent_support_levels = support_levels[-3:]  # Last 3 support levels
-recent_resistance_levels = resistance_levels[-3:]  # Last 3 resistance levels
+recent_support_levels = support_levels[-5:]  # Last 3 support levels
+recent_resistance_levels = resistance_levels[-5:]  # Last 3 resistance levels
 
 # Function to determine the area (support, resistance, or neither)
 def determine_area(close, support_levels, resistance_levels, threshold):
@@ -78,21 +78,22 @@ signals = [0] * len(dataF)
 # Generate signals based on candle patterns, EMA conditions, and support/resistance levels
 for i in range(1, len(dataF)):
     current_open, current_close = dataF.Open.iloc[i], dataF.Close.iloc[i]
+    previous_open, previous_close = dataF.Open.iloc[i-1], dataF.Close.iloc[i-1]
     previous_volume, current_volume = dataF.Volume.iloc[i-1], dataF.Volume.iloc[i]
     current_area = dataF['Area'].iloc[i]
     ema_short, ema_long = dataF['EMA_short'].iloc[i], dataF['EMA_long'].iloc[i]
+    rsi=dataF['RSI'].iloc[i]
 
     # Debug print statements
     print(f"Index: {i}, Current Close: {current_close}, Current Volume: {current_volume}, Area: {current_area}")
 
-    if current_area == 'Support':
-        if current_volume > previous_volume and current_open < current_close and ema_short > ema_long:
+    if current_area == 'Support' or current_area == 'Resistance':
+        if current_volume > previous_volume and current_open < current_close and previous_open>previous_close and ema_short > ema_long:
             if signals[i-1] != 2:  # Avoid consecutive bullish signals
                 signals[i] = 2  # Bullish signal
                 print(f"Bullish Signal at index {i}")
 
-    elif current_area == 'Resistance':
-        if current_volume > previous_volume and current_open > current_close and ema_short < ema_long:
+        elif current_volume > previous_volume and current_open > current_close and previous_open<previous_close and ema_short < ema_long:
             if signals[i-1] != 1:  # Avoid consecutive bearish signals
                 signals[i] = 1  # Bearish signal
                 print(f"Bearish Signal at index {i}")
