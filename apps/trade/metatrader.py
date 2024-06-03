@@ -11,15 +11,19 @@ server=''
 
 
 # Symbol settings
-symbol = 'EURUSD'
-sl_multiplier = 13
-
+symbol = 'XAUUSD'
 lot = 0.1
 add_lot = 0.01
 min_deleverage = 15
 deleverage_steps = 7
 take_profit_short = 21
-sl_short = take_profit_short * sl_multiplier
+action = mt5.TRADE_ACTION_DEAL
+order_type = mt5.ORDER_TYPE_BUY
+
+stop_loss = 1
+take_profit = 10
+
+
 
 
 # Init
@@ -31,23 +35,20 @@ mt5.login(account_id, password, server)
 # Timeframe settings
 timeframe = mt5.TIMEFRAME_M1
 
-selected = mt5.symbol_select(symbol)
-if not selected:
-    print('symbol_select({}) failed, error code = {}'.format(symbol, mt5.last_error()))
-    quit()
+request = {
+    'action': action,
+    'symbol': symbol,
+    'volume': 0.1,
+    'type': order_type,
+    'price': 0,
+    'sl': stop_loss,
+    'tp': take_profit,
+    'deviation': 20,
+    'magic':0,
+    'comment': 'python market order',
+    'type_time': mt5.ORDER_TIME_GTC,
+    'type_filling': mt5.ORDER_FILLING_IOC,
+}
 
-
-def get_position_data():
-    positions=mt5.positions_get(symbol=symbol)
-    # print(positions)
-    if positions == None:
-        print(f'No positions on {symbol}')
-    elif len(positions) > 0:
-        # print(f'Total positions on {symbol} =',len(positions))
-        for position in positions:
-            post_dict = position._asdict()
-            global pos_price, identifier, volume
-            pos_price = post_dict['price_open']
-            identifier = post_dict['identifier']
-            volume = post_dict['volume']
-            print(pos_price, identifier, volume)
+response =  mt5.order_send(request)
+print(response)
