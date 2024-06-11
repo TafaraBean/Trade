@@ -66,6 +66,8 @@ fig.add_trace(go.Scatter(
     name='Buy Signal'
 ))
 
+
+
 # Add sell signals (down arrows)
 fig.add_trace(go.Scatter(
     x=df[df['is_sell2'] == True]['time'],
@@ -74,6 +76,18 @@ fig.add_trace(go.Scatter(
     marker=dict(symbol='arrow-down', color='red', size=10),
     name='Sell Signal'
 ))
+
+# Add LMSA Upper Band line
+fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_upper_band'], 
+                         mode='lines', name='LMSA Upper Band'))
+
+# Add LMSA Lower Band line
+fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_lower_band'], 
+                         mode='lines', name='LMSA Lower Band'))
+
+# Add LMSA  Band line
+fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
+                         mode='lines', name='LMSA'))
 
 # Update layout
 fig.update_layout(title='XAUUSD',
