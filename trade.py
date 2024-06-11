@@ -56,4 +56,4 @@ fig.update_xaxes(
 )
 
 # Show the plot
-#fig.show()
+fig.show()
