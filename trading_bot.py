@@ -1,30 +1,45 @@
 import MetaTrader5 as mt5
-import pandas as pd
 
-class TradingBot:
-    def __init__(self, account, password, server):
-        self.account = account
+
+class Account:
+    def __init__(self):
+        self._info = None
+
+    def update_info(self):
+        account_info = mt5.account_info()._asdict()
+        self._info = account_info
+
+    def __getattr__(self, attr):
+        if attr == "login":
+            self.update_info()  # Update account info every time login is accessed
+            return self._info.get("login", None)
+        elif self._info is None:
+            self.update_info()  # Update account info if not already fetched
+        if attr in self._info:
+            return self._info[attr]
+        raise AttributeError(f"'Account' object has no attribute '{attr}'")
+    
+class TradingBot:   
+    def __init__(self, login, password, server):
+        self.account = Account()
+        self.login = login
         self.password = password
         self.server = server
         self.positions = {}
-        self.account_info = {}
         self.initialize_api()
-
 
     def initialize_api(self):
         # Initialize the MetaTrader 5 connection
         if not mt5.initialize():
-            raise ConnectionError(f"initialize() failed, error code = {mt5.last_error()}")
+            print(f"initialize() failed, error code = {mt5.last_error()}")
         else:
            print("MetaTrader5 package version: ",mt5.__version__)
         # Attempt to login to the trade account
-        if not mt5.login(self.account, password=self.password, server=self.server):
-            raise ConnectionError(f"Failed to connect to trade account {self.account}, error code = {mt5.last_error()}")
+        if not mt5.login(self.login, password=self.password, server=self.server):
+            print(f"Failed to connect to trade account {self.login}, error code = {mt5.last_error()}")
         else:
-            print("connected to account #{}".format(self.account))
-        self.account_info = mt5.account_info()._asdict()
-
-
+            print("connected to account #{}".format(self.login))
+    
     def open_buy_order(self, symbol, volume, sl=0.0, tp=0.0):
         """
         Open a buy order for a given symbol.
@@ -99,7 +114,8 @@ class TradingBot:
             "type_filling": mt5.ORDER_FILLING_FOK,
         }
         # send a trading request
-        result=mt5.order_send(request)
+        result = mt5.order_send(request)._asdict()
+        return result
 
     def get_position(self,ticket) -> tuple:
         """
@@ -109,118 +125,13 @@ class TradingBot:
         trade_position =order[0]
         return trade_position._asdict()
 
-
-    def get_positions(self):
-        return self.positions
-   
-   
-    def get_account_balance(self):
-        return  self.account_info.get('balance', 0)
-    
-    def get_account_info(self) -> dict:
-        # Retrieve account information
-        return self.account_info
-
-
-
-
-
-
-
-
-
-
-
-
-    def execute_strategy(self):
-        """
-        Execute the trading strategy.
-
-        This method should be overridden by subclasses to implement specific trading strategies.
-        """
-        pass
-
-    def get_login(self):
-        return self.account_info.get('login', 'No login information available')
-
-    def get_trade_mode(self):
-        return self.account_info.get('trade_mode', 'No trade mode information available')
-
-    def get_leverage(self):
-        return self.account_info.get('leverage', 'No leverage information available')
-
-    def get_limit_orders(self):
-        return self.account_info.get('limit_orders', 'No limit orders information available')
-
-    def get_margin_so_mode(self):
-        return self.account_info.get('margin_so_mode', 'No margin SO mode information available')
-
-    def get_trade_allowed(self):
-        return self.account_info.get('trade_allowed', 'No trade allowed information available')
-
-    def get_trade_expert(self):
-        return self.account_info.get('trade_expert', 'No trade expert information available')
-
-    def get_margin_mode(self):
-        return self.account_info.get('margin_mode', 'No margin mode information available')
-
-    def get_currency_digits(self):
-        return self.account_info.get('currency_digits', 'No currency digits information available')
-
-    def get_fifo_close(self):
-        return self.account_info.get('fifo_close', 'No FIFO close information available')
-
-    def get_credit(self):
-        return self.account_info.get('credit', 0)
-
-    def get_profit(self):
-        return self.account_info.get('profit', 0)
-
-    def get_equity(self):
-        return self.account_info.get('equity', 0)
-
-    def get_margin(self):
-        return self.account_info.get('margin', 0)
-
-    def get_margin_free(self):
-        return self.account_info.get('margin_free', 0)
-
-    def get_margin_level(self):
-        return self.account_info.get('margin_level', 0)
-
-    def get_margin_so_call(self):
-        return self.account_info.get('margin_so_call', 0)
-
-    def get_margin_so_so(self):
-        return self.account_info.get('margin_so_so', 0)
-
-    def get_margin_initial(self):
-        return self.account_info.get('margin_initial', 0)
-
-    def get_margin_maintenance(self):
-        return self.account_info.get('margin_maintenance', 0)
-
-    def get_assets(self):
-        return self.account_info.get('assets', 0)
-
-    def get_liabilities(self):
-        return self.account_info.get('liabilities', 0)
-
-    def get_commission_blocked(self):
-        return self.account_info.get('commission_blocked', 0)
-
-    def get_name(self):
-        return self.account_info.get('name', 'No name information available')
-
-    def get_server(self):
-        return self.account_info.get('server', 'No server information available')
-
-    def get_currency(self):
-        return self.account_info.get('currency', 'No currency information available')
-
-    def get_company(self):
-        return self.account_info.get('company', 'No company information available')
+    def chart(self, symbol, timeframe, start, end):
+        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
+        return ohlc_data
 
     def shutdown(self):
         mt5.shutdown()
         print("MetaTrader 5 connection closed")
+
+
+
