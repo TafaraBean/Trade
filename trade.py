@@ -6,6 +6,7 @@ import os
 import pandas as pd
 import pandas_ta as ta
 import plotly.graph_objects as go
+from strategy import *
 
 
 load_dotenv()
@@ -16,22 +17,37 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-timeframe = mt5.TIMEFRAME_D1
-start = datetime(2024,5,11)
+timeframe = mt5.TIMEFRAME_M15
+start = datetime(2024,6,11)
 end = datetime.now()
 
+#creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
 
-
+#create dataframe
 df = pd.DataFrame(data)
 
 
 # Convert 'date' column to datetime type
 df['time'] = pd.to_datetime(df['time'],unit='s')
-df['EMA'] = ta.ema(df['close'], length=3)
-df['RSI'] = ta.rsi(df['close'], length=14)
-df['SMA'] = ta.sma(df['close'], length=3)
+
+
+df = apply_strategy(df)
 print(df)
+
+#gets the last row of the table
+latest_signal=df.iloc[-1]
+
+#checks if a buy/sell condition was met
+if latest_signal["is_buy2"]:
+  bot.open_buy_order(symbol=symbol,volume=0.01)
+elif latest_signal["is_sell2"]:
+  bot.open_sell_order(symbol=symbol,volume=0.01)
+
+
+
+
+
 # Create candlestick chart
 fig = go.Figure(data=[go.Candlestick(x=df['time'],
                                      open=df['open'],
@@ -40,9 +56,6 @@ fig = go.Figure(data=[go.Candlestick(x=df['time'],
                                      close=df['close'],
                                      name='Candlestick')])
 
-# Add SMA line
-fig.add_trace(go.Scatter(x=df['time'], y=df['SMA'], 
-                         mode='lines', name='SMA'))
 
 # Update layout
 fig.update_layout(title='XAUUSD',
