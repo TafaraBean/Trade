@@ -17,8 +17,8 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-timeframe = mt5.TIMEFRAME_M15
-start = datetime(2024,6,11)
+timeframe = mt5.TIMEFRAME_M30
+start = datetime(2024,6,8)
 end = datetime.now()
 
 #creating dataframe by importing trade data
@@ -49,6 +49,7 @@ elif latest_signal["is_sell2"]:
 
 
 # Create candlestick chart
+# Create the candlestick chart
 fig = go.Figure(data=[go.Candlestick(x=df['time'],
                                      open=df['open'],
                                      high=df['high'],
@@ -56,6 +57,23 @@ fig = go.Figure(data=[go.Candlestick(x=df['time'],
                                      close=df['close'],
                                      name='Candlestick')])
 
+# Add buy signals (up arrows)
+fig.add_trace(go.Scatter(
+    x=df[df['is_buy2'] == True]['time'],
+    y=df[df['is_buy2'] == True]['low'] * 0.999,  # Place the arrow slightly below the low price of the candle
+    mode='markers',
+    marker=dict(symbol='arrow-up', color='green', size=10),
+    name='Buy Signal'
+))
+
+# Add sell signals (down arrows)
+fig.add_trace(go.Scatter(
+    x=df[df['is_sell2'] == True]['time'],
+    y=df[df['is_sell2'] == True]['high'] * 1.001,  # Place the arrow slightly above the high price of the candle
+    mode='markers',
+    marker=dict(symbol='arrow-down', color='red', size=10),
+    name='Sell Signal'
+))
 
 # Update layout
 fig.update_layout(title='XAUUSD',
