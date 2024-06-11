@@ -1,42 +1,17 @@
-import pandas as pd
-import plotly.graph_objects as go
 import pandas_ta as ta
 
-# Create a sample dataframe with some price data
-data = {
-    'date': ['2023-06-01', '2023-06-02', '2023-06-03', '2023-06-04', '2023-06-05', 
-             '2023-06-06', '2023-06-07', '2023-06-08', '2023-06-09', '2023-06-10'],
-    'open': [99, 100, 101, 102, 103, 104, 105, 106, 107, 108],
-    'high': [101, 102, 103, 104, 105, 106, 107, 108, 109, 110],
-    'low': [98, 99, 100, 101, 102, 103, 104, 105, 106, 107],
-    'close': [100, 102, 101, 103, 105, 107, 106, 108, 110, 109]
-}
+def apply_strategy(data):
+        data['ema_short'] = ta.ema(data['close'], length=12)
+        data['ema_long'] = ta.ema(data['close'], length=26)
+        data['lsma'] = ta.linreg(data['close'], length=25)
+        macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
+        data['macd_line'] = macd['MACD_12_26_9']
+        data['lsma_stddev'] = data['close'].rolling(window=25).std()
+        data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.35)
+        data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.35)
 
-# Convert to a pandas DataFrame
-df = pd.DataFrame(data)
-
-# Convert 'date' column to datetime type
-df['date'] = pd.to_datetime(df['date'])
-
-# Calculate the Simple Moving Average (SMA) with a period of 3
-df['SMA'] = ta.sma(df['close'], length=3)
-
-# Create candlestick chart
-fig = go.Figure(data=[go.Candlestick(x=df['date'],
-                                     open=df['open'],
-                                     high=df['high'],
-                                     low=df['low'],
-                                     close=df['close'],
-                                     name='Candlestick')])
-
-# Add SMA line
-fig.add_trace(go.Scatter(x=df['date'], y=df['SMA'], 
-                         mode='lines', name='SMA'))
-
-# Update layout
-fig.update_layout(title='Candlestick Chart with SMA',
-                  xaxis_title='Date',
-                  yaxis_title='Price')
-
-# Show the plot
-fig.show()
+        data['is_buy2'] = (data['low'] < data['lsma_lower_band']) & (data['open'] < data['close']) & \
+                          (data['open'].shift(1) > data['close'].shift(1)) & (data['macd_line'] > 0)
+        data['is_sell2'] = (data['high'] > data['lsma_upper_band']) & (data['open'] > data['close']) & \
+                           (data['open'].shift(1) < data['close'].shift(1)) & (data['macd_line'] < 0)
+        return data
