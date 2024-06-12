@@ -148,8 +148,9 @@ class TradingBot:
         
         if order_type == mt5.ORDER_TYPE_BUY:
             buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,ask,ask+distance*point)
+            
             if buy_profit!=None:
-                print("   buy {} {} lot: profit on {} points => {} {}".format(symbol,lot,distance,buy_profit,account_currency))
+                #print("   buy {} {} lot: profit on {} points => {} {}".format(symbol,lot,distance,buy_profit,account_currency))
                 return buy_profit
             else:
                 print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
@@ -157,7 +158,8 @@ class TradingBot:
         elif order_type == mt5.ORDER_TYPE_SELL:
             sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,bid,bid-distance*point)
             if sell_profit!=None:
-                print("   sell {} {} lots: profit on {} points => {} {}".format(symbol,lot,distance,sell_profit,account_currency))
+                #print("   sell {} {} lots: profit on {} points => {} {}".format(symbol,lot,distance,sell_profit,account_currency))
+                
                 return sell_profit
             else:
                 print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
