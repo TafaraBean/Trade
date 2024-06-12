@@ -17,9 +17,9 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-timeframe = mt5.TIMEFRAME_M30
-start = datetime(2024,6,8)
-end = datetime.now()
+timeframe = mt5.TIMEFRAME_H1
+start = datetime(2024,5,8)
+end = datetime(2024,5,20)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
@@ -40,9 +40,9 @@ latest_signal=df.iloc[-1]
 
 #checks if a buy/sell condition was met
 if latest_signal["is_buy2"]:
-  bot.open_buy_order(symbol=symbol,volume=0.01)
+  bot.open_buy_order(symbol=symbol,volume=0.01,tp=latest_signal['low']+9,sl=latest_signal['low']-3)
 elif latest_signal["is_sell2"]:
-  bot.open_sell_order(symbol=symbol,volume=0.01)
+  bot.open_sell_order(symbol=symbol,volume=0.01,tp=latest_signal['high']-9,sl=latest_signal['high']+3)
 
 
 
