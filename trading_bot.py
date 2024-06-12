@@ -40,14 +40,14 @@ class TradingBot:
         else:
             print("connected to account #{}".format(self.login))
     
-    def open_buy_order(self, symbol, volume, sl=0.0, tp=0.0):
+    def open_buy_order(self, symbol, lot, sl=0.0, tp=0.0):
         """
         Open a buy order for a given symbol.
         """
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
-            "volume": float(volume),
+            "volume": float(lot),
             "type": mt5.ORDER_TYPE_BUY,
             "price": mt5.symbol_info_tick(symbol).ask,
             "sl": float(sl),
@@ -66,7 +66,7 @@ class TradingBot:
             self.positions[order['order']] = symbol
         return order
 
-    def open_sell_order(self, symbol, volume, sl=0.0, tp=0.0):
+    def open_sell_order(self, symbol, lot, sl=0.0, tp=0.0):
         """
         Open a sell order for a given symbol.
         """
@@ -74,7 +74,7 @@ class TradingBot:
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
-            "volume": float(volume),
+            "volume": float(lot),
             "type": mt5.ORDER_TYPE_SELL,
             "price": mt5.symbol_info_tick(symbol).ask,
             "sl": float(sl),
@@ -125,6 +125,46 @@ class TradingBot:
         trade_position =order[0]
         return trade_position._asdict()
 
+    def cal_profit(self, symbol, order_type, lot, distance, tp=0, sl=0):
+        # get account currency
+        account_currency=self.account.currency
+
+        #fetch symbol data        
+        symbol_info=mt5.symbol_info(symbol)
+        if symbol_info is None:
+            print(symbol,"not found, skipped")
+            return None
+        if not symbol_info.visible:
+            print(symbol, "is not visible, trying to switch on")
+            if not mt5.symbol_select(symbol,True):
+                print("symbol_select({}}) failed, skipped",symbol)
+                return None
+   
+        point=mt5.symbol_info(symbol).point
+        symbol_tick=mt5.symbol_info_tick(symbol)
+        ask=symbol_tick.ask
+        bid=symbol_tick.bid
+
+        
+        if order_type == mt5.ORDER_TYPE_BUY:
+            buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,ask,ask+distance*point)
+            if buy_profit!=None:
+                print("   buy {} {} lot: profit on {} points => {} {}".format(symbol,lot,distance,buy_profit,account_currency))
+                return buy_profit
+            else:
+                print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
+        
+        elif order_type == mt5.ORDER_TYPE_SELL:
+            sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,bid,bid-distance*point)
+            if sell_profit!=None:
+                print("   sell {} {} lots: profit on {} points => {} {}".format(symbol,lot,distance,sell_profit,account_currency))
+                return sell_profit
+            else:
+                print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
+        else:
+            print("Invalid order type")
+            return None
+                
     def chart(self, symbol, timeframe, start, end):
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
         return ohlc_data
