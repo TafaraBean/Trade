@@ -18,7 +18,7 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 timeframe = mt5.TIMEFRAME_H1
-start = datetime(2024,1,1)
+start = datetime(2024,5,1)
 end = datetime.now()
 
 #creating dataframe by importing trade data
