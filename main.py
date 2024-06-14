@@ -17,6 +17,8 @@ server = os.environ.get("SERVER")
 bot = TradingBot(login=account, password=password, server=server)
 symbol = "XAUUSD"
 timeframe = mt5.TIMEFRAME_H1  # Change this as needed
+start = datetime(2024,5,1)
+end = datetime.now()
 
 # Mapping of MT5 timeframes to sleep durations in seconds
 timeframe_to_interval = {
@@ -43,10 +45,6 @@ def main():
         
         print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
         time.sleep(time_difference)
-        
-        # Define the time range for fetching data
-        end = datetime.now()
-        start = end - timedelta(days=30)  # Fetch the last 30 days of data
 
         # Fetch the market data and apply the trading strategy
         data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)

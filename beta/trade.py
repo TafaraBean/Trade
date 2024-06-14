@@ -4,7 +4,6 @@ from trading_bot import TradingBot
 from dotenv import load_dotenv
 import os
 import pandas as pd
-import pandas_ta as ta
 import plotly.graph_objects as go
 from strategy import *
 
@@ -18,7 +17,7 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 timeframe = mt5.TIMEFRAME_H1
-start = datetime(2024,5,1)
+start = datetime(2024,6,1)
 end = datetime.now()
 
 #creating dataframe by importing trade data
@@ -35,6 +34,9 @@ df['time'] = pd.to_datetime(df['time'],unit='s')
 df = apply_strategy(df)
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)]
+filtered_df['tp'] = None
+filtered_df['sl'] = None
+
 
 
 # Function to check if stop loss or take profit is reached
@@ -114,7 +116,7 @@ print(f"total profit is: {total_profit} {bot.account.currency}")
 print(f"total loss is: {total_loss} {bot.account.currency}")
 
 
-profit_factor = total_profit / abs(total_loss)
+#profit_factor = total_profit / abs(total_loss)
 
 # Total number of trades
 total_trades = len(filtered_df)
@@ -127,7 +129,7 @@ percentage_profitability = (profitable_trades / total_trades) * 100
 
 print(f"precentage profitability: {percentage_profitability}%")
 
-print("Profit Factor:", profit_factor)
+#print("Profit Factor:", profit_factor)
 #print(filtered_df)
 #print(calc_prof())
 
