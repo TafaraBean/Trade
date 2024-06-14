@@ -5,8 +5,6 @@ from trading_bot import TradingBot
 from dotenv import load_dotenv
 import os
 import pandas as pd
-import pandas_ta as ta
-import plotly.graph_objects as go
 from strategy import *
 
 # Load environment variables
@@ -21,26 +19,30 @@ symbol = "XAUUSD"
 timeframe = mt5.TIMEFRAME_H1  # Change this as needed
 
 # Mapping of MT5 timeframes to sleep durations in seconds
-timeframe_to_seconds = {
-    mt5.TIMEFRAME_M1: 60,
-    mt5.TIMEFRAME_M5: 300,
-    mt5.TIMEFRAME_M15: 900,
-    mt5.TIMEFRAME_M30: 1800,
-    mt5.TIMEFRAME_H1: 3600,
-    mt5.TIMEFRAME_H4: 14400,
-    mt5.TIMEFRAME_D1: 86400,
+timeframe_to_interval = {
+    mt5.TIMEFRAME_M1: "min",
+    mt5.TIMEFRAME_M5: "5min",
+    mt5.TIMEFRAME_M10: "10min",
+    mt5.TIMEFRAME_M15: "15min",
+    mt5.TIMEFRAME_M30: "30min",
+    mt5.TIMEFRAME_H1: "H",
+    mt5.TIMEFRAME_H4: "4H",
+    mt5.TIMEFRAME_D1: "D",
 }
 
 def main():
     while True:
         # Calculate the time to sleep until the next interval based on the timeframe
-        now = datetime.now()
-        interval_seconds = timeframe_to_seconds.get(timeframe, 3600)  # Default to 1 hour if timeframe is not found
-        next_interval = (now + timedelta(seconds=interval_seconds)).replace(minute=0,second=0, microsecond=0)
-        time_to_sleep = (next_interval - now).total_seconds()
+        # Get current time
+        conversion = timeframe_to_interval.get(timeframe, 3600)
+        current_time = pd.Timestamp.now()
+        next_interval = current_time.ceil(conversion)
         
-        print(f"Sleeping for {time_to_sleep} seconds until the next interval.")
-        time.sleep(time_to_sleep)
+        # Calculate the difference in seconds
+        time_difference = (next_interval - current_time).total_seconds()
+        
+        print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
+        time.sleep(time_difference)
         
         # Define the time range for fetching data
         end = datetime.now()
