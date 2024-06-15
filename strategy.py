@@ -1,7 +1,7 @@
 import pandas as pd
 import pandas_ta as ta
 
-def apply_strategy(data):
+def h1_gold_strategy(data):
         data['ema_short'] = ta.ema(data['close'], length=12)
         data['ema_long'] = ta.ema(data['close'], length=26)
         data['lsma'] = ta.linreg(data['close'], length=25)

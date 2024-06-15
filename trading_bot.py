@@ -1,6 +1,6 @@
 import MetaTrader5 as mt5
-from datetime import datetime
-
+import time
+import pandas as pd
 
 class Account:
     def __init__(self):
@@ -28,6 +28,17 @@ class TradingBot:
         self.server = server
         self.positions = {}
         self.initialize_api()
+
+        self.timeframe_to_interval = {
+            mt5.TIMEFRAME_M1: "min",
+            mt5.TIMEFRAME_M5: "5min",
+            mt5.TIMEFRAME_M10: "10min",
+            mt5.TIMEFRAME_M15: "15min",
+            mt5.TIMEFRAME_M30: "30min",
+            mt5.TIMEFRAME_H1: "H",
+            mt5.TIMEFRAME_H4: "4H",
+            mt5.TIMEFRAME_D1: "D",
+        }
 
     def initialize_api(self):
         # Initialize the MetaTrader 5 connection
@@ -177,4 +188,35 @@ class TradingBot:
         print("MetaTrader 5 connection closed")
 
 
+    def run(self, symbol, timeframe, start, end, strategy_func):
+        while True:
+            # Calculate the time to sleep until the next interval based on the timeframe
+            # Get current time
+            conversion = self.timeframe_to_interval.get(timeframe, 3600)
+            current_time = pd.Timestamp.now()
+            next_interval = current_time.ceil(conversion)
+            
+            # Calculate the difference in seconds
+            time_difference = (next_interval - current_time).total_seconds()
+            
+            print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
+            time.sleep(time_difference)
+
+            # Fetch the market data and apply the trading strategy
+            data = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
+            df = pd.DataFrame(data)
+            df['time'] = pd.to_datetime(df['time'], unit='s')
+            df = strategy_func(df)
+
+            # Check for new trading signals
+            latest_signal = df.iloc[-1]
+
+            # Open orders based on the latest signal
+            if latest_signal["is_buy2"]:
+                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['low'] + 9, sl=latest_signal['low'] - 3)
+            elif latest_signal["is_sell2"]:
+                self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['high'] - 9, sl=latest_signal['high'] + 3)
+
+            # Calculate and display performance metrics
+            df.to_csv('output.csv', index=False)
 
