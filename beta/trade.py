@@ -1,12 +1,12 @@
 from datetime import datetime
 import  MetaTrader5 as mt5 
-from trading_bot import TradingBot
+from beta.trading_bot import TradingBot
 from dotenv import load_dotenv
 import os
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-from strategy import *
+from beta.strategy import *
 import time
 
 
@@ -18,7 +18,7 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-timeframe = mt5.TIMEFRAME_H4
+timeframe = mt5.TIMEFRAME_H15
 start = datetime(2024,6,1)
 end = datetime.now()
 
@@ -33,7 +33,7 @@ df = pd.DataFrame(data)
 df['time'] = pd.to_datetime(df['time'],unit='s')
 
 print(df)
-df = h1_gold_strategy(df)
+df = m15_gold_strategy(df)
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 # Initialize tp and sl columns with None or NaN

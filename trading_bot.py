@@ -217,6 +217,7 @@ class TradingBot:
             elif latest_signal["is_sell2"]:
                 self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['high'] - 9, sl=latest_signal['high'] + 3)
 
+            filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
             # Calculate and display performance metrics
-            df.to_csv('output.csv', index=False)
+            filtered_df.to_csv('output.csv', index=False)
 
