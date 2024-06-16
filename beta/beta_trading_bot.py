@@ -213,10 +213,10 @@ class TradingBot:
 
             # Open orders based on the latest signal
             if latest_signal["is_buy2"]:
-                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['low'] + 7, sl=latest_signal['low'] - 3)
+                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'], sl=latest_signal['sl'])
             elif latest_signal["is_sell2"]:
-                self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['high'] - 7, sl=latest_signal['high'] + 3)
+                self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
             # Calculate and display performance metrics
-            df.to_csv('output.csv', index=False)
+            df.to_csv('beta/output.csv', index=False)
 

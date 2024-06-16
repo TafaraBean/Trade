@@ -1,12 +1,12 @@
 from datetime import datetime
 import  MetaTrader5 as mt5 
-from beta.trading_bot import TradingBot
+from beta_trading_bot import TradingBot
 from dotenv import load_dotenv
 import os
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
-from beta.strategy import *
+from beta_strategy import *
 import time
 
 
@@ -18,7 +18,7 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-timeframe = mt5.TIMEFRAME_H15
+timeframe = mt5.TIMEFRAME_M15
 start = datetime(2024,6,1)
 end = datetime.now()
 
@@ -36,25 +36,12 @@ print(df)
 df = m15_gold_strategy(df)
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
-# Initialize tp and sl columns with None or NaN
-filtered_df['tp'] = None
-filtered_df['sl'] = None
-
-# Calculate tp and sl for is_buy2 == True
-filtered_df.loc[filtered_df['is_buy2'] == True, 'tp'] = filtered_df['low'] + 9
-filtered_df.loc[filtered_df['is_buy2'] == True, 'sl'] = filtered_df['low'] - 3
-
-# Calculate tp and sl for is_sell2 == True
-filtered_df.loc[filtered_df['is_sell2'] == True, 'tp'] = filtered_df['high'] - 9
-filtered_df.loc[filtered_df['is_sell2'] == True, 'sl'] = filtered_df['high'] + 3
 
 
-
-df.to_csv('output.csv', index=False)
+df.to_csv('beta/output.csv', index=False)
 
 #gets the last row of the table
 latest_signal=df.iloc[-1]
-
 
 # Create candlestick chart
 # Create the candlestick chart
