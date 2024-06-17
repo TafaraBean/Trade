@@ -90,12 +90,11 @@ for index, row in filtered_df.iterrows():
         continue
     # Compare which was reached first
     successful = False
-    
+
     total_trades+=1
     if stop_loss_reached.any() and take_profit_reached.any():
         if stop_loss_index < take_profit_index:
             unsuccessful_trades+=1
-            row['position_close'] = relevant_ticks.iloc[stop_loss_index]['time']
             if row["is_buy2"]:
                 gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["sl"])
             else: 
@@ -104,20 +103,17 @@ for index, row in filtered_df.iterrows():
             successful = True
             successful_trades+=1
             num_winning_trades +=1
-            row['position_close'] = relevant_ticks.iloc[take_profit_index]['time']
             if row["is_buy2"]:
                 gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["tp"])
             else: 
                 gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
     elif stop_loss_reached.any():
         unsuccessful_trades+=1
-        row['position_close'] = relevant_ticks.iloc[stop_loss_index]['time']
         if row["is_buy2"]:
             loss += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["sl"])
         else: 
             loss += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["sl"])
     elif take_profit_reached.any():
-        row['position_close'] = relevant_ticks.iloc[take_profit_index]['time']
         successful = True
         successful_trades+=1
         num_winning_trades +=1
@@ -189,7 +185,7 @@ for index, row in executed_trades_df.iterrows():
         # Add green rectangle for take profit
         fig.add_shape(
             type="rect",
-            x0=row['time'], x1=row['position_close'],
+            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=4),
             y0=row['close'], y1=row['tp'],
             line=dict(color="green", width=2),
             fillcolor="green",
@@ -198,7 +194,7 @@ for index, row in executed_trades_df.iterrows():
         # Add red rectangle for stop loss
         fig.add_shape(
             type="rect",
-            x0=row['time'], x1=row['position_close'],
+            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=4),
             y0=row['sl'], y1=row['close'],
             line=dict(color="red", width=2),
             fillcolor="red",
