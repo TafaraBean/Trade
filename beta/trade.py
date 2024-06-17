@@ -21,7 +21,7 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 timeframe = mt5.TIMEFRAME_H1
-start = datetime(2024,5,20)
+start = datetime(2024,5,1)
 end = datetime.now()
 
 #creating dataframe by importing trade data
@@ -36,62 +36,89 @@ first_row_time = filtered_df.iloc[0]['time']
 last_row_time = filtered_df.iloc[-1]['time'] 
 last_row_time  += pd.Timedelta(hours=5)
 
-count = 0
+unexecuted_trades = 0
 successful_trades = 0
 unsuccessful_trades = 0
-
-ticks = bot.get_ticks(symbol=symbol,start=start,end=end)
-
+gross_profit = 0
+gross_loss = 0
+total_trades = 0
+num_winning_trades = 0
 for index, row in filtered_df.iterrows():
     # Access specific columns of the current row
     
     time_value = row['time']
-    end_date = datetime.now()
+    end_date =  datetime.now()
     sl = row['sl']  # Stop loss for this trade
     tp = row['tp']  # Take profit for this trade
     
     # Filter ticks dataframe from time_value onwards
-    relevant_ticks = bot.get_ticks(symbol=symbol,start=time_value,end=end_date)
-    print 
+    relevant_ticks = bot.get_ticks(symbol=symbol,start=time_value,end=end_date) 
 
     
     # Check if stop loss or take profit was reached first
     stop_loss_reached = relevant_ticks['bid'] <= sl
     take_profit_reached = relevant_ticks['bid'] >= tp
 
-
+    stop_loss_index = 0
+    take_profit_index = 0
 
     if any(stop_loss_reached):
-        stop_loss_index = np.argmax(relevant_ticks['bid']  <= sl)
+        stop_loss_index = np.argmax(stop_loss_reached)
         #print(f"sl index:{stop_loss_index} ... Trade {row["time"]}")
         
 
     if any(take_profit_reached):
-        take_profit_index = np.argmax(relevant_ticks['bid']  >= tp)
+        take_profit_index = np.argmax(stop_loss_reached)
         #print(f"tp index:{take_profit_index} ... Trade {row["time"]}")
 
-
+    if take_profit_index == 0 or stop_loss_index == 0:
+        unexecuted_trades +=1
+        continue
     # Compare which was reached first
+    total_trades+=1
     if stop_loss_reached.any() and take_profit_reached.any():
         if stop_loss_index < take_profit_index:
             unsuccessful_trades+=1
         else:
             successful_trades+=1
-            bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, distance=900)
+            num_winning_trades +=1
+            if row["is_buy2"]:
+                gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["tp"])
+            else: 
+                gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
     elif stop_loss_reached.any():
         unsuccessful_trades+=1
+        if row["is_buy2"]:
+            gross_loss += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["tp"])
+        else: 
+            gross_loss += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
     elif take_profit_reached.any():
         successful_trades+=1
+        num_winning_trades +=1
+        if row["is_buy2"]:
+            gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["tp"])
+        else: 
+            gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
     else:
         print(f"Neither stop loss nor take profit was reached.")
 
+if gross_loss > 0:
+    profit_factor = gross_profit / gross_loss
+else:
+    profit_factor = float('inf')  # Handle case where there are no losing trades
+
+if total_trades > 0:
+    percentage_profitability = (num_winning_trades / total_trades) * 100
+else:
+    percentage_profitability = 0  # Handle case where there are no trades
+
+print(f"analysis from {start} to {end}")
+print(f"Total unexecuted trades: {unexecuted_trades}")
 print(f"Total successful trades: {successful_trades}")
 print(f"Total unsuccessful trades: {unsuccessful_trades}")
-
-ticks = bot.get_ticks(symbol=symbol,start=start,end=end)
-
-filtered_df.to_csv('beta/output.csv', index=False)
-ticks.to_csv('beta/ticks.csv', index=False)
+print(f"gross profit: {gross_profit} {bot.account.currency}" )
+print(f"gross loss: {gross_loss} {bot.account.currency}")
+print(f"proft factor: {profit_factor}")
 
 # Create the candlestick chart
 fig = go.Figure(data=[go.Candlestick(x=df['time'],
@@ -145,3 +172,7 @@ fig.update_xaxes(
 
 # Show the plot
 #fig.show()
+
+del relevant_ticks
+del filtered_df
+del df

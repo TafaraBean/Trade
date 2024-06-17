@@ -52,7 +52,7 @@ class TradingBot:
         else:
             print("connected to account #{}".format(self.login))
     
-    def open_buy_order(self, symbol, lot, sl=0.0, tp=0.0):
+    def open_buy_order(self, symbol, lot, sl=0.0, tp=0.0) -> dict:
         """
         Open a buy order for a given symbol.
         """
@@ -78,7 +78,7 @@ class TradingBot:
             self.positions[order['order']] = symbol
         return order
 
-    def open_sell_order(self, symbol, lot, sl=0.0, tp=0.0):
+    def open_sell_order(self, symbol, lot, sl=0.0, tp=0.0) -> dict:
         """
         Open a sell order for a given symbol.
         """
@@ -104,7 +104,7 @@ class TradingBot:
             self.positions[order['order']] = symbol
         return order
 
-    def close_position(self, position_id, lot, symbol):
+    def close_position(self, position_id, lot, symbol) -> dict:
         """
         Close the position for a given symbol.
         """
@@ -129,7 +129,7 @@ class TradingBot:
         result = mt5.order_send(request)._asdict()
         return result
 
-    def get_position(self,ticket) -> tuple:
+    def get_position(self,ticket) -> dict:
         """
         Get the current position for a given symbol.
         """
@@ -137,7 +137,7 @@ class TradingBot:
         trade_position =order[0]
         return trade_position._asdict()
 
-    def cal_profit(self, symbol, order_type, lot, distance, tp=0, sl=0):
+    def cal_profit(self, symbol, order_type, lot, open_price, close_price) -> float:
         # get account currency
         account_currency=self.account.currency
 
@@ -151,15 +151,10 @@ class TradingBot:
             if not mt5.symbol_select(symbol,True):
                 print("symbol_select({}}) failed, skipped",symbol)
                 return None
-   
-        point=mt5.symbol_info(symbol).point
-        symbol_tick=mt5.symbol_info_tick(symbol)
-        ask=symbol_tick.ask
-        bid=symbol_tick.bid
 
         
         if order_type == mt5.ORDER_TYPE_BUY:
-            buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,ask,ask+distance*point)
+            buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,open_price, close_price)
             
             if buy_profit!=None:
                 #print("   buy {} {} lot: profit on {} points => {} {}".format(symbol,lot,distance,buy_profit,account_currency))
@@ -168,7 +163,7 @@ class TradingBot:
                 print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
         
         elif order_type == mt5.ORDER_TYPE_SELL:
-            sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,bid,bid-distance*point)
+            sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,open_price, close_price)
             if sell_profit!=None:
                 #print("   sell {} {} lots: profit on {} points => {} {}".format(symbol,lot,distance,sell_profit,account_currency))
                 
@@ -179,7 +174,7 @@ class TradingBot:
             print("Invalid order type")
             return None
                 
-    def chart(self, symbol, timeframe, start, end):
+    def chart(self, symbol, timeframe, start, end) -> pd.DataFrame:
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
         ohlc_data = pd.DataFrame(ohlc_data)
         # Convert 'date' column to datetime type
@@ -190,7 +185,7 @@ class TradingBot:
         mt5.shutdown()
         print("MetaTrader 5 connection closed")
 
-    def get_ticks(self,symbol, start, end):
+    def get_ticks(self,symbol, start, end) -> pd.DataFrame:
         # request AUDUSD ticks within 11.01.2020 - 11.01.2020
         ticks = mt5.copy_ticks_range(symbol, start, end, mt5.COPY_TICKS_ALL)
         ticks = pd.DataFrame(ticks)
