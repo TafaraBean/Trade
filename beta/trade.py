@@ -5,11 +5,10 @@ from dotenv import load_dotenv
 import os
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.io as pio
 from beta_strategy import *
-import time
 import numpy as np
 from analysis import *
+from plotly.subplots import make_subplots
 
 timeframe_to_interval = {
             mt5.TIMEFRAME_M1: "min",
@@ -32,7 +31,7 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,5,25))
+start = pd.to_datetime(datetime(2024,6,9))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -41,7 +40,7 @@ data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
 
 
 
-df = h1_gold_strategy(data)
+df = m15_gold_strategy(data.copy())
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 first_row_time = filtered_df.iloc[0]['time']
@@ -67,7 +66,7 @@ for index, row in filtered_df.iterrows():
     tp = row['tp']  # Take profit for this trade
     
     ticks_time= (time_value + pd.Timedelta(minutes=2)).ceil(conversion)
-    print(f"{time_value}: {ticks_time}")
+
     # Filter ticks dataframe from time_value onwards
     relevant_ticks = bot.get_ticks(symbol=symbol,start=ticks_time,end=end_date) 
     
@@ -144,7 +143,7 @@ for index, row in filtered_df.iterrows():
         else: 
             gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
     else:
-        print(f"Neither stop loss nor take profit was reached.")
+        print(f"Neither stop loss nor take profit was reached for trade. {row["time"]}")
 
     row['successful'] = successful
     executed_trades.append(row)
@@ -175,84 +174,90 @@ print(f"loss: {loss} {bot.account.currency}")
 print(f"net proft: {gross_profit+loss} {bot.account.currency}")
 print(f"proft factor: {profit_factor}")
 
-# Create the candlestick chart
-fig = go.Figure(data=[go.Candlestick(x=df['time'],
-                                     open=df['open'],
-                                     high=df['high'],
-                                     low=df['low'],
-                                     close=df['close'],
-                                     name='Candlestick')])
-"""
-# Add buy signals (up arrows)
-fig.add_trace(go.Scatter(
-    x=df[df['is_buy2'] == True]['time'],
-    y=df[df['is_buy2'] == True]['low'] * 0.999,  # Place the arrow slightly below the low price of the candle
-    mode='markers',
-    marker=dict(symbol='arrow-up', color='green', size=10),
-    name='Buy Signal'
-))
+# Create the subplots with 2 rows
+fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
+                    subplot_titles=('Candlestick Chart', 'MACD Line'))
 
+# Add candlestick chart to the first subplot
+fig.add_trace(go.Candlestick(x=df['time'],
+                             open=df['open'],
+                             high=df['high'],
+                             low=df['low'],
+                             close=df['close'],
+                             name='Candlestick'), row=1, col=1)
 
-# Add sell signals (down arrows)
-fig.add_trace(go.Scatter(
-    x=df[df['is_sell2'] == True]['time'],
-    y=df[df['is_sell2'] == True]['high'] * 1.001,  # Place the arrow slightly above the high price of the candle
-    mode='markers',
-    marker=dict(symbol='arrow-down', color='red', size=10),
-    name='Sell Signal'
-))
-"""
-
-for index, row in executed_trades_df.iterrows():
-        # Add green rectangle for take profit
-        fig.add_shape(
-            type="rect",
-            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
-            y0=row['close'], y1=row['tp'],
-            line=dict(color="green", width=2),
-            fillcolor="green",
-            opacity=0.3
-        )
-        # Add red rectangle for stop loss
-        fig.add_shape(
-            type="rect",
-            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
-            y0=row['sl'], y1=row['close'],
-            line=dict(color="red", width=2),
-            fillcolor="red",
-            opacity=0.3
-        )
-
-# Add buy signals (up arrows)
+# Add buy signals (up arrows) to the first subplot
 fig.add_trace(go.Scatter(
     x=executed_trades_df[executed_trades_df['is_buy2'] == True]['time'],
-    y=executed_trades_df[executed_trades_df['is_buy2'] == True]['low'] * 0.999,  # Place the arrow slightly below the low price of the candle
+    y=executed_trades_df[executed_trades_df['is_buy2'] == True]['low'] * 0.999,
     mode='markers',
     marker=dict(symbol='arrow-up', color='green', size=10),
     name='Buy Signal'
-))
+), row=1, col=1)
 
-
-# Add sell signals (down arrows)
+# Add sell signals (down arrows) to the first subplot
 fig.add_trace(go.Scatter(
     x=executed_trades_df[executed_trades_df['is_sell2'] == True]['time'],
-    y=executed_trades_df[executed_trades_df['is_sell2'] == True]['high'] * 1.001,  # Place the arrow slightly above the high price of the candle
+    y=executed_trades_df[executed_trades_df['is_sell2'] == True]['high'] * 1.001,
     mode='markers',
     marker=dict(symbol='arrow-down', color='red', size=10),
     name='Sell Signal'
-))
+), row=1, col=1)
 
-# Add LMSA Upper Band line
-fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_upper_band'], 
-                         mode='lines', name='LMSA Upper Band'))
+# Draw buy and sell orders on the chart
+for index, row in executed_trades_df.iterrows():
+    fig.add_shape(
+        type="rect",
+        x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
+        y0=row['close'], y1=row['tp'],
+        line=dict(color="green", width=2),
+        fillcolor="green",
+        opacity=0.3,
+        row=1, col=1
+    )
+    fig.add_shape(
+        type="rect",
+        x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
+        y0=row['sl'], y1=row['close'],
+        line=dict(color="red", width=2),
+        fillcolor="red",
+        opacity=0.3,
+        row=1, col=1
+    )
 
-# Add LMSA Lower Band line
-fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_lower_band'], 
-                         mode='lines', name='LMSA Lower Band'))
+# Add LMSA Upper Band line to the first subplot
+fig.add_trace(go.Scatter(x=df['time'], 
+                         y=df['lsma_upper_band'], 
+                         mode='lines', 
+                         name='LMSA Upper Band'
+                         ), row=1, col=1)
 
-# Add LMSA  Band line
+# Add LMSA Lower Band line to the first subplot
+fig.add_trace(go.Scatter(x=df['time'],
+                         y=df['lsma_lower_band'], 
+                         mode='lines', 
+                         name='LMSA Lower Band'
+                         ), row=1, col=1)
+
+# Add LMSA Band line to the first subplot
 fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
-                         mode='lines', name='LMSA'))
+                         mode='lines', name='LMSA'), row=1, col=1)
+
+# Add MACD Line to the second subplot
+fig.add_trace(go.Scatter(
+    x=df['time'],
+    y=df['macd_line'],
+    name='MACD Line',
+    line=dict(color='purple')
+), row=2, col=1)
+
+# Add MACDs Line to the second subplot
+fig.add_trace(go.Scatter(
+    x=df['time'],
+    y=df['macd_signal'],
+    name='MACD Signal',
+    line=dict(color='blue')
+), row=2, col=1)
 
 # Update layout
 fig.update_layout(title='XAUUSD',
@@ -268,7 +273,6 @@ fig.update_xaxes(
     ]
 )
 
-fig.update_yaxes(type="log")
 
 
 # Show the plot

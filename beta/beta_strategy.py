@@ -31,6 +31,7 @@ def m15_gold_strategy(data):
         data['lsma'] = ta.linreg(data['close'], length=25)
         macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
         data['macd_line'] = macd['MACD_12_26_9']
+        data['macd_signal'] = macd['MACDs_12_26_9'] 
         data['lsma_stddev'] = data['close'].rolling(window=25).std()
         data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.35)
         data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.35)
