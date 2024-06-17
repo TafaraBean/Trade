@@ -138,8 +138,6 @@ class TradingBot:
         return trade_position._asdict()
 
     def cal_profit(self, symbol, order_type, lot, open_price, close_price) -> float:
-        # get account currency
-        account_currency=self.account.currency
 
         #fetch symbol data        
         symbol_info=mt5.symbol_info(symbol)
@@ -156,20 +154,19 @@ class TradingBot:
         if order_type == mt5.ORDER_TYPE_BUY:
             buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,open_price, close_price)
             
-            if buy_profit!=None:
-                #print("   buy {} {} lot: profit on {} points => {} {}".format(symbol,lot,distance,buy_profit,account_currency))
+            if buy_profit!=None:            
                 return buy_profit
             else:
                 print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
+                return None
         
         elif order_type == mt5.ORDER_TYPE_SELL:
             sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,open_price, close_price)
             if sell_profit!=None:
-                #print("   sell {} {} lots: profit on {} points => {} {}".format(symbol,lot,distance,sell_profit,account_currency))
-                
                 return sell_profit
             else:
                 print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
+                return None
         else:
             print("Invalid order type")
             return None
@@ -196,24 +193,24 @@ class TradingBot:
         symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
         return symbol_info_tick_dict
 
-    def run(self, symbol, timeframe, start, end, strategy_func):
+    def run(self, symbol, timeframe, start, strategy_func):
         while True:
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
             conversion = self.timeframe_to_interval.get(timeframe, 3600)
-            current_time = pd.Timestamp.now()
+            current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
             next_interval = current_time.ceil(conversion)
             
             # Calculate the difference in seconds
             time_difference = (next_interval - current_time).total_seconds()
-            
+            end = pd.to_datetime(current_time).floor(conversion)
             print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
             time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
-            data = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
-            df = pd.DataFrame(data)
-            df['time'] = pd.to_datetime(df['time'], unit='s')
+            
+            
+            df = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
             df = strategy_func(df)
 
             # Check for new trading signals
@@ -221,10 +218,11 @@ class TradingBot:
 
             # Open orders based on the latest signal
             if latest_signal["is_buy2"]:
-                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'] , sl=latest_signal['sl'])
             elif latest_signal["is_sell2"]:
                 self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
+
             # Calculate and display performance metrics
-            df.to_csv('beta/output.csv', index=False)
+            df.to_csv('output.csv', index=False)
 
