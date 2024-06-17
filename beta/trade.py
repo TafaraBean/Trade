@@ -207,7 +207,7 @@ for index, row in executed_trades_df.iterrows():
         # Add green rectangle for take profit
         fig.add_shape(
             type="rect",
-            x0=row['time'], x1=row['position_close_time'] + pd.Timedelta(hours=1),
+            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
             y0=row['close'], y1=row['tp'],
             line=dict(color="green", width=2),
             fillcolor="green",
@@ -216,7 +216,7 @@ for index, row in executed_trades_df.iterrows():
         # Add red rectangle for stop loss
         fig.add_shape(
             type="rect",
-            x0=row['time'], x1=row['position_close_time'] + pd.Timedelta(hours=1),
+            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
             y0=row['sl'], y1=row['close'],
             line=dict(color="red", width=2),
             fillcolor="red",
