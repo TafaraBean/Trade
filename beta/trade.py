@@ -32,7 +32,7 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 timeframe = mt5.TIMEFRAME_H1
-start = pd.to_datetime(datetime(2024,6,1))
+start = pd.to_datetime(datetime(2024,5,25))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -100,9 +100,6 @@ for index, row in filtered_df.iterrows():
         take_profit_index = np.argmax(take_profit_reached)
     else:
         take_profit_index = -1
-
-    print(f"tp for {row["time"]}: {take_profit_index}")
-    print(f"sl for {row["time"]}: {stop_loss_index}")
     
     if take_profit_index == 0 or stop_loss_index == 0:
         unexecuted_trades +=1
@@ -113,28 +110,31 @@ for index, row in filtered_df.iterrows():
     total_trades+=1
     if any(stop_loss_reached) and any(take_profit_reached):
         if stop_loss_index < take_profit_index:
+            row['successful'] = successful
+            row['position_close_time'] = relevant_ticks.loc[stop_loss_index, 'time']
             unsuccessful_trades+=1
-            print("unsuccessful trade")
             if row["is_buy2"]:
                 gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["sl"])
             else: 
                 gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["sl"])
         else:
-            print("successful trade")
             successful = True
             successful_trades+=1
             num_winning_trades +=1
+            row['position_close_time'] = relevant_ticks.loc[take_profit_index, 'time']
             if row["is_buy2"]:
                 gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["tp"])
             else: 
                 gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
     elif stop_loss_reached.any():
         unsuccessful_trades+=1
+        row['position_close_time'] = relevant_ticks.loc[stop_loss_index, 'time']
         if row["is_buy2"]:
             loss += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["sl"])
         else: 
             loss += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["sl"])
     elif take_profit_reached.any():
+        row['position_close_time'] = relevant_ticks.loc[take_profit_index, 'time']
         successful = True
         successful_trades+=1
         num_winning_trades +=1
@@ -206,7 +206,7 @@ for index, row in executed_trades_df.iterrows():
         # Add green rectangle for take profit
         fig.add_shape(
             type="rect",
-            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=4),
+            x0=row['time'], x1=row['position_close_time'] + pd.Timedelta(hours=1),
             y0=row['close'], y1=row['tp'],
             line=dict(color="green", width=2),
             fillcolor="green",
@@ -215,7 +215,7 @@ for index, row in executed_trades_df.iterrows():
         # Add red rectangle for stop loss
         fig.add_shape(
             type="rect",
-            x0=row['time'], x1=row['time'] + pd.Timedelta(hours=4),
+            x0=row['time'], x1=row['position_close_time'] + pd.Timedelta(hours=1),
             y0=row['sl'], y1=row['close'],
             line=dict(color="red", width=2),
             fillcolor="red",
@@ -247,7 +247,7 @@ fig.update_layout(title='XAUUSD',
                   xaxis_title='Date',
                   yaxis_title='Price',
                   xaxis_rangeslider_visible=False,
-                  #template="plotly_dark"
+                  template="plotly_dark"
                   )
 
 fig.update_xaxes(
