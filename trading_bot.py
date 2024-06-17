@@ -36,8 +36,8 @@ class TradingBot:
             mt5.TIMEFRAME_M10: "10min",
             mt5.TIMEFRAME_M15: "15min",
             mt5.TIMEFRAME_M30: "30min",
-            mt5.TIMEFRAME_H1: "H",
-            mt5.TIMEFRAME_H4: "4H",
+            mt5.TIMEFRAME_H1: "h",
+            mt5.TIMEFRAME_H4: "4h",
             mt5.TIMEFRAME_D1: "D",
         }
 

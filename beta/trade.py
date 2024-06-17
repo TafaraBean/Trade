@@ -17,8 +17,8 @@ timeframe_to_interval = {
             mt5.TIMEFRAME_M10: "10min",
             mt5.TIMEFRAME_M15: "15min",
             mt5.TIMEFRAME_M30: "30min",
-            mt5.TIMEFRAME_H1: "H",
-            mt5.TIMEFRAME_H4: "4H",
+            mt5.TIMEFRAME_H1: "h",
+            mt5.TIMEFRAME_H4: "4h",
             mt5.TIMEFRAME_D1: "D",
         }
 
@@ -32,7 +32,7 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 timeframe = mt5.TIMEFRAME_H1
-start = pd.to_datetime(datetime(2024,5,1))
+start = pd.to_datetime(datetime(2024,6,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -66,14 +66,30 @@ for index, row in filtered_df.iterrows():
     sl = row['sl']  # Stop loss for this trade
     tp = row['tp']  # Take profit for this trade
     
+    ticks_time= time_value + pd.Timedelta(hours=1)
     # Filter ticks dataframe from time_value onwards
-    relevant_ticks = bot.get_ticks(symbol=symbol,start=time_value,end=end_date) 
-
+    relevant_ticks = bot.get_ticks(symbol=symbol,start=ticks_time,end=end_date) 
     
-    # Check if stop loss or take profit was reached first
-    stop_loss_reached = relevant_ticks['bid'] <= sl
-    take_profit_reached = relevant_ticks['bid'] >= tp
 
+        #check if trade has invalid stopouts
+    if(row['is_buy2']):
+        if(row["tp"] <= row["close"] or row["sl"] >= row["close"]):
+            unexecuted_trades +=1
+            print(f"trade invalid stopouts: {row["time"]}")
+            continue
+    else:
+        if(row["tp"] >= row["close"] or row["sl"] <= row["close"]):
+            unexecuted_trades +=1
+            print(f"trade invalid stopouts: {row["time"]}")
+            continue
+
+    # Check if stop loss or take profit was reached first
+    if(row["is_buy2"]):
+        stop_loss_reached = relevant_ticks['bid'] <= sl
+        take_profit_reached = relevant_ticks['bid'] >= tp
+    else:
+        stop_loss_reached = relevant_ticks['bid'] >= sl
+        take_profit_reached = relevant_ticks['bid'] <= tp
 
     if any(stop_loss_reached):
         stop_loss_index = np.argmax(stop_loss_reached)
@@ -81,10 +97,13 @@ for index, row in filtered_df.iterrows():
         stop_loss_index = -1
 
     if any(take_profit_reached):
-        take_profit_index = np.argmax(stop_loss_reached)
+        take_profit_index = np.argmax(take_profit_reached)
     else:
         take_profit_index = -1
 
+    print(f"tp for {row["time"]}: {take_profit_index}")
+    print(f"sl for {row["time"]}: {stop_loss_index}")
+    
     if take_profit_index == 0 or stop_loss_index == 0:
         unexecuted_trades +=1
         continue
@@ -92,14 +111,16 @@ for index, row in filtered_df.iterrows():
     successful = False
 
     total_trades+=1
-    if stop_loss_reached.any() and take_profit_reached.any():
+    if any(stop_loss_reached) and any(take_profit_reached):
         if stop_loss_index < take_profit_index:
             unsuccessful_trades+=1
+            print("unsuccessful trade")
             if row["is_buy2"]:
                 gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["sl"])
             else: 
                 gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["sl"])
         else:
+            print("successful trade")
             successful = True
             successful_trades+=1
             num_winning_trades +=1
@@ -142,7 +163,7 @@ executed_trades_df = pd.DataFrame(executed_trades)
 
 filtered_df.to_csv('beta/filtered_df.csv', index=False)
 executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
-
+bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
 
 print(f"analysis from {start} to {end}")
 print(f"Total unexecuted trades: {unexecuted_trades}")

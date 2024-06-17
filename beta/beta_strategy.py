@@ -18,10 +18,10 @@ def h1_gold_strategy(data):
 
 
 
-        data.loc[data['is_buy2'], 'tp'] = data['low'] + 9
-        data.loc[data['is_buy2'], 'sl'] = data['low'] - 3
-        data.loc[data['is_sell2'], 'tp'] = data['high'] - 9
-        data.loc[data['is_sell2'], 'sl'] = data['high'] + 3
+        data.loc[data['is_buy2'], 'tp'] = data['close'] + 9
+        data.loc[data['is_buy2'], 'sl'] = data['close'] - 3
+        data.loc[data['is_sell2'], 'tp'] = data['close'] - 9
+        data.loc[data['is_sell2'], 'sl'] = data['close'] + 3
 
         return data
 
