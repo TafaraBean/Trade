@@ -181,12 +181,25 @@ class TradingBot:
                 
     def chart(self, symbol, timeframe, start, end):
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
+        ohlc_data = pd.DataFrame(ohlc_data)
+        # Convert 'date' column to datetime type
+        ohlc_data['time'] = pd.to_datetime(ohlc_data['time'],unit='s')
         return ohlc_data
 
     def shutdown(self):
         mt5.shutdown()
         print("MetaTrader 5 connection closed")
 
+    def get_ticks(self,symbol, start, end):
+        # request AUDUSD ticks within 11.01.2020 - 11.01.2020
+        ticks = mt5.copy_ticks_range(symbol, start, end, mt5.COPY_TICKS_ALL)
+        ticks = pd.DataFrame(ticks)
+        ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
+        return ticks
+        
+    def symbol_info_tick(self, symbol) -> dict:
+        symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
+        return symbol_info_tick_dict
 
     def run(self, symbol, timeframe, start, end, strategy_func):
         while True:

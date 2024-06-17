@@ -8,6 +8,8 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from beta_strategy import *
 import time
+import numpy as np
+from analysis import *
 
 
 load_dotenv()
@@ -18,32 +20,79 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-timeframe = mt5.TIMEFRAME_M15
-start = datetime(2024,6,1)
+timeframe = mt5.TIMEFRAME_H1
+start = datetime(2024,5,20)
 end = datetime.now()
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
 
-#create dataframe
-df = pd.DataFrame(data)
 
 
-# Convert 'date' column to datetime type
-df['time'] = pd.to_datetime(df['time'],unit='s')
-
-print(df)
-df = m15_gold_strategy(df)
+df = h1_gold_strategy(data)
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
+first_row_time = filtered_df.iloc[0]['time']
+last_row_time = filtered_df.iloc[-1]['time'] 
+last_row_time  += pd.Timedelta(hours=5)
+
+count = 0
+successful_trades = 0
+unsuccessful_trades = 0
+
+ticks = bot.get_ticks(symbol=symbol,start=start,end=end)
+
+for index, row in filtered_df.iterrows():
+    # Access specific columns of the current row
+    
+    time_value = row['time']
+    end_date = datetime.now()
+    sl = row['sl']  # Stop loss for this trade
+    tp = row['tp']  # Take profit for this trade
+    
+    # Filter ticks dataframe from time_value onwards
+    relevant_ticks = bot.get_ticks(symbol=symbol,start=time_value,end=end_date)
+    print 
+
+    
+    # Check if stop loss or take profit was reached first
+    stop_loss_reached = relevant_ticks['bid'] <= sl
+    take_profit_reached = relevant_ticks['bid'] >= tp
 
 
-df.to_csv('beta/output.csv', index=False)
 
-#gets the last row of the table
-latest_signal=df.iloc[-1]
+    if any(stop_loss_reached):
+        stop_loss_index = np.argmax(relevant_ticks['bid']  <= sl)
+        #print(f"sl index:{stop_loss_index} ... Trade {row["time"]}")
+        
 
-# Create candlestick chart
+    if any(take_profit_reached):
+        take_profit_index = np.argmax(relevant_ticks['bid']  >= tp)
+        #print(f"tp index:{take_profit_index} ... Trade {row["time"]}")
+
+
+    # Compare which was reached first
+    if stop_loss_reached.any() and take_profit_reached.any():
+        if stop_loss_index < take_profit_index:
+            unsuccessful_trades+=1
+        else:
+            successful_trades+=1
+            bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, distance=900)
+    elif stop_loss_reached.any():
+        unsuccessful_trades+=1
+    elif take_profit_reached.any():
+        successful_trades+=1
+    else:
+        print(f"Neither stop loss nor take profit was reached.")
+
+print(f"Total successful trades: {successful_trades}")
+print(f"Total unsuccessful trades: {unsuccessful_trades}")
+
+ticks = bot.get_ticks(symbol=symbol,start=start,end=end)
+
+filtered_df.to_csv('beta/output.csv', index=False)
+ticks.to_csv('beta/ticks.csv', index=False)
+
 # Create the candlestick chart
 fig = go.Figure(data=[go.Candlestick(x=df['time'],
                                      open=df['open'],
@@ -95,4 +144,4 @@ fig.update_xaxes(
 )
 
 # Show the plot
-fig.show()
+#fig.show()
