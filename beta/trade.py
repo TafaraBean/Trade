@@ -261,8 +261,8 @@ fig.add_trace(go.Scatter(
 
 # Update layout
 fig.update_layout(title='XAUUSD',
-                  xaxis_title='Date',
-                  yaxis_title='Price',
+                  #xaxis_title='Date',
+                  #yaxis_title='Price',
                   xaxis_rangeslider_visible=False,
                   template="plotly_dark"
                   )
