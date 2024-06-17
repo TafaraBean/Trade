@@ -31,7 +31,7 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-timeframe = mt5.TIMEFRAME_H1
+timeframe = mt5.TIMEFRAME_M15
 start = pd.to_datetime(datetime(2024,5,25))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
@@ -66,7 +66,8 @@ for index, row in filtered_df.iterrows():
     sl = row['sl']  # Stop loss for this trade
     tp = row['tp']  # Take profit for this trade
     
-    ticks_time= time_value + pd.Timedelta(hours=1)
+    ticks_time= (time_value + pd.Timedelta(minutes=2)).ceil(conversion)
+    print(f"{time_value}: {ticks_time}")
     # Filter ticks dataframe from time_value onwards
     relevant_ticks = bot.get_ticks(symbol=symbol,start=ticks_time,end=end_date) 
     
@@ -171,7 +172,7 @@ print(f"Total successful trades: {successful_trades}")
 print(f"Total unsuccessful trades: {unsuccessful_trades}")
 print(f"gross profit: {gross_profit} {bot.account.currency}" )
 print(f"loss: {loss} {bot.account.currency}")
-print(f"net proft: {gross_profit+loss}")
+print(f"net proft: {gross_profit+loss} {bot.account.currency}")
 print(f"proft factor: {profit_factor}")
 
 # Create the candlestick chart
@@ -241,6 +242,17 @@ fig.add_trace(go.Scatter(
     name='Sell Signal'
 ))
 
+# Add LMSA Upper Band line
+fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_upper_band'], 
+                         mode='lines', name='LMSA Upper Band'))
+
+# Add LMSA Lower Band line
+fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_lower_band'], 
+                         mode='lines', name='LMSA Lower Band'))
+
+# Add LMSA  Band line
+fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
+                         mode='lines', name='LMSA'))
 
 # Update layout
 fig.update_layout(title='XAUUSD',
