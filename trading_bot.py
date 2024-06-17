@@ -1,6 +1,7 @@
 import MetaTrader5 as mt5
 import time
 import pandas as pd
+from datetime import datetime
 
 class Account:
     def __init__(self):
@@ -179,33 +180,35 @@ class TradingBot:
             print("Invalid order type")
             return None
                 
-    def chart(self, symbol, timeframe, start, end):
+    def chart(self, symbol, timeframe, start, end) -> pd.DataFrame:
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
-        return ohlc_data
+        df = pd.DataFrame(ohlc_data)
+        df['time'] = pd.to_datetime(df['time'], unit='s')
+        return df
 
     def shutdown(self):
         mt5.shutdown()
         print("MetaTrader 5 connection closed")
 
 
-    def run(self, symbol, timeframe, start, end, strategy_func):
+    def run(self, symbol, timeframe, start, strategy_func):
         while True:
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
             conversion = self.timeframe_to_interval.get(timeframe, 3600)
-            current_time = pd.Timestamp.now()
+            current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
             next_interval = current_time.ceil(conversion)
             
             # Calculate the difference in seconds
             time_difference = (next_interval - current_time).total_seconds()
-            
+            end = pd.to_datetime(current_time).floor(conversion)
             print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
             time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
-            data = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
-            df = pd.DataFrame(data)
-            df['time'] = pd.to_datetime(df['time'], unit='s')
+            
+            
+            df = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
             df = strategy_func(df)
 
             # Check for new trading signals
@@ -213,11 +216,11 @@ class TradingBot:
 
             # Open orders based on the latest signal
             if latest_signal["is_buy2"]:
-                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['low'] + 9, sl=latest_signal['low'] - 3)
+                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'] , sl=latest_signal['sl'])
             elif latest_signal["is_sell2"]:
-                self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['high'] - 9, sl=latest_signal['high'] + 3)
+                self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
-            filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
+
             # Calculate and display performance metrics
-            filtered_df.to_csv('output.csv', index=False)
+            df.to_csv('output.csv', index=False)
 

@@ -15,6 +15,11 @@ def h1_gold_strategy(data):
                                 (data['open'].shift(1) > data['close'].shift(1)) & (data['macd_line'] < 0)
         data['is_sell2'] = (data['high'] > data['lsma_upper_band']) & (data['open'] > data['close']) & \
                                 (data['open'].shift(1) < data['close'].shift(1)) & (data['macd_line'] > 0)
+        
+        data.loc[data['is_buy2'], 'tp'] = data['low'] + 9
+        data.loc[data['is_buy2'], 'sl'] = data['low'] - 3
+        data.loc[data['is_sell2'], 'tp'] = data['high'] - 9
+        data.loc[data['is_sell2'], 'sl'] = data['high'] + 3
         return data
 
 

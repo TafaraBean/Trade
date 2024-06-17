@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import  MetaTrader5 as mt5 
 from beta_trading_bot import TradingBot
 from dotenv import load_dotenv
@@ -22,7 +22,7 @@ bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 timeframe = mt5.TIMEFRAME_H1
 start = datetime(2024,5,1)
-end = datetime.now()
+end = datetime.now() 
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
