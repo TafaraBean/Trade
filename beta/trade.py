@@ -31,9 +31,9 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 account_balance = 1000
-lot_size = 0.02
+lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,4,1))
+start = pd.to_datetime(datetime(2024,6,17))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -95,6 +95,7 @@ for index, row in filtered_df.iterrows():
     successful = False
 
     total_trades+=1
+    
     if stop_loss_reached.any() and take_profit_reached.any():
         if(take_profit_index < stop_loss_index):
             #print("successful")

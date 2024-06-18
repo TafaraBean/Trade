@@ -188,6 +188,15 @@ class TradingBot:
         ticks = pd.DataFrame(ticks)
         ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
         return ticks
+    
+    
+    def get_ticks_count(self,symbol, start, count) -> pd.DataFrame:
+        # request AUDUSD ticks within 11.01.2020 - 11.01.2020
+        ticks = mt5.copy_ticks_from(symbol, start, count, mt5.COPY_TICKS_ALL)
+        ticks = pd.DataFrame(ticks)
+        ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
+        return ticks
+        
         
     def symbol_info_tick(self, symbol) -> dict:
         symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
