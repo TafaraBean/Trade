@@ -43,9 +43,6 @@ data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
 df = m15_gold_strategy(data.copy())
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
-first_row_time = filtered_df.iloc[0]['time']
-last_row_time = filtered_df.iloc[-1]['time'] 
-last_row_time  += pd.Timedelta(hours=5)
 
 unexecuted_trades = 0
 successful_trades = 0
@@ -55,96 +52,120 @@ loss = 0
 total_trades = 0
 num_winning_trades = 0
 executed_trades = [] 
-
+biggest_loss = 0
+biggest_win = 0
+account_balance = 1000
+inital_balance = account_balance
+max_drawdown = 1000
+lot_size = 0.01
 
 for index, row in filtered_df.iterrows():
     # Access specific columns of the current row
-    
-    time_value = row['time']
-    end_date =  datetime.now() + timedelta(hours=1)
-    sl = row['sl']  # Stop loss for this trade
-    tp = row['tp']  # Take profit for this trade
-    
-    ticks_time= (time_value + pd.Timedelta(minutes=2)).ceil(conversion)
-
-    # Filter ticks dataframe from time_value onwards
-    relevant_ticks = bot.get_ticks(symbol=symbol,start=ticks_time,end=end_date) 
+    start_time= (row['time'] + pd.Timedelta(minutes=2)).ceil(conversion) #add to minutes to be able to apply ceil function
+    end_date =  pd.Timestamp.now() + pd.Timedelta(hours=1)    
+    relevant_ticks = bot.get_ticks(symbol=symbol,start=start_time,end=end_date) # Filter ticks dataframe from time_value onwards
     
 
-        #check if trade has invalid stopouts
-    if(row['is_buy2']):
-        if(row["tp"] <= row["close"] or row["sl"] >= row["close"]):
-            unexecuted_trades +=1
-            print(f"trade invalid stopouts: {row["time"]}")
-            continue
-    else:
-        if(row["tp"] >= row["close"] or row["sl"] <= row["close"]):
-            unexecuted_trades +=1
-            print(f"trade invalid stopouts: {row["time"]}")
-            continue
+    #check if trade has invalid stopouts
+    if check_invalid_stopouts(row):
+        unexecuted_trades += 1
+        print(f"trade invalid stopouts: {row['time']}")
+        continue
 
     # Check if stop loss or take profit was reached first
     if(row["is_buy2"]):
-        stop_loss_reached = relevant_ticks['bid'] <= sl
-        take_profit_reached = relevant_ticks['bid'] >= tp
+        stop_loss_reached = relevant_ticks['bid'] <= row["sl"]
+        take_profit_reached = relevant_ticks['bid'] >= row["tp"]
     else:
-        stop_loss_reached = relevant_ticks['bid'] >= sl
-        take_profit_reached = relevant_ticks['bid'] <= tp
+        stop_loss_reached = relevant_ticks['bid'] >= row["sl"]
+        take_profit_reached = relevant_ticks['bid'] <= row["tp"]
 
-    if any(stop_loss_reached):
-        stop_loss_index = np.argmax(stop_loss_reached)
-    else:
-        stop_loss_index = -1
+    stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
+    take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
 
-    if any(take_profit_reached):
-        take_profit_index = np.argmax(take_profit_reached)
-    else:
-        take_profit_index = -1
-    
+    print(f"Trade: {row["time"]}\nsl: {stop_loss_index}\ntp: {take_profit_index}")
     if take_profit_index == 0 or stop_loss_index == 0:
         unexecuted_trades +=1
         continue
+
     # Compare which was reached first
     successful = False
 
     total_trades+=1
-    if any(stop_loss_reached) and any(take_profit_reached):
-        if stop_loss_index < take_profit_index:
-            row['successful'] = successful
-            row['position_close_time'] = relevant_ticks.loc[stop_loss_index, 'time']
-            unsuccessful_trades+=1
-            if row["is_buy2"]:
-                gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["sl"])
-            else: 
-                gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["sl"])
-        else:
+    if stop_loss_reached.any() and take_profit_reached.any():
+        if(take_profit_index < stop_loss_index):
+            print("successful")
+            print(f"tp reached first at {relevant_ticks.loc[take_profit_index, 'time']}") 
             successful = True
             successful_trades+=1
-            num_winning_trades +=1
+            row['successful'] = successful
             row['position_close_time'] = relevant_ticks.loc[take_profit_index, 'time']
             if row["is_buy2"]:
-                gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["tp"])
+                row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
+                gross_profit += row['profit']
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
             else: 
-                gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
+                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
+                gross_profit +=  row['profit'] 
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+        else:
+            print("unsuccessful")
+            print(f"sl reached first at {relevant_ticks.loc[stop_loss_index, 'time']}")
+            unsuccessful_trades+=1
+            row['successful'] = successful
+            row['position_close_time'] = relevant_ticks.loc[stop_loss_index, 'time']
+            if row["is_buy2"]:
+                row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                loss += row['profit']
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+            else: 
+                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                loss += row["profit"]
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+    
     elif stop_loss_reached.any():
-        unsuccessful_trades+=1
+        print("unsuccessful")
+        print(f"only sl reached at {relevant_ticks.loc[stop_loss_index, 'time']}")
+        row['successful'] = successful
         row['position_close_time'] = relevant_ticks.loc[stop_loss_index, 'time']
+        unsuccessful_trades+=1
         if row["is_buy2"]:
-            loss += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["sl"])
+            row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+            loss += row['profit']
+            account_balance  += row['profit']
+            row["account_balance"] = account_balance
         else: 
-            loss += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["sl"])
+            row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+            loss += row["profit"]
+            account_balance  += row['profit']
+            row["account_balance"] = account_balance
+       
     elif take_profit_reached.any():
-        row['position_close_time'] = relevant_ticks.loc[take_profit_index, 'time']
-        successful = True
-        successful_trades+=1
-        num_winning_trades +=1
-        if row["is_buy2"]:
-            gross_profit += bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=0.01, open_price=row["close"], close_price=row["tp"])
-        else: 
-            gross_profit += bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=0.01, open_price=row["close"], close_price=row["tp"])
+            print("successful")
+            print(f"only tp reached at {relevant_ticks.loc[take_profit_index, 'time']}")
+            row['successful'] = successful
+            row['position_close_time'] = relevant_ticks.loc[take_profit_index, 'time']
+            successful_trades+=1
+            if row["is_buy2"]:
+                row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
+                gross_profit += row['profit']
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+            else: 
+                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
+                gross_profit +=  row['profit'] 
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
     else:
+        row['position_close_time'] = row['time'] + pd.Timedelta(hours=3)
         print(f"Neither stop loss nor take profit was reached for trade. {row["time"]}")
 
+    if account_balance < max_drawdown:
+        max_drawdown = account_balance
     row['successful'] = successful
     executed_trades.append(row)
 if loss != 0:
@@ -165,14 +186,23 @@ filtered_df.to_csv('beta/filtered_df.csv', index=False)
 executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
 bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
 
-print(f"analysis from {start} to {end}")
+print(f"\nanalysis from {start} to {end}\n")
+print(f"\nPROFITABILITY\n")
 print(f"Total unexecuted trades: {unexecuted_trades}")
-print(f"Total successful trades: {successful_trades}")
+print(f"Total successful trades: {successful_trades}") 
 print(f"Total unsuccessful trades: {unsuccessful_trades}")
-print(f"gross profit: {gross_profit} {bot.account.currency}" )
-print(f"loss: {loss} {bot.account.currency}")
-print(f"net proft: {gross_profit+loss} {bot.account.currency}")
-print(f"proft factor: {profit_factor}")
+print(f"gross profit: {round(gross_profit, 2)} {bot.account.currency}")
+print(f"loss: {round(loss, 2)} {bot.account.currency}")
+
+print(f"profit factor: {round(profit_factor, 2)}")
+print(f"\nACCOUNT DETAILS\n")
+print(f"lot size used: {lot_size}")
+print(f"biggest single loss: {round(executed_trades_df['profit'].min(), 2)} {bot.account.currency}")
+print(f"biggest single win: {round(executed_trades_df['profit'].max(), 2)} {bot.account.currency}")
+print(f"initial balance: {round(inital_balance, 2)} {bot.account.currency}")
+print(f"account balance: {round(account_balance, 2)} {bot.account.currency}")
+print(f"max drawdown: {round(inital_balance - max_drawdown, 2)} {bot.account.currency}")
+print(f"net profit: {round(gross_profit + loss, 2)} {bot.account.currency}")
 
 # Create the subplots with 2 rows
 fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
@@ -205,10 +235,11 @@ fig.add_trace(go.Scatter(
 ), row=1, col=1)
 
 # Draw buy and sell orders on the chart
+"""
 for index, row in executed_trades_df.iterrows():
     fig.add_shape(
         type="rect",
-        x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
+        x0=row['time'], x1=row['position_close_time'],
         y0=row['close'], y1=row['tp'],
         line=dict(color="green", width=2),
         fillcolor="green",
@@ -217,13 +248,14 @@ for index, row in executed_trades_df.iterrows():
     )
     fig.add_shape(
         type="rect",
-        x0=row['time'], x1=row['time'] + pd.Timedelta(hours=2),
+        x0=row['time'], x1=row['position_close_time'],
         y0=row['sl'], y1=row['close'],
         line=dict(color="red", width=2),
         fillcolor="red",
         opacity=0.3,
         row=1, col=1
     )
+    """
 
 # Add LMSA Upper Band line to the first subplot
 fig.add_trace(go.Scatter(x=df['time'], 
@@ -276,9 +308,10 @@ fig.update_xaxes(
 
 
 # Show the plot
-fig.show()
+#fig.show()
 
 del relevant_ticks
 del filtered_df
 del df
 #nothing
+
