@@ -30,8 +30,10 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
+account_balance = 1000
+lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,6,9))
+start = pd.to_datetime(datetime(2024,4,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -44,6 +46,7 @@ df = m15_gold_strategy(data.copy())
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 
+total_trades = 0
 unexecuted_trades = 0
 successful_trades = 0
 unsuccessful_trades = 0
@@ -54,10 +57,10 @@ num_winning_trades = 0
 executed_trades = [] 
 biggest_loss = 0
 biggest_win = 0
-account_balance = 1000
+
 inital_balance = account_balance
 max_drawdown = 1000
-lot_size = 0.01
+
 
 for index, row in filtered_df.iterrows():
     # Access specific columns of the current row
@@ -83,7 +86,7 @@ for index, row in filtered_df.iterrows():
     stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
     take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
 
-    print(f"Trade: {row["time"]}\nsl: {stop_loss_index}\ntp: {take_profit_index}")
+    #print(f"Trade: {row["time"]}\nsl: {stop_loss_index}\ntp: {take_profit_index}")
     if take_profit_index == 0 or stop_loss_index == 0:
         unexecuted_trades +=1
         continue
@@ -94,8 +97,8 @@ for index, row in filtered_df.iterrows():
     total_trades+=1
     if stop_loss_reached.any() and take_profit_reached.any():
         if(take_profit_index < stop_loss_index):
-            print("successful")
-            print(f"tp reached first at {relevant_ticks.loc[take_profit_index, 'time']}") 
+            #print("successful")
+            #print(f"tp reached first at {relevant_ticks.loc[take_profit_index, 'time']}") 
             successful = True
             successful_trades+=1
             row['successful'] = successful
@@ -111,8 +114,8 @@ for index, row in filtered_df.iterrows():
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
         else:
-            print("unsuccessful")
-            print(f"sl reached first at {relevant_ticks.loc[stop_loss_index, 'time']}")
+            #print("unsuccessful")
+            #print(f"sl reached first at {relevant_ticks.loc[stop_loss_index, 'time']}")
             unsuccessful_trades+=1
             row['successful'] = successful
             row['position_close_time'] = relevant_ticks.loc[stop_loss_index, 'time']
@@ -128,8 +131,8 @@ for index, row in filtered_df.iterrows():
                 row["account_balance"] = account_balance
     
     elif stop_loss_reached.any():
-        print("unsuccessful")
-        print(f"only sl reached at {relevant_ticks.loc[stop_loss_index, 'time']}")
+        #print("unsuccessful")
+        #print(f"only sl reached at {relevant_ticks.loc[stop_loss_index, 'time']}")
         row['successful'] = successful
         row['position_close_time'] = relevant_ticks.loc[stop_loss_index, 'time']
         unsuccessful_trades+=1
@@ -145,8 +148,8 @@ for index, row in filtered_df.iterrows():
             row["account_balance"] = account_balance
        
     elif take_profit_reached.any():
-            print("successful")
-            print(f"only tp reached at {relevant_ticks.loc[take_profit_index, 'time']}")
+            #print("successful")
+            #print(f"only tp reached at {relevant_ticks.loc[take_profit_index, 'time']}")
             row['successful'] = successful
             row['position_close_time'] = relevant_ticks.loc[take_profit_index, 'time']
             successful_trades+=1
@@ -166,15 +169,18 @@ for index, row in filtered_df.iterrows():
 
     if account_balance < max_drawdown:
         max_drawdown = account_balance
+    total_trades += 1
     row['successful'] = successful
     executed_trades.append(row)
+
+
 if loss != 0:
     profit_factor = gross_profit / abs(loss)
 else:
     profit_factor = float('inf')  # Handle case where there are no losing trades
 
 if total_trades > 0:
-    percentage_profitability = (num_winning_trades / total_trades) * 100
+    percentage_profitability = (successful_trades / (successful_trades+unsuccessful_trades)) * 100
 else:
     percentage_profitability = 0  # Handle case where there are no trades
 
@@ -193,6 +199,7 @@ print(f"Total successful trades: {successful_trades}")
 print(f"Total unsuccessful trades: {unsuccessful_trades}")
 print(f"gross profit: {round(gross_profit, 2)} {bot.account.currency}")
 print(f"loss: {round(loss, 2)} {bot.account.currency}")
+print(f"percentage profitability: {percentage_profitability} %")
 
 print(f"profit factor: {round(profit_factor, 2)}")
 print(f"\nACCOUNT DETAILS\n")
@@ -235,8 +242,10 @@ fig.add_trace(go.Scatter(
 ), row=1, col=1)
 
 # Draw buy and sell orders on the chart
-"""
+
 for index, row in executed_trades_df.iterrows():
+    if not (row['successful']):
+        continue
     fig.add_shape(
         type="rect",
         x0=row['time'], x1=row['position_close_time'],
@@ -255,7 +264,7 @@ for index, row in executed_trades_df.iterrows():
         opacity=0.3,
         row=1, col=1
     )
-    """
+
 
 # Add LMSA Upper Band line to the first subplot
 fig.add_trace(go.Scatter(x=df['time'], 
@@ -308,7 +317,7 @@ fig.update_xaxes(
 
 
 # Show the plot
-#fig.show()
+fig.show()
 
 del relevant_ticks
 del filtered_df
