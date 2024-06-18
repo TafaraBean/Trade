@@ -17,7 +17,7 @@ server = os.environ.get("SERVER")
 bot = TradingBot(login=account, password=password, server=server)
 symbol = "XAUUSD"
 timeframe = mt5.TIMEFRAME_M15   # Change this as needed
-start = datetime(2024, 5, 10)
+start = datetime(2024, 6, 17)
 
 
 #print(bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end))
