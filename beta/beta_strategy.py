@@ -43,8 +43,8 @@ def m15_gold_strategy(data):
     data['lsma_slope'] = data['lsma'].diff()
     
     # Adjust LSMA bands based on trend
-    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.45) + (data['lsma_slope'] > 1) * 1.5
-    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.45) - (data['lsma_slope'] < 1) * 1.5
+    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.45) + (data['lsma_slope'] >= 0) * 1.6
+    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.45) - (data['lsma_slope'] <= 0) * 1.6
     
     # Generate signals
     data['is_buy2'] = (data['low'] < data['lsma_lower_band']) & (data['open'] < data['close']) & \
@@ -53,9 +53,9 @@ def m15_gold_strategy(data):
                        (data['open'].shift(1) < data['close'].shift(1)) & (data['macd_line'] > 0)
     
     # Set take profit and stop loss
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 5
+    data.loc[data['is_buy2'], 'tp'] = data['close'] + 6
     data.loc[data['is_buy2'], 'sl'] = data['low'] - 2
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 5
+    data.loc[data['is_sell2'], 'tp'] = data['close'] - 6
     data.loc[data['is_sell2'], 'sl'] = data['high'] + 2
     
     return data
