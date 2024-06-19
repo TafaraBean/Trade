@@ -17,7 +17,7 @@ server = os.environ.get("SERVER")
 bot = TradingBot(login=account, password=password, server=server)
 symbol = "XAUUSD"
 timeframe = mt5.TIMEFRAME_M15   # Change this as needed
-start = datetime(2024, 6, 1)
+start = datetime(2024, 6, 18)
 lot= 0.01
 print(bot.get_position_all(symbol=symbol))
 #bot.changesltp(symbol=symbol, ticket=18977692, pos_type=mt5.ORDER_TYPE_SELL, sl = 2300, tp=2400,lot=0.01)
