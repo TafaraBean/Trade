@@ -232,13 +232,13 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(time_difference)
+            #time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             
             
             df = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
-            df = strategy_func(df)
+            df = strategy_func(df.copy())
 
             # Check for new trading signals
             latest_signal = df.iloc[-1]
@@ -253,11 +253,16 @@ class TradingBot:
             open_positions_df = self.get_position_all(symbol=symbol)
 
             for index, row in open_positions_df.iterrows():
-                if row['price_current'] >= row['price_open'] +4:
+                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] +4):                        
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open']),
+                                    sl=float(row['price_open'] +3),
+                                    tp=row['tp'])
+                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -4):
+                    self.changesltp(ticket=int(row['ticket']), 
+                                    symbol=symbol, 
+                                    sl=float(row['price_open']-3),
                                     tp=row['tp'])
             # Calculate and display performance metrics
-            df.to_csv('output.csv', index=False)
+            df.to_csv('main.csv', index=False)
 

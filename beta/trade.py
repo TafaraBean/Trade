@@ -85,9 +85,9 @@ for index, row in filtered_df.iterrows():
     
     #check if trailing should have occured
     if(row["is_buy2"]):
-        add_trailing_stop = second_chart['close'] >= row["close"] + 4
+        add_trailing_stop = second_chart['close'] >= row["be_condition"]
     else:
-        add_trailing_stop = second_chart['close'] <= row["close"] - 4
+        add_trailing_stop = second_chart['close'] <= row["be_condition"]
 
 
     # Check if stop loss or take profit was reached first

@@ -27,6 +27,9 @@ def h1_gold_strategy(data):
         data.loc[data['is_buy2'], 'be'] = data['close'] + 3
         data.loc[data['is_sell2'], 'be'] = data['close'] - 3
 
+        #condition for setting new trailing stop
+        data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 4
+        data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 4
         return data
 
 
@@ -62,9 +65,13 @@ def m15_gold_strategy(data):
     data.loc[data['is_sell2'], 'tp'] = data['close'] - 6
     data.loc[data['is_sell2'], 'sl'] = data['high'] + 2
 
-    #set trailling stop loss
+    #set new trailling stop loss
     data.loc[data['is_buy2'], 'be'] = data['close'] + 3
     data.loc[data['is_sell2'], 'be'] = data['close'] - 3
+
+    #condition for setting new trailing stop
+    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 4
+    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 4
     
     return data
 
