@@ -258,11 +258,13 @@ class TradingBot:
                                     symbol=symbol, 
                                     sl=float(row['price_open'] +3),
                                     tp=row['tp'])
+                    print(f"sl adjusted for position {row['ticket']} ")
                 elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -4):
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
                                     sl=float(row['price_open']-3),
                                     tp=row['tp'])
+                    print(f"sl adjusted for position {row['ticket']} ")
             # Calculate and display performance metrics
             df.to_csv('main.csv', index=False)
 
