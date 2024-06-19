@@ -138,6 +138,13 @@ class TradingBot:
         trade_position =order[0]
         return trade_position._asdict()
 
+    def get_position_all(self,symbol) -> pd.DataFrame:
+        positions=mt5.positions_get(symbol=symbol)
+        df=pd.DataFrame(list(positions),columns=positions[0]._asdict().keys())
+        df.drop(['time_update', 'time_msc', 'time_update_msc', 'external_id'], axis=1, inplace=True)
+        df['time'] = pd.to_datetime(df['time'], unit='s')
+        return df
+
     def cal_profit(self, symbol, order_type, lot, distance, tp=0, sl=0):
         # get account currency
         account_currency=self.account.currency
@@ -179,7 +186,29 @@ class TradingBot:
         else:
             print("Invalid order type")
             return None
-                
+
+    def changesltp(self, ticket,symbol ,sl,tp):
+        request = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "position": ticket,
+            "symbol": symbol,
+            "sl": float(sl),
+            "tp": float(tp),
+            #"deviation": 20,
+            "magic": 234000,
+            #"comment": "python script modify",
+            "type_time": mt5.ORDER_TIME_GTC,
+            "type_filling": mt5.ORDER_FILLING_FOK,
+            #"ENUM_ORDER_STATE": mt5.ORDER_FILLING_RETURN,
+        }
+        #// perform the check and display the result 'as is'
+        result = mt5.order_send(request)
+
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            print("4. order_send failed, retcode={}".format(result.retcode))
+
+        return result
+
     def chart(self, symbol, timeframe, start, end) -> pd.DataFrame:
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
         df = pd.DataFrame(ohlc_data)
@@ -220,7 +249,15 @@ class TradingBot:
             elif latest_signal["is_sell2"]:
                 self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
+            #trail any stop losses as needed
+            open_positions_df = self.get_position_all(symbol=symbol)
 
+            for index, row in open_positions_df.iterrows():
+                if row['price_current'] >= row['price_open'] +4:
+                    self.changesltp(ticket=int(row['ticket']), 
+                                    symbol=symbol, 
+                                    sl=float(row['price_open']),
+                                    tp=row['tp'])
             # Calculate and display performance metrics
             df.to_csv('output.csv', index=False)
 
