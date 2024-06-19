@@ -220,7 +220,7 @@ class TradingBot:
         print("MetaTrader 5 connection closed")
 
 
-    def run(self, symbol, timeframe, start, strategy_func):
+    def run(self, symbol, timeframe, start, strategy_func, lot):
         while True:
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
@@ -245,9 +245,9 @@ class TradingBot:
 
             # Open orders based on the latest signal
             if latest_signal["is_buy2"]:
-                self.open_buy_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'] , sl=latest_signal['sl'])
+                self.open_buy_order(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
             elif latest_signal["is_sell2"]:
-                self.open_sell_order(symbol=symbol, lot=0.01, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                self.open_sell_order(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
             #trail any stop losses as needed
             open_positions_df = self.get_position_all(symbol=symbol)
