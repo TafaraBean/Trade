@@ -53,7 +53,7 @@ class TradingBot:
         else:
             print("connected to account #{}".format(self.login))
     
-    def open_buy_order(self, symbol, lot, sl=0.0, tp=0.0):
+    def open_buy_order(self, symbol, lot, sl=0.0, tp=0.0) -> dict:
         """
         Open a buy order for a given symbol.
         """
@@ -79,7 +79,7 @@ class TradingBot:
             self.positions[order['order']] = symbol
         return order
 
-    def open_sell_order(self, symbol, lot, sl=0.0, tp=0.0):
+    def open_sell_order(self, symbol, lot, sl=0.0, tp=0.0) -> dict:
         """
         Open a sell order for a given symbol.
         """
@@ -130,14 +130,14 @@ class TradingBot:
         result = mt5.order_send(request)._asdict()
         return result
 
-    def get_position(self,ticket) -> tuple:
+    def get_position(self,ticket) -> dict:
         """
         Get the current position for a given symbol.
         """
         order=mt5.positions_get(ticket=ticket)
         trade_position =order[0]
         return trade_position._asdict()
-    #df.drop(columns=['time_update', 'time_msc', 'time_update_msc', 'external_id'], inplace=True)
+    
     def get_position_all(self,symbol) -> pd.DataFrame:
         positions=mt5.positions_get(symbol=symbol)
 

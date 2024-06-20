@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 import  MetaTrader5 as mt5 
 from beta_trading_bot import TradingBot
 from dotenv import load_dotenv
@@ -83,60 +83,41 @@ for index, row in filtered_df.iterrows():
     
     second_chart = bot.chart(symbol=symbol, timeframe=timeframe, start=start_time, end=end_date)
     
-    #check if trailing should have occured
-    if(row["is_buy2"]):
-        add_trailing_stop = second_chart['close'] >= row["be_condition"]
-    else:
-        add_trailing_stop = second_chart['close'] <= row["be_condition"]
 
-
-    # Check if stop loss or take profit was reached first
+    # Check if stop loss or take profit or trailing stop was reached 
     if(row["is_buy2"]):
         stop_loss_reached = relevant_ticks['bid'] <= row["sl"]
         take_profit_reached = relevant_ticks['bid'] >= row["tp"]
+        trailing_stop_reached = second_chart['close'] >= row["be_condition"]
     else:
         stop_loss_reached = relevant_ticks['bid'] >= row["sl"]
         take_profit_reached = relevant_ticks['bid'] <= row["tp"]
+        trailing_stop_reached = second_chart['close'] <= row["be_condition"]
 
     #find the time at which it was4 units above entery
 
-    add_trailing_stop_index = np.argmax(add_trailing_stop) if add_trailing_stop.any() else -1
+    add_trailing_stop_index = np.argmax(trailing_stop_reached) if trailing_stop_reached.any() else -1
     stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
     take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
     
     
-    time_to_trail = (second_chart.loc[add_trailing_stop_index, "time"] + pd.Timedelta(minutes=2)).ceil(conversion) if add_trailing_stop_index != -1 else None
-    time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else None
-    time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else None
+    time_to_trail = (second_chart.loc[add_trailing_stop_index, "time"] + pd.Timedelta(minutes=2)).ceil(conversion) if add_trailing_stop_index != -1 else pd.Timestamp.max
+    time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
+    time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
     
-    row['time_to_trail']  = time_to_trail
-    row['time_tp_hit']  = time_tp_hit
-    row['time_sl_hit']  = time_sl_hit
 
-    if(time_to_trail is not None and time_sl_hit is not None):
-        if(time_to_trail < time_sl_hit):
-            row['sl_updated'] = True
-            row['time_updated'] = time_to_trail
-            #print(f"We trailled before stop loss hit")
-            #print(f"time to trail: {time_to_trail} \nTime to stopp: {time_sl_hit}\n")
-        else:
-            row['sl_updated'] = False
-            row['time_updated'] = None
-            #print(f"stop loss hit before we could trail at")
-            #print(f"time to trail: {time_to_trail} \nTime to stopp: {time_sl_hit}\n")
-    elif(time_to_trail is not None and time_sl_hit is None):
+
+    if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail:
         row['sl_updated'] = True
         row['time_updated'] = time_to_trail
-        #print("sl never reached, only trailing sl added")
-        #print(f"time to trail: {time_to_trail} \nTime to stopp: {time_sl_hit}\n")
-
     else:
         row['sl_updated'] = False
         row['time_updated'] = None
-        #print("stop loss reached, and trailing never reahced")
-        #print(f"time to trail: {time_to_trail} \nTime to stopp: {time_sl_hit}\n")
+
 
     print(f"Currently Working on Trade: {row['time']} where sl update is: {row['sl_updated']}")
+
+
     #update actual sl and refind teh indexes
     if  row['sl_updated']:
         print(f"feticking ticks from {time_to_trail}")
@@ -144,24 +125,25 @@ for index, row in filtered_df.iterrows():
         if row['is_buy2']:
             row['sl'] = row['be']
             stop_loss_reached = relevant_ticks['bid'] <= row["sl"]
-            take_profit_reached = relevant_ticks['bid'] >= row["tp"]
         else:
             row['sl'] = row['be']
             stop_loss_reached = relevant_ticks['bid'] >= row["sl"]
-            take_profit_reached = relevant_ticks['bid'] <= row["tp"]
-   
-
-
-        #find the time at which it was4 units above entery
-
 
         stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
-        take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
+        time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
+    
+    row['time_to_trail']  = time_to_trail
+    row['time_tp_hit']  = time_tp_hit
+    row['time_sl_hit']  = time_sl_hit
+
+    print(f"tp time: {time_tp_hit}")
+    print(f"sl time: {time_sl_hit}")
+    print(f"tr time: {time_to_trail}")
 
     total+=1
     executed_trades.append(row)
     #print(f"Trade: {row["time"]}\nsl: {stop_loss_index}\ntp: {take_profit_index}")
-    if stop_loss_index == 0:
+    if stop_loss_index == 0 or take_profit_index == 0:
         print(f"take profit or stop loss reached ar zero for trade {row['time']}")
         unexecuted_trades +=1
         continue
@@ -175,7 +157,7 @@ for index, row in filtered_df.iterrows():
 
     
     if stop_loss_reached.any() and take_profit_reached.any():
-        if(take_profit_index < stop_loss_index):
+        if(min(time_sl_hit, time_tp_hit) == time_tp_hit):
             print("Successful Trade")
             row['type'] = "success"
             win+=1
@@ -189,6 +171,7 @@ for index, row in filtered_df.iterrows():
                 gross_profit +=  row['profit'] 
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
+        
         elif(row['sl_updated']):
             break_even +=1
             print("break even Trade")
