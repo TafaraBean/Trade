@@ -30,8 +30,8 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-account_balance = 600
-lot_size = 0.02
+account_balance = 1000
+lot_size = 0.05
 timeframe = mt5.TIMEFRAME_M15
 start = pd.to_datetime(datetime(2024,5,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
@@ -120,7 +120,6 @@ for index, row in filtered_df.iterrows():
 
     if stop_loss_reached.any() and take_profit_reached.any():
         if(min(time_sl_hit, time_tp_hit) == time_tp_hit):
-            print("Successful Trade")
             row['type'] = "success"
             row['success'] = True
             successful_trades+=1
@@ -135,8 +134,7 @@ for index, row in filtered_df.iterrows():
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
         
-        elif(row['sl_updated']):
-            print("break even Trade")           
+        elif(row['sl_updated']):       
             row['type'] = "even"
             row['success'] = True
             break_even +=1
@@ -152,7 +150,6 @@ for index, row in filtered_df.iterrows():
                 row["account_balance"] = account_balance
 
         else:
-            print("unsuccessful Trade") 
             row['type'] = "fail"
             row['success'] = False
             unsuccessful_trades +=1            
@@ -168,7 +165,6 @@ for index, row in filtered_df.iterrows():
                 row["account_balance"] = account_balance
     elif stop_loss_reached.any():
         if(row['sl_updated']):
-            print("Break even Trade")
             row['type'] = "even"
             row['success'] = True
             break_even +=1
@@ -183,7 +179,6 @@ for index, row in filtered_df.iterrows():
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
         else:
-            print("unsuccessful Trade")
             row['type'] = "fail"
             row['success'] = False
             unsuccessful_trades+=1            
@@ -198,7 +193,6 @@ for index, row in filtered_df.iterrows():
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
     elif take_profit_reached.any():
-        print("trade successful")
         successful_trades+=1
         row['type'] = "success"
         row['success'] = True
