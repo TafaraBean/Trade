@@ -105,7 +105,7 @@ class TradingBot:
             self.positions[order['order']] = symbol
         return order
 
-    def close_position(self, position_id, lot, symbol):
+    def close_position(self, position_id, lot, symbol) -> pd.DataFrame:
         """
         Close the position for a given symbol.
         """
@@ -137,12 +137,17 @@ class TradingBot:
         order=mt5.positions_get(ticket=ticket)
         trade_position =order[0]
         return trade_position._asdict()
-
+    #df.drop(columns=['time_update', 'time_msc', 'time_update_msc', 'external_id'], inplace=True)
     def get_position_all(self,symbol) -> pd.DataFrame:
         positions=mt5.positions_get(symbol=symbol)
-        df=pd.DataFrame(list(positions),columns=positions[0]._asdict().keys())
-        df.drop(['time_update', 'time_msc', 'time_update_msc', 'external_id'], axis=1, inplace=True)
-        df['time'] = pd.to_datetime(df['time'], unit='s')
+
+        if len(positions) != 0:
+            df=pd.DataFrame(list(positions),columns=positions[0]._asdict().keys())
+            df.drop(['time_update', 'time_msc', 'time_update_msc', 'external_id'], axis=1, inplace=True)
+            df['time'] = pd.to_datetime(df['time'], unit='s')
+        else:
+            df = pd.DataFrame(positions)
+        
         return df
 
     def cal_profit(self, symbol, order_type, lot, distance, tp=0, sl=0):
