@@ -50,13 +50,15 @@ def m15_gold_strategy(data):
     data['lsma_slope'] = data['lsma'].diff()
     
     # Adjust LSMA bands based on trend
-    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.45) + (data['lsma_slope'] >= 0) * 1.6
-    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.45) - (data['lsma_slope'] <= 0) * 1.6
+    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.35) + (data['lsma_slope'] >= 0) * 1.5
+    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.35) - (data['lsma_slope'] <= 0) * 1.5
     
     # Generate signals
-    data['is_buy2'] = (data['low'] < data['lsma_lower_band']) & (data['open'] < data['close']) & \
+    data['is_buy2'] = ((data['open'] < data['lsma_lower_band'])) \
+                        & (data['open'] < data['close']) & \
                       (data['open'].shift(1) > data['close'].shift(1)) & (data['macd_line'] < 0)
-    data['is_sell2'] = (data['high'] > data['lsma_upper_band']) & (data['open'] > data['close']) & \
+    data['is_sell2'] = ((data['open'] > data['lsma_upper_band']))\
+                        & (data['open'] > data['close']) & \
                        (data['open'].shift(1) < data['close'].shift(1)) & (data['macd_line'] > 0)
     
     # Set take profit and stop loss
