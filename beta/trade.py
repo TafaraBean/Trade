@@ -68,7 +68,7 @@ break_even = 0
 
 for index, row in filtered_df.iterrows():
     # Access specific columns of the current row
-    start_time= (row['time'] + pd.Timedelta(minutes=2)).ceil(conversion) #add to minutes to be able to apply ceil function
+    start_time= (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion) #add to minutes to be able to apply ceil function
     end_date =  pd.Timestamp.now() + pd.Timedelta(hours=1)    
     relevant_ticks = bot.get_ticks(symbol=symbol,start=start_time,end=end_date) # Filter ticks dataframe from time_value onwards
     
@@ -85,50 +85,36 @@ for index, row in filtered_df.iterrows():
     
 
     # Check if stop loss or take profit or trailing stop was reached 
-    if(row["is_buy2"]):
-        stop_loss_reached = relevant_ticks['bid'] <= row["sl"]
-        take_profit_reached = relevant_ticks['bid'] >= row["tp"]
-        trailing_stop_reached = second_chart['close'] >= row["be_condition"]
-    else:
-        stop_loss_reached = relevant_ticks['bid'] >= row["sl"]
-        take_profit_reached = relevant_ticks['bid'] <= row["tp"]
-        trailing_stop_reached = second_chart['close'] <= row["be_condition"]
+    stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
+    take_profit_reached = (relevant_ticks['bid'] >= row["tp"]) if row["is_buy2"] else (relevant_ticks['bid'] <= row["tp"])
+    trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
 
     #find the time at which it was4 units above entery
-
-    add_trailing_stop_index = np.argmax(trailing_stop_reached) if trailing_stop_reached.any() else -1
+    trailing_stop_index = np.argmax(trailing_stop_reached) if trailing_stop_reached.any() else -1
     stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
     take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
     
-    
-    time_to_trail = (second_chart.loc[add_trailing_stop_index, "time"] + pd.Timedelta(minutes=2)).ceil(conversion) if add_trailing_stop_index != -1 else pd.Timestamp.max
+    #find the corresponding time to the indexes
+    time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
     time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
     time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
     
-
-
-    if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail:
-        row['sl_updated'] = True
-        row['time_updated'] = time_to_trail
-    else:
-        row['sl_updated'] = False
-        row['time_updated'] = None
-
+    #save information on trailing stop loss
+    row['sl_updated'] = True if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else False
+    row['time_updated'] = time_to_trail if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else None
 
     print(f"Currently Working on Trade: {row['time']} where sl update is: {row['sl_updated']}")
-
 
     #update actual sl and refind teh indexes
     if  row['sl_updated']:
         print(f"feticking ticks from {time_to_trail}")
         relevant_ticks = bot.get_ticks(symbol=symbol,start=time_to_trail,end=end_date) # Filter ticks dataframe from time_value onwards
-        if row['is_buy2']:
-            row['sl'] = row['be']
-            stop_loss_reached = relevant_ticks['bid'] <= row["sl"]
-        else:
-            row['sl'] = row['be']
-            stop_loss_reached = relevant_ticks['bid'] >= row["sl"]
+        
+        #update the stop loss level
+        row['sl'] = row['be']
+        stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
 
+        #find the new time for ehich stop loss was hit
         stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
         time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
     
@@ -149,11 +135,7 @@ for index, row in filtered_df.iterrows():
         continue
     
 
-    # Compare which was reached first
-    successful = False
-
-    total_trades+=1
-    
+    total_trades+=1   
 
     
     if stop_loss_reached.any() and take_profit_reached.any():
@@ -270,7 +252,7 @@ executed_trades_df = pd.DataFrame(executed_trades)
 data.to_csv('beta/output.csv', index=False)
 filtered_df.to_csv('beta/filtered_df.csv', index=False)
 executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
-bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
+#bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
 print(f"\nPROFITABILITY\n")
@@ -280,7 +262,7 @@ print(f"Total unsuccessful trades: {loose}")
 print(f"Total break even trades: {break_even}")
 print(f"gross profit: {round(gross_profit, 2)} {bot.account.currency}")
 print(f"loss: {round(loss, 2)} {bot.account.currency}")
-#print(f"percentage profitability: {percentage_profitability} %")
+print(f"percentage profitability: {percentage_profitability} %")
 
 print(f"profit factor: {round(profit_factor, 2)}")
 print(f"\nACCOUNT DETAILS\n")
