@@ -33,7 +33,7 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,5,2))
+start = pd.to_datetime(datetime(2024,5,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -254,7 +254,7 @@ executed_trades_df['losing_streak'] = (
 
 data.to_csv('beta/output.csv', index=False)
 filtered_df.to_csv('beta/filtered_df.csv', index=False)
-filtered_df.to_excel('filtered_excel_df.xlsx')
+executed_trades_df.to_excel('filtered_excel_df.xlsx')
 executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
 #bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
 
