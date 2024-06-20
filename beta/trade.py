@@ -30,10 +30,10 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-account_balance = 1000
-lot_size = 0.05
+account_balance = 300
+lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,5,1))
+start = pd.to_datetime(datetime(2024,1,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -247,7 +247,9 @@ executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
 print(f"\nPROFITABILITY\n")
-print(f"total excecuted trades: {total_trades}")
+
+print(f"lot size used: {lot_size}")
+print(f"Total trades: {total_trades}")
 print(f"Total unexecuted trades: {unexecuted_trades}")
 print(f"Total successful trades: {successful_trades}") 
 print(f"Total unsuccessful trades: {unsuccessful_trades}")
