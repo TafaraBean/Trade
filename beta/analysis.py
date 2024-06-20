@@ -1,5 +1,7 @@
 import pandas as pd
 import MetaTrader5 as mt5
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 timeframe_to_interval = {
             mt5.TIMEFRAME_M1: "min",
@@ -35,3 +37,87 @@ def check_invalid_stopouts(row):
                        (not is_buy2 and (take_profit >= close_price or stop_loss <= close_price))
 
     return invalid_stopouts
+
+
+def display_chart(df):
+        # Create the subplots with 2 rows
+    fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
+                        subplot_titles=('Candlestick Chart', 'MACD Line'))
+
+    # Add candlestick chart to the first subplot
+    fig.add_trace(go.Candlestick(x=df['time'],
+                                open=df['open'],
+                                high=df['high'],
+                                low=df['low'],
+                                close=df['close'],
+                                name='Candlestick'), row=1, col=1)
+
+    # Add buy signals (up arrows) to the first subplot
+    fig.add_trace(go.Scatter(
+        x=df[df['is_buy2'] == True]['time'],
+        y=df[df['is_buy2'] == True]['low'] * 0.999,
+        mode='markers',
+        marker=dict(symbol='arrow-up', color='green', size=10),
+        name='Buy Signal'
+    ), row=1, col=1)
+
+    # Add sell signals (down arrows) to the first subplot
+    fig.add_trace(go.Scatter(
+        x=df[df['is_sell2'] == True]['time'],
+        y=df[df['is_sell2'] == True]['high'] * 1.001,
+        mode='markers',
+        marker=dict(symbol='arrow-down', color='red', size=10),
+        name='Sell Signal'
+    ), row=1, col=1)
+
+
+
+    # Add LMSA Upper Band line to the first subplot
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['lsma_upper_band'], 
+                            mode='lines', 
+                            name='LMSA Upper Band'
+                            ), row=1, col=1)
+
+    # Add LMSA Lower Band line to the first subplot
+    fig.add_trace(go.Scatter(x=df['time'],
+                            y=df['lsma_lower_band'], 
+                            mode='lines', 
+                            name='LMSA Lower Band'
+                            ), row=1, col=1)
+
+    # Add LMSA Band line to the first subplot
+    fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
+                            mode='lines', name='LMSA'), row=1, col=1)
+
+    # Add MACD Line to the second subplot
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['macd_line'],
+        name='MACD Line',
+        line=dict(color='purple')
+    ), row=2, col=1)
+
+    # Add MACDs Line to the second subplot
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['macd_signal'],
+        name='MACD Signal',
+        line=dict(color='blue')
+    ), row=2, col=1)
+
+    # Update layout
+    fig.update_layout(title='XAUUSD',
+                    #xaxis_title='Date',
+                    #yaxis_title='Price',
+                    xaxis_rangeslider_visible=False,
+                    template="plotly_dark"
+                    )
+
+    fig.update_xaxes(
+        rangebreaks=[
+            dict(bounds=["sat", "mon"]), #hide weekends
+        ]
+    )
+    
+    fig.show()
