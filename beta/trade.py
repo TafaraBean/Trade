@@ -29,7 +29,7 @@ server=os.environ.get("SERVER")
 
 
 bot = TradingBot( login=account, password=password, server=server)
-symbol="XAUUSD"
+symbol="XAUUSDb"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
@@ -252,7 +252,7 @@ executed_trades_df = pd.DataFrame(executed_trades)
 data.to_csv('beta/output.csv', index=False)
 filtered_df.to_csv('beta/filtered_df.csv', index=False)
 executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
-#bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
+bot.get_ticks(symbol=symbol,start=start_time,end=end_date).to_csv("beta/ticks.csv", index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
 print(f"\nPROFITABILITY\n")

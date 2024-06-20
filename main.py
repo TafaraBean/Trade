@@ -15,7 +15,7 @@ server = os.environ.get("SERVER")
 
 # Initialize the trading bot
 bot = TradingBot(login=account, password=password, server=server)
-symbol = "XAUUSD"
+symbol = "XAUUSDb"
 timeframe = mt5.TIMEFRAME_M15   # Change this as needed
 start = datetime(2024, 6, 18)
 lot= 0.01
