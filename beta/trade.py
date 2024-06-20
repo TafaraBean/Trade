@@ -30,8 +30,8 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
-account_balance = 300
-lot_size = 0.01
+account_balance = 600
+lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
 start = pd.to_datetime(datetime(2024,5,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
@@ -93,8 +93,6 @@ for index, row in filtered_df.iterrows():
     row['sl_updated'] = True if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else False
     row['time_updated'] = time_to_trail if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else None
 
-    print(f"Currently Working on Trade: {row['time']} where sl update is: {row['sl_updated']}")
-
     #update actual sl and refind teh indexes
     if  row['sl_updated']:
         relevant_ticks = bot.get_ticks(symbol=symbol,start=time_to_trail,end=end_date) # Filter ticks dataframe from time_value onwards
@@ -111,11 +109,6 @@ for index, row in filtered_df.iterrows():
     row['time_to_trail']  = time_to_trail
     row['time_tp_hit']  = time_tp_hit
     row['time_sl_hit']  = time_sl_hit
-
-    print(f"tp time: {time_tp_hit}")
-    print(f"sl time: {time_sl_hit}")
-    print(f"tr time: {time_to_trail}")
-
     
     
     if stop_loss_index == 0 or take_profit_index == 0:
