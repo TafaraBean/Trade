@@ -40,9 +40,9 @@ def m15_gold_strategy(data):
     data['ema_long'] = ta.ema(data['close'], length=26)
     data['lsma'] = ta.linreg(data['close'], length=25)
     
-    macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
-    data['macd_line'] = macd['MACD_12_26_9']
-    data['macd_signal'] = macd['MACDs_12_26_9']
+    macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
+    data['macd_line'] = macd['MACD_8_17_9']
+    data['macd_signal'] = macd['MACDs_8_17_9']
     
     data['lsma_stddev'] = data['close'].rolling(window=25).std()
     
