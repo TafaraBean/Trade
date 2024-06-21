@@ -23,14 +23,13 @@ def h1_gold_strategy(data):
         data.loc[data['is_sell2'], 'tp'] = data['close'] - 9
         data.loc[data['is_sell2'], 'sl'] = data['high'] + 3
 
-        #set new trailling stop loss
+        #set trailling stop loss
         data.loc[data['is_buy2'], 'be'] = data['close'] + 3
         data.loc[data['is_sell2'], 'be'] = data['close'] - 3
 
         #condition for setting new trailing stop
         data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 4
         data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 4
-    
         return data
 
 
@@ -41,9 +40,9 @@ def m15_gold_strategy(data):
     data['ema_long'] = ta.ema(data['close'], length=26)
     data['lsma'] = ta.linreg(data['close'], length=25)
     
-    macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
-    data['macd_line'] = macd['MACD_12_26_9']
-    data['macd_signal'] = macd['MACDs_12_26_9']
+    macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
+    data['macd_line'] = macd['MACD_8_17_9']
+    data['macd_signal'] = macd['MACDs_8_17_9']
     
     data['lsma_stddev'] = data['close'].rolling(window=25).std()
     
@@ -53,6 +52,8 @@ def m15_gold_strategy(data):
     # Adjust LSMA bands based on trend
     data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.35) + (data['lsma_slope'] >= 0) * 1.5
     data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.35) - (data['lsma_slope'] <= 0) * 1.5
+
+
     
     # Generate signals
     data['is_buy2'] = (data['open'] < data['lsma_lower_band'])&\
@@ -64,20 +65,22 @@ def m15_gold_strategy(data):
                        (data['open'] > data['close']) & \
                        (data['open'].shift(1) < data['close'].shift(1)) & \
                        (((data['high'] - data['close']) + 2) < 5.5)
-       
+    
     # Set take profit and stop loss
     data.loc[data['is_buy2'], 'tp'] = data['close'] + 7
     data.loc[data['is_buy2'], 'sl'] = data['low'] - 2
     data.loc[data['is_sell2'], 'tp'] = data['close'] - 7
     data.loc[data['is_sell2'], 'sl'] = data['high'] + 2
 
-        #set new trailling stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 3
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 3
+    #set new trailling stop loss
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 2
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 2
 
-        #condition for setting new trailing stop
-    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 4
-    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 4
+    #condition for setting new trailing stop
+    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 2.7
+    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 2.7
+    
 
     return data
+
 
