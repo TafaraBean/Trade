@@ -56,12 +56,14 @@ def m15_gold_strategy(data):
 
     
     # Generate signals
-    data['is_buy2'] = (data['open'] < data['lsma_lower_band'])&\
+    data['is_buy2'] = ((abs(data['open'] - data['lsma_lower_band'])<0.1) |\
+                        (data['open']<data['lsma_lower_band']))&\
                       (data['open'] < data['close']) & \
                       (data['open'].shift(1) > data['close'].shift(1)) & \
                       (((data['close'] - data['low']) + 2) < 5.5)
 
-    data['is_sell2'] = (data['open'] > data['lsma_upper_band'])&\
+    data['is_sell2'] = ((abs(data['open'] - data['lsma_upper_band'])<0.1) |\
+                        (data['open']>data['lsma_upper_band']))&\
                        (data['open'] > data['close']) & \
                        (data['open'].shift(1) < data['close'].shift(1)) & \
                        (((data['high'] - data['close']) + 2) < 5.5)
