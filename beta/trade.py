@@ -33,7 +33,7 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,4,1))
+start = pd.to_datetime(datetime(2024,6,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -114,6 +114,17 @@ for index, row in filtered_df.iterrows():
     print(f"tp time: {time_tp_hit}")
     print(f"sl time: {time_sl_hit}")
     print(f"tr time: {time_to_trail}")
+
+    filtered_ticks = relevant_ticks[
+        (relevant_ticks['time'] >= (time_to_trail if row['sl_updated'] else start_time)) & 
+        (relevant_ticks['time'] <= min(time_sl_hit, time_tp_hit))
+    ].copy()
+    
+    max_min = filtered_ticks['bid'].max() if row['is_buy2'] else filtered_ticks['bid'].min()
+    row['max_completion'] = calculate_percentage_completion(entry_price=row['close'], goal_price=row['tp'], current_price=max_min, is_buy=row['is_buy2'])
+    row['max_floating_profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=max_min) \
+                                    if row['is_buy2'] else \
+                                    bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=max_min)        
 
     if stop_loss_index == 0 or take_profit_index == 0:
         print(f"take profit or stop loss reached ar zero for trade {row['time']}")
@@ -253,7 +264,7 @@ df.to_csv('beta/output.csv', index=False)
 filtered_df.to_csv('beta/filtered_df.csv', index=False)
 executed_trades_df.to_excel('filtered_excel_df.xlsx')
 executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
-#bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
+bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
 print(f"\nPROFITABILITY\n")
@@ -267,8 +278,12 @@ print(f"Total break even trades: {break_even}")
 print(f"gross profit: {round(gross_profit, 2)} {bot.account.currency}")
 print(f"loss: {round(loss, 2)} {bot.account.currency}")
 print(f"percentage profitability: {percentage_profitability} %")
-print(f'win streak: {executed_trades_df['win_streak'].max()}')
-print(f'loosing streak: {executed_trades_df['losing_streak'].max()}')
+print(f'max win streak: {executed_trades_df['win_streak'].max()}')
+print(f'max loosing streak: {executed_trades_df['losing_streak'].max()}')
+print(f'avg maximum order fill: {executed_trades_df['max_completion'].mean()} %')
+print(f'lowest order fill: {executed_trades_df['max_completion'].min()} %')
+
+
 
 print(f"profit factor: {round(profit_factor, 2)}")
 print(f"\nACCOUNT DETAILS\n")
