@@ -33,7 +33,7 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,4,1))
+start = pd.to_datetime(datetime(2024,5,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -61,6 +61,7 @@ break_even = 0
 
 for index, row in filtered_df.iterrows():
     #if trade is in valid, no further processing
+    
     if check_invalid_stopouts(row):
         unexecuted_trades += 1
         print(f"trade invalid stopouts: {row['time']}")
@@ -109,8 +110,11 @@ for index, row in filtered_df.iterrows():
     row['time_to_trail']  = time_to_trail
     row['time_tp_hit']  = time_tp_hit
     row['time_sl_hit']  = time_sl_hit
-    
-    
+    print(f"Currently Working on Trade: {row['time']} where sl update is: {row['sl_updated']}")
+    print(f"tp time: {time_tp_hit}")
+    print(f"sl time: {time_sl_hit}")
+    print(f"tr time: {time_to_trail}")
+
     if stop_loss_index == 0 or take_profit_index == 0:
         print(f"take profit or stop loss reached ar zero for trade {row['time']}")
         unexecuted_trades +=1
@@ -120,6 +124,7 @@ for index, row in filtered_df.iterrows():
 
     if stop_loss_reached.any() and take_profit_reached.any():
         if(min(time_sl_hit, time_tp_hit) == time_tp_hit):
+            print("trade successful")
             row['type'] = "success"
             row['success'] = True
             successful_trades+=1
@@ -136,6 +141,7 @@ for index, row in filtered_df.iterrows():
         
         elif(row['sl_updated']):       
             row['type'] = "even"
+            print("trade broke even")
             row['success'] = True
             break_even +=1
             if row["is_buy2"]:
@@ -150,6 +156,7 @@ for index, row in filtered_df.iterrows():
                 row["account_balance"] = account_balance
 
         else:
+            print("trade failed")
             row['type'] = "fail"
             row['success'] = False
             unsuccessful_trades +=1            
@@ -165,6 +172,7 @@ for index, row in filtered_df.iterrows():
                 row["account_balance"] = account_balance
     elif stop_loss_reached.any():
         if(row['sl_updated']):
+            print("trade broke even")
             row['type'] = "even"
             row['success'] = True
             break_even +=1
@@ -179,6 +187,7 @@ for index, row in filtered_df.iterrows():
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
         else:
+            print("trade failed")
             row['type'] = "fail"
             row['success'] = False
             unsuccessful_trades+=1            
@@ -193,6 +202,7 @@ for index, row in filtered_df.iterrows():
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
     elif take_profit_reached.any():
+        print("trade successful")
         successful_trades+=1
         row['type'] = "success"
         row['success'] = True
@@ -274,7 +284,7 @@ print(f"net profit: {round(gross_profit + loss, 2)} {bot.account.currency}")
 
 
 # Show the plot
-#display_chart(df)
+display_chart(df)
 
 del relevant_ticks
 del filtered_df
