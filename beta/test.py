@@ -1,49 +1,102 @@
-def calculate_percentage_completion(entry_price, goal_price, current_price, is_buy):
-  """
-  Calculates the percentage completion of a running trade.
+from analysis import * 
 
-  Args:
-      entry_price (float): The price at which the trade was entered.
-      goal_price (float): The target price for the trade.
-      current_price (float): The current market price of the asset.
-      is_buy (bool): True if it's a buy trade, False if it's a sell trade.
-
-  Returns:
-      float: The percentage completion of the trade (0.0 to 1.0).
-  """
-
-  if entry_price == goal_price:
-    return 1.0  # Handle case where entry and goal prices are equal
-
-  # Calculate the price movement direction
-  price_movement = current_price - entry_price
-
-  # Adjust calculation based on buy or sell trade
-  if is_buy:
-    completion_ratio = price_movement / (goal_price - entry_price)
-  else:
-    completion_ratio = (entry_price - current_price) / (entry_price - goal_price)
-
-  # Clamp the completion ratio to the range [0.0, 1.0]
-  completion_ratio = max(0.0, min(completion_ratio, 1.0))
-
-  return completion_ratio * 100  # Convert to percentage and return
+# Load data
+data = pd.read_csv('beta/BTCUSDT86400.csv')
+data['date'] = data['date'].astype('datetime64[s]')
+data = data.set_index('date')
 
 
-# Example usage
-entry_price = 100.0
-goal_price = 200
-current_price = 99
-is_buy = True  # Buy trade
+# Load data
+#data = pd.read_csv('beta/output.csv')
+#data['time'] = data['time'].astype('datetime64[s]')
+#data = data.set_index('time')
 
-percentage_completion = calculate_percentage_completion(entry_price, goal_price, current_price, is_buy)
-print(f"Percentage completion for buy trade: {percentage_completion:.2f}%")
 
-# Example for sell trade
-entry_price = 200
-goal_price = 100.0
-current_price = 17
-is_buy = False  # Sell trade
+# Take natural log of data to resolve price scaling issues
+data = np.log(data)
+# Trendline parameter
+lookback = 30
 
-percentage_completion = calculate_percentage_completion(entry_price, goal_price, current_price, is_buy)
-print(f"Percentage completion for sell trade: {percentage_completion:.2f}%")
+
+support_slope = [np.nan] * len(data)
+resist_slope = [np.nan] * len(data)
+for i in range(lookback - 1, len(data)):
+    candles = data.iloc[i - lookback + 1: i + 1]
+    support_coefs, resist_coefs =  fit_trendlines_high_low(candles['high'], 
+                                                           candles['low'], 
+                                                           candles['close'])
+    support_slope[i] = support_coefs[0]
+    resist_slope[i] = resist_coefs[0]
+
+data['support_slope'] = support_slope
+data['resist_slope'] = resist_slope
+
+print(data)
+import plotly.graph_objects as go
+
+
+min_value = data['close'].min()
+
+# Create a candlestick chart
+fig = go.Figure(data=[go.Candlestick(
+    x=data.index,
+    open=data['open'],
+    high=data['high'],
+    low=data['low'],
+    close=data['close']
+)])
+
+# Calculate start and end points for the support and resistance lines
+start_date = data.index[0]
+end_date = data.index[-1]
+start_close = data['close'].iloc[0]
+end_close = data['close'].iloc[-1]
+
+# Support line
+support_slope = data['support_slope'].dropna().iloc[0]
+support_start = start_close - 3
+support_end = data['close'].iloc[-1] - 3#support_start + support_slope * (len(data) - 1)
+
+# Resistance line
+resist_slope = data['resist_slope'].dropna().iloc[0]
+resist_start = start_close
+resist_end = resist_start + resist_slope * (len(data) - 1)
+
+# Add support line
+fig.add_trace(go.Scatter(
+    x=[start_date, end_date],
+    y=[min_value, support_end],
+    mode='lines',
+    name='Support Line',
+    line=dict(color='green')
+))
+
+# Add resistance line
+fig.add_trace(go.Scatter(
+    x=[start_date, end_date],
+    y=[resist_start, resist_end],
+    mode='lines',
+    name='Resistance Line',
+    line=dict(color='red')
+))
+
+# Update layout
+fig.update_layout(
+    title='Candlestick Chart with Support and Resistance Lines',
+    xaxis_title='Date',
+    yaxis_title='Price',
+    xaxis_rangeslider_visible=False,
+    template='plotly_dark'
+)
+
+# Set the layout for the plot
+fig.update_layout(
+    title='Candlestick Chart',
+    xaxis_title='Date',
+    yaxis_title='Price',
+    xaxis_rangeslider_visible=False,  # Hide the range slider
+    template='plotly_dark'  # Dark theme
+)
+
+# Show the figure
+fig.show()
