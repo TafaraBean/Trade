@@ -31,7 +31,7 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 account_balance = 300
-lot_size = 0.01
+lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
 start = pd.to_datetime(datetime(2024,6,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
