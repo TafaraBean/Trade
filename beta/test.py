@@ -1,41 +1,29 @@
-from analysis import * 
+import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from analysis import *
 
 # Load data
-data = pd.read_csv('beta/BTCUSDT86400.csv')
-data['date'] = data['date'].astype('datetime64[s]')
-data = data.set_index('date')
-
-
-# Load data
-#data = pd.read_csv('beta/output.csv')
-#data['time'] = data['time'].astype('datetime64[s]')
-#data = data.set_index('time')
-
+data = pd.read_csv('beta/output.csv')
+data['time'] = data['time'].astype('datetime64[s]')
+data = data.set_index('time')
 
 # Take natural log of data to resolve price scaling issues
 data = np.log(data)
+
 # Trendline parameter
 lookback = 30
 
+# Function to calculate trendlines for each window
+support_trendlines = []
+resistance_trendlines = []
 
-support_slope = [np.nan] * len(data)
-resist_slope = [np.nan] * len(data)
-for i in range(lookback - 1, len(data)):
-    candles = data.iloc[i - lookback + 1: i + 1]
-    support_coefs, resist_coefs =  fit_trendlines_high_low(candles['high'], 
-                                                           candles['low'], 
-                                                           candles['close'])
-    support_slope[i] = support_coefs[0]
-    resist_slope[i] = resist_coefs[0]
-
-data['support_slope'] = support_slope
-data['resist_slope'] = resist_slope
-
-print(data)
-import plotly.graph_objects as go
-
-
-min_value = data['close'].min()
+# Iterate from the end of the dataset towards the beginning
+for i in range(len(data) - 1, lookback - 2, -lookback):
+    window_data = data.iloc[i - lookback + 1: i + 1]
+    support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
+    support_trendlines.append((window_data.index, support_coefs))
+    resistance_trendlines.append((window_data.index, resist_coefs))
 
 # Create a candlestick chart
 fig = go.Figure(data=[go.Candlestick(
@@ -46,56 +34,38 @@ fig = go.Figure(data=[go.Candlestick(
     close=data['close']
 )])
 
-# Calculate start and end points for the support and resistance lines
-start_date = data.index[0]
-end_date = data.index[-1]
-start_close = data['close'].iloc[0]
-end_close = data['close'].iloc[-1]
+# Add support and resistance lines for each window
+for dates, support_coefs in support_trendlines:
+    if not np.isnan(support_coefs[0]):
+        support_start = support_coefs[0] * 0 + support_coefs[1]
+        support_end = support_coefs[0] * (lookback - 1) + support_coefs[1]
+        fig.add_trace(go.Scatter(
+            x=[dates[0], dates[-1]],
+            y=[support_start, support_end],
+            mode='lines',
+            name='Support Line',
+            line=dict(color='green')
+        ))
 
-# Support line
-support_slope = data['support_slope'].dropna().iloc[0]
-support_start = start_close - 3
-support_end = data['close'].iloc[-1] - 3#support_start + support_slope * (len(data) - 1)
-
-# Resistance line
-resist_slope = data['resist_slope'].dropna().iloc[0]
-resist_start = start_close
-resist_end = resist_start + resist_slope * (len(data) - 1)
-
-# Add support line
-fig.add_trace(go.Scatter(
-    x=[start_date, end_date],
-    y=[min_value, support_end],
-    mode='lines',
-    name='Support Line',
-    line=dict(color='green')
-))
-
-# Add resistance line
-fig.add_trace(go.Scatter(
-    x=[start_date, end_date],
-    y=[resist_start, resist_end],
-    mode='lines',
-    name='Resistance Line',
-    line=dict(color='red')
-))
+for dates, resist_coefs in resistance_trendlines:
+    if not np.isnan(resist_coefs[0]):
+        resist_start = resist_coefs[0] * 0 + resist_coefs[1]
+        resist_end = resist_coefs[0] * (lookback - 1) + resist_coefs[1]
+        fig.add_trace(go.Scatter(
+            x=[dates[0], dates[-1]],
+            y=[resist_start, resist_end],
+            mode='lines',
+            name='Resistance Line',
+            line=dict(color='red')
+        ))
 
 # Update layout
 fig.update_layout(
-    title='Candlestick Chart with Support and Resistance Lines',
+    title='Candlestick Chart with Support and Resistance Lines for Each Window',
     xaxis_title='Date',
     yaxis_title='Price',
     xaxis_rangeslider_visible=False,
     template='plotly_dark'
-)
-
-# Set the layout for the plot
-fig.update_layout(
-    title='Candlestick Chart',
-    xaxis_title='Date',
-    yaxis_title='Price',
-    xaxis_rangeslider_visible=False,  # Hide the range slider
-    template='plotly_dark'  # Dark theme
 )
 
 # Show the figure
