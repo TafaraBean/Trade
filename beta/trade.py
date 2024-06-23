@@ -32,7 +32,7 @@ def auto_trendline(data):
     resistance_trendline_y = []
 
     # Iterate from the end of the dataset towards the beginning
-    for i in range(len(df_log) - 1, lookback - 2, -lookback):
+    for i in range(len(df_log) - 1, lookback - 2, -1):
         window_data = df_log.iloc[i - lookback + 1: i + 1]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
         
@@ -127,9 +127,9 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,4,1))
+start = pd.to_datetime(datetime(2024,5,4))
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+end = pd.to_datetime(datetime(2024,5,14))   #(pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
