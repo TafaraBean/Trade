@@ -9,21 +9,51 @@ data['time'] = data['time'].astype('datetime64[s]')
 data = data.set_index('time')
 
 # Take natural log of data to resolve price scaling issues
-data = np.log(data)
+df_log = np.log(data[['high', 'low', 'close']])
 
 # Trendline parameter
 lookback = 30
 
-# Function to calculate trendlines for each window
-support_trendlines = []
-resistance_trendlines = []
+# Initialize columns for trendlines and their gradients
+data['support_trendline'] = np.nan
+data['resistance_trendline'] = np.nan
+data['support_gradient'] = np.nan
+data['resistance_gradient'] = np.nan
+
+# Lists to hold the trendline segments
+support_trendline_x = []
+support_trendline_y = []
+resistance_trendline_x = []
+resistance_trendline_y = []
 
 # Iterate from the end of the dataset towards the beginning
-for i in range(len(data) - 1, lookback - 2, -lookback):
-    window_data = data.iloc[i - lookback + 1: i + 1]
+for i in range(len(df_log) - 1, lookback - 2, -lookback):
+    window_data = df_log.iloc[i - lookback + 1: i + 1]
     support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-    support_trendlines.append((window_data.index, support_coefs))
-    resistance_trendlines.append((window_data.index, resist_coefs))
+    
+    # Calculate trendline values and gradients for each point in the window
+    for j in range(lookback):
+        idx = i - lookback + 1 + j
+        support_value = support_coefs[0] * j + support_coefs[1]
+        resist_value = resist_coefs[0] * j + resist_coefs[1]
+        data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
+        data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
+        data.at[data.index[idx], 'support_gradient'] = support_coefs[0]
+        data.at[data.index[idx], 'resistance_gradient'] = resist_coefs[0]
+        
+        # Append to trendline segments
+        support_trendline_x.append(data.index[idx])
+        support_trendline_y.append(np.exp(support_value))
+        resistance_trendline_x.append(data.index[idx])
+        resistance_trendline_y.append(np.exp(resist_value))
+    
+    # Append None to break the line
+    support_trendline_x.append(None)
+    support_trendline_y.append(None)
+    resistance_trendline_x.append(None)
+    resistance_trendline_y.append(None)
+
+print(data)
 
 # Create a candlestick chart
 fig = go.Figure(data=[go.Candlestick(
@@ -34,34 +64,30 @@ fig = go.Figure(data=[go.Candlestick(
     close=data['close']
 )])
 
-# Add support and resistance lines for each window
-for dates, support_coefs in support_trendlines:
-    if not np.isnan(support_coefs[0]):
-        support_start = support_coefs[0] * 0 + support_coefs[1]
-        support_end = support_coefs[0] * (lookback - 1) + support_coefs[1]
-        fig.add_trace(go.Scatter(
-            x=[dates[0], dates[-1]],
-            y=[support_start, support_end],
-            mode='lines',
-            name='Support Line',
-            line=dict(color='green')
-        ))
+# Add support and resistance lines
+fig.add_trace(go.Scatter(
+    x=support_trendline_x,
+    y=support_trendline_y,
+    mode='lines',
+    name='Support Line',
+    line=dict(color='green'),
+    connectgaps=False,
+    line_shape='linear'
+))
 
-for dates, resist_coefs in resistance_trendlines:
-    if not np.isnan(resist_coefs[0]):
-        resist_start = resist_coefs[0] * 0 + resist_coefs[1]
-        resist_end = resist_coefs[0] * (lookback - 1) + resist_coefs[1]
-        fig.add_trace(go.Scatter(
-            x=[dates[0], dates[-1]],
-            y=[resist_start, resist_end],
-            mode='lines',
-            name='Resistance Line',
-            line=dict(color='red')
-        ))
+fig.add_trace(go.Scatter(
+    x=resistance_trendline_x,
+    y=resistance_trendline_y,
+    mode='lines',
+    name='Resistance Line',
+    line=dict(color='red'),
+    connectgaps=False,
+    line_shape='linear'
+))
 
 # Update layout
 fig.update_layout(
-    title='Candlestick Chart with Support and Resistance Lines for Each Window',
+    title='Candlestick Chart with Support and Resistance Lines',
     xaxis_title='Date',
     yaxis_title='Price',
     xaxis_rangeslider_visible=False,
