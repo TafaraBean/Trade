@@ -17,7 +17,7 @@ def auto_trendline(data):
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 30
+    lookback = 15
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -127,7 +127,7 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,3,1))
+start = pd.to_datetime(datetime(2024,4,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
