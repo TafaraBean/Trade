@@ -1,6 +1,9 @@
 import MetaTrader5 as mt5
 import time
 import pandas as pd
+import numpy as np
+import plotly.graph_objects as go
+from analysis import *
 from datetime import datetime
 
 class Account:
@@ -224,6 +227,51 @@ class TradingBot:
         mt5.shutdown()
         print("MetaTrader 5 connection closed")
 
+    def auto_trendline(self,data):
+        data['time'] = data['time'].astype('datetime64[s]')
+        data = data.set_index('time', drop=False)
+
+        # Take natural log of data to resolve price scaling issues
+        df_log = np.log(data[['high', 'low', 'close']])
+
+        # Trendline parameter
+        lookback = 15
+
+        # Initialize columns for trendlines and their gradients
+        data['support_trendline'] = np.nan
+        data['resistance_trendline'] = np.nan
+        data['support_gradient'] = np.nan
+        data['resistance_gradient'] = np.nan
+
+        # Get the data for the last 30 candles
+        window_data = df_log.iloc[-lookback:]
+
+        # Fit trendlines to the high and low values of the last 30 candles
+        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
+
+        # Calculate trendline values and gradients for each point in the window
+        support_trendline_x = []
+        support_trendline_y = []
+        resistance_trendline_x = []
+        resistance_trendline_y = []
+
+        for j in range(lookback):
+            idx = len(df_log) - lookback + j
+            support_value = support_coefs[0] * j + support_coefs[1]
+            resist_value = resist_coefs[0] * j + resist_coefs[1]
+            data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
+            data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
+            data.at[data.index[idx], 'support_gradient'] = support_coefs[0]
+            data.at[data.index[idx], 'resistance_gradient'] = resist_coefs[0]
+
+        # Append to trendline segments
+            support_trendline_x.append(data.index[idx])
+            support_trendline_y.append(np.exp(support_value))
+            resistance_trendline_x.append(data.index[idx])
+            resistance_trendline_y.append(np.exp(resist_value))
+
+        # Create a candlestick chart
+        return data
 
     def run(self, symbol, timeframe, start, strategy_func, lot):
         while True:
@@ -237,12 +285,13 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(time_difference)
+            #time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             
             
             df = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
+            df= self.auto_trendline(df)
             df = strategy_func(df.copy())
 
             # Check for new trading signals
@@ -259,18 +308,18 @@ class TradingBot:
 
             for index, row in open_positions_df.iterrows():
                 #condition to check how far above opwn price a candle should close before sl is adjusted for buy orders
-                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] +2.7):                        
+                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] +1):                        
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open'] +2), # how much should the stop loss be adjusted above entry
+                                    sl=float(row['price_open'] +0.9), # how much should the stop loss be adjusted above entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
 
                 #condition to check how far below opwn price a candle should close before sl is adjusted for sell orders
-                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -2.7):
+                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -1):
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open']-2),# how much should the stop loss be adjusted below entry
+                                    sl=float(row['price_open']-0.9),# how much should the stop loss be adjusted below entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
             # Calculate and display performance metrics

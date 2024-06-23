@@ -136,8 +136,6 @@ data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
 
 data=auto_trendline(data)
 
-print("worked")
-
 
 df = m15_gold_strategy(data.copy())
 

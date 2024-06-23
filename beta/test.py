@@ -12,7 +12,7 @@ data = data.set_index('time', drop=False)
 df_log = np.log(data[['high', 'low', 'close']])
 
 # Trendline parameter
-lookback = 30
+lookback = 15
 
 # Initialize columns for trendlines and their gradients
 data['support_trendline'] = np.nan
