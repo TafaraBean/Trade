@@ -60,29 +60,29 @@ def m15_gold_strategy(data):
     # Generate signals
     data['is_buy2'] = (data['close'].shift(1) < data['lsma'].shift(1)) & (data['close'] > data['lsma'])&\
                         (data['tick_volume']>data['tick_volume'].shift(1))&\
-                        (data['macd_line']>0)
+                        (data['support_gradient']>0) & (data['macd_line']>0) & (data['resistance_gradient']>0)
                         
                        
 
     data['is_sell2'] = (data['close'].shift(1) > data['lsma'].shift(1)) & (data['close'] < data['lsma'])&\
                         (data['tick_volume']>data['tick_volume'].shift(1))&\
-                        (data['macd_line']<0)
+                        (data['resistance_gradient']<0) & (data['macd_line']<0) & (data['resistance_gradient']<0)
                         
                 
     
     # Set take profit and stop loss
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 3.5
-    data.loc[data['is_buy2'], 'sl'] = data['close'] - 1.5
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 3.5
-    data.loc[data['is_sell2'], 'sl'] = data['close'] + 1.5
+    data.loc[data['is_buy2'], 'tp'] = data['close'] + 3
+    data.loc[data['is_buy2'], 'sl'] = data['close'] - 3
+    data.loc[data['is_sell2'], 'tp'] = data['close'] - 3
+    data.loc[data['is_sell2'], 'sl'] = data['close'] + 3
 
     #set new trailling stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 0.5
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 0.5
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 0.9
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 0.9
 
     #condition for setting new trailing stop
-    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 0.8
-    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 0.8
+    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 1
+    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 1
     
     return data
 
