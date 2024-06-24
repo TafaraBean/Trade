@@ -243,42 +243,24 @@ class TradingBot:
         data['support_gradient'] = np.nan
         data['resistance_gradient'] = np.nan
 
-        # Lists to hold the trendline segments
-        support_trendline_x = []
-        support_trendline_y = []
-        resistance_trendline_x = []
-        resistance_trendline_y = []
-
         # Iterate over the dataset in overlapping windows of 15 candles
         for i in range(lookback, len(df_log) + 1):
             window_data = df_log.iloc[i - lookback:i]
             support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-            
-            # Get the gradient from the first candle in the window
-            initial_support_gradient = support_coefs[0]
-            initial_resistance_gradient = resist_coefs[0]
 
-            # Apply this gradient to the current 15-candle window
+            # Extract slope and intercept
+            support_slope, support_intercept = support_coefs
+            resist_slope, resist_intercept = resist_coefs
+
+            # Apply the calculated gradients to each candle in the window
             for j in range(lookback):
                 idx = i - lookback + j
-                support_value = support_coefs[0] * j + support_coefs[1]
-                resist_value = resist_coefs[0] * j + resist_coefs[1]
+                support_value = support_slope * j + support_intercept
+                resist_value = resist_slope * j + resist_intercept
                 data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
                 data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
-                data.at[data.index[idx], 'support_gradient'] = initial_support_gradient
-                data.at[data.index[idx], 'resistance_gradient'] = initial_resistance_gradient
-                
-                # Append to trendline segments
-                support_trendline_x.append(data.index[idx])
-                support_trendline_y.append(np.exp(support_value))
-                resistance_trendline_x.append(data.index[idx])
-                resistance_trendline_y.append(np.exp(resist_value))
-            
-            # Append None to break the line
-            support_trendline_x.append(None)
-            support_trendline_y.append(None)
-            resistance_trendline_x.append(None)
-            resistance_trendline_y.append(None)
+                data.at[data.index[idx], 'support_gradient'] = support_slope
+                data.at[data.index[idx], 'resistance_gradient'] = resist_slope
 
         # Create a candlestick chart
         return data
@@ -295,7 +277,7 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(time_difference)
+            #time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             

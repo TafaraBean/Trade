@@ -26,43 +26,26 @@ def auto_trendline(data):
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    # Lists to hold the trendline segments
-    support_trendline_x = []
-    support_trendline_y = []
-    resistance_trendline_x = []
-    resistance_trendline_y = []
-
     # Iterate over the dataset in overlapping windows of 15 candles
     for i in range(lookback, len(df_log) + 1):
         window_data = df_log.iloc[i - lookback:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-        
-        # Get the gradient from the first candle in the window
-        initial_support_gradient = support_coefs[0]
-        initial_resistance_gradient = resist_coefs[0]
 
-        # Apply this gradient to the current 15-candle window
+        # Extract slope and intercept
+        support_slope, support_intercept = support_coefs
+        resist_slope, resist_intercept = resist_coefs
+
+        # Apply the calculated gradients to each candle in the window
         for j in range(lookback):
             idx = i - lookback + j
-            support_value = support_coefs[0] * j + support_coefs[1]
-            resist_value = resist_coefs[0] * j + resist_coefs[1]
+            support_value = support_slope * j + support_intercept
+            resist_value = resist_slope * j + resist_intercept
             data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
             data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
-            data.at[data.index[idx], 'support_gradient'] = initial_support_gradient
-            data.at[data.index[idx], 'resistance_gradient'] = initial_resistance_gradient
-            
-            # Append to trendline segments
-            support_trendline_x.append(data.index[idx])
-            support_trendline_y.append(np.exp(support_value))
-            resistance_trendline_x.append(data.index[idx])
-            resistance_trendline_y.append(np.exp(resist_value))
-        
-        # Append None to break the line
-        support_trendline_x.append(None)
-        support_trendline_y.append(None)
-        resistance_trendline_x.append(None)
-        resistance_trendline_y.append(None)
+            data.at[data.index[idx], 'support_gradient'] = support_slope
+            data.at[data.index[idx], 'resistance_gradient'] = resist_slope
 
+    data.to_csv("beta/test.csv",index=False)
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
         x=data.index,
@@ -74,23 +57,21 @@ def auto_trendline(data):
 
     # Add support and resistance lines
     fig.add_trace(go.Scatter(
-        x=support_trendline_x,
-        y=support_trendline_y,
+        x=data.index,
+        y=data['support_trendline'],
         mode='lines',
         name='Support Line',
         line=dict(color='green'),
-        connectgaps=False,
-        line_shape='linear'
+        connectgaps=False
     ))
 
     fig.add_trace(go.Scatter(
-        x=resistance_trendline_x,
-        y=resistance_trendline_y,
+        x=data.index,
+        y=data['resistance_trendline'],
         mode='lines',
         name='Resistance Line',
         line=dict(color='red'),
-        connectgaps=False,
-        line_shape='linear'
+        connectgaps=False
     ))
 
     # Update layout
@@ -130,10 +111,10 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-06-1")
+start = pd.Timestamp("2024-06-19")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-#end = pd.Timestamp("2024-01-30")   
-end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+end = pd.Timestamp("2024-06-25")   
+#end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
@@ -383,11 +364,11 @@ print(f"\nweekly profit:\n {weekly_df}")
 print(f"\nmonthly profit:\n {monthly_df}")
 
 
-df.to_csv('csv/output.csv', index=False)
-filtered_df.to_csv('csv/filtered_df.csv', index=False)
-executed_trades_df.to_excel('filtered_excel_df.xlsx')
-executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
-bot.get_ticks(symbol=symbol,start=start,end=end).to_csv("csv/ticks.csv", index=False)
+df.to_csv('beta/output.csv', index=False)
+# filtered_df.to_csv('csv/filtered_df.csv', index=False)
+executed_trades_df.to_excel('beta/filtered_excel_df.xlsx')
+executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
+# bot.get_ticks(symbol=symbol,start=start,end=end).to_csv("csv/ticks.csv", index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
 print(f"\nPROFITABILITY\n")
