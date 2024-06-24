@@ -129,9 +129,10 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,4,1))
+start = pd.Timestamp("2024-03-30")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.to_datetime(datetime(2024,4,30))   #(pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+end = pd.Timestamp("2024-04-02")   
+#end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
@@ -204,13 +205,14 @@ for index, row in filtered_df.iterrows():
         time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
     
     #save final updated times
-    row['time_to_trail']  = time_to_trail
-    row['time_tp_hit']  = time_tp_hit
-    row['time_sl_hit']  = time_sl_hit
+    row['time_to_trail'] = None if time_to_trail == pd.Timestamp.max else time_to_trail
+    row['time_tp_hit'] = None if time_tp_hit == pd.Timestamp.max else time_tp_hit
+    row['time_sl_hit'] = None if time_sl_hit == pd.Timestamp.max else time_sl_hit
+
     print(f"Currently Working on Trade: {row['time']} where sl update is: {row['sl_updated']}")
-    print(f"tp time: {time_tp_hit}")
-    print(f"sl time: {time_sl_hit}")
-    print(f"tr time: {time_to_trail}")
+    print(f"tp time: {row['time_tp_hit']}")
+    print(f"sl time: {row['time_sl_hit'] }")
+    print(f"tr time: {row['time_to_trail']}")
 
     filtered_ticks = relevant_ticks[
         (relevant_ticks['time'] >= (time_to_trail if row['sl_updated'] else start_time)) & 
@@ -230,7 +232,7 @@ for index, row in filtered_df.iterrows():
     total_trades+=1
     executed_trades.append(row)
 
-    if stop_loss_reached.any() and take_profit_reached.any():
+    if stop_loss_index > -1 and take_profit_index > -1:
         if(min(time_sl_hit, time_tp_hit) == time_tp_hit):
             print("trade successful")
             row['type'] = "success"
@@ -278,7 +280,7 @@ for index, row in filtered_df.iterrows():
                 loss += row["profit"]
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
-    elif stop_loss_reached.any():
+    elif take_profit_index == -1 :
         if(row['sl_updated']):
             print("trade broke even")
             row['type'] = "even"
@@ -309,19 +311,19 @@ for index, row in filtered_df.iterrows():
                 loss += row["profit"]
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
-    elif take_profit_reached.any():
+    elif stop_loss_index == -1:
         print("trade successful")
         successful_trades+=1
         row['type'] = "success"
         row['success'] = True
 
         if row["is_buy2"]:
-                row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
                 gross_profit += row['profit']
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
         else: 
-            row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+            row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
             gross_profit +=  row['profit'] 
             account_balance  += row['profit']
             row["account_balance"] = account_balance
@@ -355,6 +357,17 @@ executed_trades_df['win_streak'] = executed_trades_df.groupby(grouper)['success'
 executed_trades_df['losing_streak'] = (
     ~executed_trades_df['success'].copy()  # Invert a copy of the success column
     ).groupby(grouper).cumsum()
+
+# Set the 'Week' column based on the year and week number
+executed_trades_df['Week'] = executed_trades_df['time'].dt.isocalendar().week
+
+# Calculate weekly profit by grouping by 'Week' and summing 'profit'
+weekly_profit = executed_trades_df.groupby('Week')['profit'].sum()
+
+# Create a new DataFrame with 'Week' and 'Weekly Profit' columns
+result_df = pd.DataFrame({'Week': weekly_profit.index, 'Weekly Profit': weekly_profit.values})
+
+print(result_df)
 
 
 df.to_csv('csv/output.csv', index=False)
