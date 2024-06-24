@@ -60,13 +60,13 @@ def m15_gold_strategy(data):
     # Generate signals
     data['is_buy2'] = (data['close'].shift(1) < data['lsma'].shift(1)) & (data['close'] > data['lsma'])&\
                         (data['tick_volume']>data['tick_volume'].shift(1))&\
-                        (data['support_gradient']>0) & (data['macd_line']>0) & (data['resistance_gradient']>0)
+                        (data['fixed_support_gradient']>0) & (data['macd_line']>0) & (data['fixed_resistance_gradient']>0)
                         
                        
 
     data['is_sell2'] = (data['close'].shift(1) > data['lsma'].shift(1)) & (data['close'] < data['lsma'])&\
                         (data['tick_volume']>data['tick_volume'].shift(1))&\
-                        (data['resistance_gradient']<0) & (data['macd_line']<0) & (data['resistance_gradient']<0)
+                        (data['fixed_support_gradient']<0) & (data['macd_line']<0) & (data['fixed_resistance_gradient']<0)
                         
                 
     

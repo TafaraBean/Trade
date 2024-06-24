@@ -28,14 +28,17 @@ def auto_trendline(data):
 
     # Iterate over the dataset in overlapping windows of 15 candles
     for i in range(lookback, len(df_log) + 1):
+        current_index = df_log.index[i-1]
         window_data = df_log.iloc[i - lookback:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-
+        
         # Extract slope and intercept
         support_slope, support_intercept = support_coefs
         resist_slope, resist_intercept = resist_coefs
-
+        data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
+        data.at[current_index, 'fixed_support_gradient'] = support_slope
         # Apply the calculated gradients to each candle in the window
+        
         for j in range(lookback):
             idx = i - lookback + j
             support_value = support_slope * j + support_intercept
@@ -111,10 +114,10 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-06-19")
+start = pd.Timestamp("2024-06-1")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.Timestamp("2024-06-25")   
-#end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+#end = pd.Timestamp("2024-06-19 23:00:00")   
+end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
