@@ -27,7 +27,7 @@ class TradingBot:
         self.password = password
         self.server = server
         self.positions = {}
-        self.initialize_api()
+        self.initialize_bot()
 
         self.timeframe_to_interval = {
             mt5.TIMEFRAME_M1: "min",
@@ -40,15 +40,17 @@ class TradingBot:
             mt5.TIMEFRAME_D1: "D",
         }
 
-    def initialize_api(self):
+    def initialize_bot(self):
         # Initialize the MetaTrader 5 connection
         if not mt5.initialize():
             print(f"initialize() failed, error code = {mt5.last_error()}")
+            quit()
         else:
            print("MetaTrader5 package version: ",mt5.__version__)
         # Attempt to login to the trade account
         if not mt5.login(self.login, password=self.password, server=self.server):
             print(f"Failed to connect to trade account {self.login}, error code = {mt5.last_error()}")
+            quit()
         else:
             print("connected to account #{}".format(self.login))
     
@@ -136,6 +138,18 @@ class TradingBot:
         order=mt5.positions_get(ticket=ticket)
         trade_position =order[0]
         return trade_position._asdict()
+    
+    def get_position_all(self,symbol) -> pd.DataFrame:
+        positions=mt5.positions_get(symbol=symbol)
+
+        if len(positions) != 0:
+            df=pd.DataFrame(list(positions),columns=positions[0]._asdict().keys())
+            df.drop(['time_update', 'time_msc', 'time_update_msc', 'external_id'], axis=1, inplace=True)
+            df['time'] = pd.to_datetime(df['time'], unit='s')
+        else:
+            df = pd.DataFrame(positions)
+        
+        return df
 
     def cal_profit(self, symbol, order_type, lot, open_price, close_price) -> float:
 

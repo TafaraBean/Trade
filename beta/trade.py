@@ -357,11 +357,11 @@ executed_trades_df['losing_streak'] = (
     ).groupby(grouper).cumsum()
 
 
-df.to_csv('beta/output.csv', index=False)
-filtered_df.to_csv('beta/filtered_df.csv', index=False)
+df.to_csv('csv/output.csv', index=False)
+filtered_df.to_csv('csv/filtered_df.csv', index=False)
 executed_trades_df.to_excel('filtered_excel_df.xlsx')
-executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
-bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("beta/ticks.csv", index=False)
+executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
+bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("csv/ticks.csv", index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
 print(f"\nPROFITABILITY\n")
