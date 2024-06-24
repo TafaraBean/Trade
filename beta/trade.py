@@ -11,7 +11,7 @@ from analysis import *
 
 def auto_trendline(data):
     data['time'] = data['time'].astype('datetime64[s]')
-    data = data.set_index('time',drop=False)
+    data = data.set_index('time', drop=False)
 
     # Take natural log of data to resolve price scaling issues
     df_log = np.log(data[['high', 'low', 'close']])
@@ -31,20 +31,24 @@ def auto_trendline(data):
     resistance_trendline_x = []
     resistance_trendline_y = []
 
-    # Iterate from the end of the dataset towards the beginning
-    for i in range(len(df_log) - 1, lookback - 2, -1):
-        window_data = df_log.iloc[i - lookback + 1: i + 1]
+    # Iterate over the dataset in overlapping windows of 15 candles
+    for i in range(lookback, len(df_log) + 1):
+        window_data = df_log.iloc[i - lookback:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
         
-        # Calculate trendline values and gradients for each point in the window
+        # Get the gradient from the first candle in the window
+        initial_support_gradient = support_coefs[0]
+        initial_resistance_gradient = resist_coefs[0]
+
+        # Apply this gradient to the current 15-candle window
         for j in range(lookback):
-            idx = i - lookback + 1 + j
+            idx = i - lookback + j
             support_value = support_coefs[0] * j + support_coefs[1]
             resist_value = resist_coefs[0] * j + resist_coefs[1]
             data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
             data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
-            data.at[data.index[idx], 'support_gradient'] = support_coefs[0]
-            data.at[data.index[idx], 'resistance_gradient'] = resist_coefs[0]
+            data.at[data.index[idx], 'support_gradient'] = initial_support_gradient
+            data.at[data.index[idx], 'resistance_gradient'] = initial_resistance_gradient
             
             # Append to trendline segments
             support_trendline_x.append(data.index[idx])
@@ -57,8 +61,6 @@ def auto_trendline(data):
         support_trendline_y.append(None)
         resistance_trendline_x.append(None)
         resistance_trendline_y.append(None)
-
-    
 
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
@@ -127,9 +129,9 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.to_datetime(datetime(2024,5,4))
+start = pd.to_datetime(datetime(2024,4,1))
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.to_datetime(datetime(2024,5,14))   #(pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+end = pd.to_datetime(datetime(2024,4,30))   #(pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
