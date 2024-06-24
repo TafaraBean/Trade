@@ -154,7 +154,25 @@ def calculate_percentage_completion(entry_price, goal_price, current_price, is_b
 
   return completion_ratio * 100  # Convert to percentage and return
 
+def calc_weekly_proft(executed_trades_df):
+    executed_trades_df['Week'] = executed_trades_df['time'].dt.isocalendar().week
 
+    # Calculate weekly profit by grouping by 'Week' and summing 'profit'
+    weekly_profit = executed_trades_df.groupby('Week')['profit'].sum()
+
+    # Create a new DataFrame with 'Week' and 'Weekly Profit' columns
+    weekly_df = pd.DataFrame({'Week': weekly_profit.index, 'Weekly Profit': weekly_profit.values})
+    return weekly_profit
+
+def calc_monthly_proft(executed_trades_df):
+    # Set the 'Month' column based on the year and month number
+    executed_trades_df['Month'] = executed_trades_df['time'].dt.month
+
+    # Calculate monthly profit by grouping by 'Month' and summing 'profit'
+    monthly_profit = executed_trades_df.groupby('Month')['profit'].sum()
+    monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
+
+    return monthly_df
 
 import pandas as pd
 import numpy as np
@@ -165,7 +183,8 @@ def check_trend_line(support: bool, pivot: int, slope: float, y: np.array):
     # return negative val if invalid 
     
     # Find the intercept of the line going through pivot point with given slope
-    intercept = -slope * pivot + y[pivot]
+
+    intercept = -slope * pivot + y.iloc[pivot]
     line_vals = slope * np.arange(len(y)) + intercept
      
     diffs = line_vals - y
@@ -236,7 +255,7 @@ def optimize_slope(support: bool, pivot:int , init_slope: float, y: np.array):
             get_derivative = True # Recompute derivative
     
     # Optimize done, return best slope and intercept
-    return (best_slope, -best_slope * pivot + y[pivot])
+    return (best_slope, -best_slope * pivot + y.iloc[pivot])
 
 
 def fit_trendlines_single(data: np.array):

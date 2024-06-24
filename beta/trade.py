@@ -10,6 +10,7 @@ import numpy as np
 from analysis import *
 
 def auto_trendline(data):
+    print("appling auto trendline...")
     data['time'] = data['time'].astype('datetime64[s]')
     data = data.set_index('time', drop=False)
 
@@ -127,12 +128,12 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="XAUUSD"
 account_balance = 300
-lot_size = 0.01
+lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-03-30")
+start = pd.Timestamp("2024-06-1")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.Timestamp("2024-04-02")   
-#end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+#end = pd.Timestamp("2024-01-30")   
+end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
@@ -167,11 +168,9 @@ for index, row in filtered_df.iterrows():
 
     # allways add 15 min to start time because position was started at cnadle close and not open
     start_time= (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion) #add 1 second to be able to apply ceil function
-    end_date =  pd.Timestamp.now() + pd.Timedelta(hours=1)    
-   
     #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
-    relevant_ticks = bot.get_ticks(symbol=symbol,start=start_time,end=end_date)
-    second_chart = bot.chart(symbol=symbol, timeframe=timeframe, start=start_time, end=end_date)
+    relevant_ticks = bot.get_ticks(symbol=symbol,start=start_time,end=end)
+    second_chart = bot.chart(symbol=symbol, timeframe=timeframe, start=start_time, end=end)
     
     # Check if stop loss or take profit or trailing stop was reached 
     stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
@@ -194,7 +193,7 @@ for index, row in filtered_df.iterrows():
 
     #update actual sl and refind teh indexes
     if  row['sl_updated']:
-        relevant_ticks = bot.get_ticks(symbol=symbol,start=time_to_trail,end=end_date) # Filter ticks dataframe from time_value onwards
+        relevant_ticks = bot.get_ticks(symbol=symbol,start=time_to_trail,end=end) # Filter ticks dataframe from time_value onwards
         
         #update the stop loss level
         row['sl'] = row['be']
@@ -365,16 +364,30 @@ executed_trades_df['Week'] = executed_trades_df['time'].dt.isocalendar().week
 weekly_profit = executed_trades_df.groupby('Week')['profit'].sum()
 
 # Create a new DataFrame with 'Week' and 'Weekly Profit' columns
-result_df = pd.DataFrame({'Week': weekly_profit.index, 'Weekly Profit': weekly_profit.values})
+weekly_df = pd.DataFrame({'Week': weekly_profit.index, 'Weekly Profit': weekly_profit.values})
 
-print(result_df)
+
+# Set the 'Month' column based on the year and month number
+executed_trades_df['Month'] = executed_trades_df['time'].dt.month
+
+# Calculate monthly profit by grouping by 'Month' and summing 'profit'
+monthly_profit = executed_trades_df.groupby('Month')['profit'].sum()
+
+# Create a new DataFrame with 'Month' and 'Monthly Profit' columns (optional)
+monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
+
+# Print the DataFrame with monthly profit (optional)
+print(f"\nweekly profit:\n {weekly_df}")
+
+
+print(f"\nmonthly profit:\n {monthly_df}")
 
 
 df.to_csv('csv/output.csv', index=False)
 filtered_df.to_csv('csv/filtered_df.csv', index=False)
 executed_trades_df.to_excel('filtered_excel_df.xlsx')
 executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
-bot.get_ticks(symbol=symbol,start=start,end=end_date).to_csv("csv/ticks.csv", index=False)
+bot.get_ticks(symbol=symbol,start=start,end=end).to_csv("csv/ticks.csv", index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
 print(f"\nPROFITABILITY\n")
