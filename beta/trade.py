@@ -11,14 +11,17 @@ from analysis import *
 
 def auto_trendline(data):
     print("appling auto trendline...")
-    data['time'] = data['time'].astype('datetime64[s]')
-    data = data.set_index('time', drop=False)
+    data['time2'] = data['time'].astype('datetime64[s]')
+    data = data.set_index('time', drop=True)
+    print("hourly data:")
+    print(data)
+    print("==========")
 
     # Take natural log of data to resolve price scaling issues
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 15
+    lookback = 6
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -114,18 +117,28 @@ symbol="XAUUSD"
 account_balance = 300
 lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-06-1")
+start = pd.Timestamp("2024-03-10")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-#end = pd.Timestamp("2024-06-19 23:00:00")   
-end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+end = pd.Timestamp("2024-03-30 23:00:00")   
+#end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
 
-data=auto_trendline(data)
+
+hour_data = bot.chart(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
 
 
-df = m15_gold_strategy(data.copy())
+
+hour_data=auto_trendline(hour_data)
+hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient']]
+
+data['hourly_time']=data['time'].dt.floor('h')
+
+merged_data = pd.merge(data,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
+
+
+df = m15_gold_strategy(merged_data)
 
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 
