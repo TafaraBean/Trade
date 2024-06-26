@@ -72,10 +72,10 @@ def m15_gold_strategy(data):
                 
     
     # Set take profit and stop loss
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 5
-    data.loc[data['is_buy2'], 'sl'] = data['close'] - 1
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 5
-    data.loc[data['is_sell2'], 'sl'] = data['close'] + 1
+    data.loc[data['is_buy2'], 'tp'] = data['close'] + 9
+    data.loc[data['is_buy2'], 'sl'] = data['close'] - 5
+    data.loc[data['is_sell2'], 'tp'] = data['close'] - 9
+    data.loc[data['is_sell2'], 'sl'] = data['close'] + 5
 
     #set new trailling stop loss
     data.loc[data['is_buy2'], 'be'] = data['close'] + 1

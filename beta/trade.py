@@ -21,7 +21,7 @@ def auto_trendline(data):
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 6
+    lookback = 24
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
