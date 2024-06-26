@@ -228,14 +228,15 @@ class TradingBot:
         print("MetaTrader 5 connection closed")
 
     def auto_trendline(self,data):
-        data['time'] = data['time'].astype('datetime64[s]')
-        data = data.set_index('time', drop=False)
+        print("applying auto trendline...")
+        data['time2'] = data['time'].astype('datetime64[s]')
+        data = data.set_index('time', drop=True)
 
         # Take natural log of data to resolve price scaling issues
         df_log = np.log(data[['high', 'low', 'close']])
 
         # Trendline parameter
-        lookback = 15
+        lookback = 24
 
         # Initialize columns for trendlines and their gradients
         data['support_trendline'] = np.nan
@@ -245,14 +246,17 @@ class TradingBot:
 
         # Iterate over the dataset in overlapping windows of 15 candles
         for i in range(lookback, len(df_log) + 1):
+            current_index = df_log.index[i-1]
             window_data = df_log.iloc[i - lookback:i]
             support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-
+            
             # Extract slope and intercept
             support_slope, support_intercept = support_coefs
             resist_slope, resist_intercept = resist_coefs
-
+            data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
+            data.at[current_index, 'fixed_support_gradient'] = support_slope
             # Apply the calculated gradients to each candle in the window
+            
             for j in range(lookback):
                 idx = i - lookback + j
                 support_value = support_slope * j + support_intercept
@@ -277,14 +281,24 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
-            #time.sleep(time_difference)
+            time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             
             
             df = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
-            df= self.auto_trendline(df)
-            df = strategy_func(df.copy())
+            hour_data = self.chart(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
+
+
+
+            hour_data=self.auto_trendline(hour_data)
+            hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient']]
+
+            df['hourly_time']=df['time'].dt.floor('h')
+
+            merged_data = pd.merge(df,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
+
+            df = strategy_func(merged_data)
 
             # Check for new trading signals
             latest_signal = df.iloc[-1]
