@@ -5,6 +5,7 @@ import numpy as np
 import plotly.graph_objects as go
 from analysis import *
 from datetime import datetime
+import pandas_ta as ta
 
 class Account:
     def __init__(self):
@@ -229,9 +230,11 @@ class TradingBot:
         print("MetaTrader 5 connection closed")
 
     def auto_trendline(self,data):
-        print("applying auto trendline...")
         data['time2'] = data['time'].astype('datetime64[s]')
         data = data.set_index('time', drop=True)
+        print("hourly data:")
+        print(data)
+        print("==========")
 
         # Take natural log of data to resolve price scaling issues
         df_log = np.log(data[['high', 'low', 'close']])
@@ -244,6 +247,8 @@ class TradingBot:
         data['resistance_trendline'] = np.nan
         data['support_gradient'] = np.nan
         data['resistance_gradient'] = np.nan
+        data['hour_lsma'] = ta.linreg(data['close'], length=8)
+
 
         # Iterate over the dataset in overlapping windows of 15 candles
         for i in range(lookback, len(df_log) + 1):
@@ -293,7 +298,7 @@ class TradingBot:
 
 
             hour_data=self.auto_trendline(hour_data)
-            hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient']]
+            hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient','hour_lsma']]
 
             df['hourly_time']=df['time'].dt.floor('h')
 
