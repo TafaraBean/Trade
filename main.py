@@ -15,10 +15,10 @@ server = os.environ.get("SERVER")
 
 # Initialize the trading bot
 bot = TradingBot(login=account, password=password, server=server)
-symbol = "XAUUSD"
+symbol = "BTCUSD"
 timeframe = mt5.TIMEFRAME_M15   # Change this as needed
-start = pd.Timestamp("2024-06-10")
-lot= 2
+start = pd.Timestamp("2024-06-20")
+lot= 0.02
 
-bot.run(symbol="BTCUSD", timeframe=timeframe, strategy_func=m15_gold_strategy, start=start, lot=lot)
+bot.run(symbol=symbol, timeframe=timeframe, strategy_func=m15_gold_strategy, start=start, lot=lot)
 

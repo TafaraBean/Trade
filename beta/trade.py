@@ -118,11 +118,11 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="BTCUSD"
 account_balance = 300
-lot_size = 2
+lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-03-10")
+start = pd.Timestamp("2024-06-10")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.Timestamp("2024-03-30 23:00:00")   
+end = pd.Timestamp("2024-06-27 23:00:00")   
 #end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data

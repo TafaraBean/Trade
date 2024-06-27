@@ -80,6 +80,7 @@ class TradingBot:
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
             # Add the order to the positions dictionary
             self.positions[order['order']] = symbol
+        
         return order
 
     def open_sell_order(self, symbol, lot, sl=0.0, tp=0.0) -> dict:
@@ -304,7 +305,7 @@ class TradingBot:
             latest_signal = df.iloc[-1]
 
             # Open orders based on the latest signal
-            if latest_signal["is_buy2"]:
+            if latest_signal['is_buy2']:
                 self.open_buy_order(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
             elif latest_signal["is_sell2"]:
                 self.open_sell_order(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
