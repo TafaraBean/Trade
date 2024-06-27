@@ -55,19 +55,19 @@ def m15_gold_strategy(data):
     data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.35) + (data['lsma_slope'] >= 0) * 1.5
     data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.35) - (data['lsma_slope'] <= 0) * 1.5
 
-    #round-up to hour
+
 
 
 
 
     
     # Generate signals
-    data['is_buy2'] = (data['close'].shift(1) < data['lsma'].shift(1)) & (data['close'] > data['lsma'])&\
+    data['is_buy2'] = (data['close'].shift(1) < data['hour_lsma'].shift(1)) & (data['close'] > data['hour_lsma'])&\
                         (data['macd_line']>data['macd_signal']) &(data['lsma_slope']>0.5) & (data['fixed_support_gradient']>0) & (data['fixed_resistance_gradient']>0)
                         
                        
 
-    data['is_sell2'] = (data['close'].shift(1) > data['lsma'].shift(1)) & (data['close'] < data['lsma'])&\
+    data['is_sell2'] = (data['close'].shift(1) > data['hour_lsma'].shift(1)) & (data['close'] < data['hour_lsma'])&\
                          (data['macd_line']<data['macd_signal']) &(data['lsma_slope']<-0.5) & (data['fixed_support_gradient']<0) & (data['fixed_resistance_gradient']<0)
                 
     

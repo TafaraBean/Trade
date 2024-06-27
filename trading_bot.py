@@ -236,7 +236,7 @@ class TradingBot:
         df_log = np.log(data[['high', 'low', 'close']])
 
         # Trendline parameter
-        lookback = 24
+        lookback = 8
 
         # Initialize columns for trendlines and their gradients
         data['support_trendline'] = np.nan

@@ -4,6 +4,7 @@ from beta_trading_bot import TradingBot
 from dotenv import load_dotenv
 import os
 import pandas as pd
+import pandas_ta as ta
 
 from beta_strategy import *
 import numpy as np
@@ -21,13 +22,15 @@ def auto_trendline(data):
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 24
+    lookback = 8
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
     data['resistance_trendline'] = np.nan
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
+    data['hour_lsma'] = ta.linreg(data['close'], length=8)
+
 
     # Iterate over the dataset in overlapping windows of 15 candles
     for i in range(lookback, len(df_log) + 1):
@@ -113,9 +116,9 @@ server=os.environ.get("SERVER")
 
 
 bot = TradingBot( login=account, password=password, server=server)
-symbol="XAUUSD"
+symbol="BTCUSD"
 account_balance = 300
-lot_size = 0.02
+lot_size = 2
 timeframe = mt5.TIMEFRAME_M15
 start = pd.Timestamp("2024-03-10")
 conversion = timeframe_to_interval.get(timeframe, 3600)
@@ -131,7 +134,7 @@ hour_data = bot.chart(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, en
 
 
 hour_data=auto_trendline(hour_data)
-hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient']]
+hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient','hour_lsma']]
 
 data['hourly_time']=data['time'].dt.floor('h')
 

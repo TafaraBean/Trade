@@ -18,7 +18,7 @@ bot = TradingBot(login=account, password=password, server=server)
 symbol = "XAUUSD"
 timeframe = mt5.TIMEFRAME_M15   # Change this as needed
 start = pd.Timestamp("2024-06-10")
-lot= 0.02
+lot= 2
 
-bot.run(symbol="XAUUSD", timeframe=timeframe, strategy_func=m15_gold_strategy, start=start, lot=lot)
+bot.run(symbol="BTCUSD", timeframe=timeframe, strategy_func=m15_gold_strategy, start=start, lot=lot)
 
