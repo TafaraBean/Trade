@@ -117,7 +117,7 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="BTCUSD"
-account_balance = 300
+account_balance = 450
 lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
 start = pd.Timestamp("2024-06-10")
