@@ -30,6 +30,12 @@ def auto_trendline(data):
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
+    data['prev_hour_lsma']=data['hour_lsma'].shift(1)
+    data['hour_lsma_slope'] = data['hour_lsma'].diff()
+    data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
+    macd = ta.macd(data['close'], fast=20, slow=29, signal=9)
+    data['hour_macd_line'] = macd['MACD_20_29_9']
+    data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
 
 
     # Iterate over the dataset in overlapping windows of 15 candles
@@ -134,7 +140,7 @@ hour_data = bot.chart(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, en
 
 
 hour_data=auto_trendline(hour_data)
-hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient','hour_lsma']]
+hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma']]
 
 data['hourly_time']=data['time'].dt.floor('h')
 
