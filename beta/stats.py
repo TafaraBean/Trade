@@ -55,15 +55,21 @@ def logistic_regression_accuracy(dataframe, feature_columns, target_column, test
     return accuracy, result.summary()
 
 # Example usage with your data
-data = pd.read_csv('beta/output.csv')
+data = pd.read_csv('beta/hour_data.csv')
 
-data['next_close'] = data['close'].shift(-1)
+data['next_close'] = data['close'].shift(-3)
 data['success2'] = (data['close'] < data['next_close']).astype(int)
+
+data['positive_macd']= (data['prev_hour_macd_line']>0).astype(int)
+data['positive_slope']= (data['prev_hour_lsma_slope']>0).astype(int)
+
+data['below_support']=(data['open']<data['fixed_support_trendline']).astype(int)
+data['above_resistance']=(data['open']>data['fixed_resistance_trendline']).astype(int)
 
 data = data.dropna()
 
 # Define the feature columns and the target column
-feature_columns = ['prev_hour_lsma_slope','prev_hour_lsma']
+feature_columns = ['fixed_support_trendline','fixed_resistance_trendline','below_support','above_resistance','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma_slope']
 target_column = 'success2'
 
 # Calculate accuracy and get the model summary

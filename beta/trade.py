@@ -33,8 +33,8 @@ def auto_trendline(data):
     data['prev_hour_lsma']=data['hour_lsma'].shift(1)
     data['hour_lsma_slope'] = data['hour_lsma'].diff()
     data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
-    macd = ta.macd(data['close'], fast=20, slow=29, signal=9)
-    data['hour_macd_line'] = macd['MACD_20_29_9']
+    macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
+    data['hour_macd_line'] = macd['MACD_12_26_9']
     data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
 
 
@@ -49,6 +49,10 @@ def auto_trendline(data):
         resist_slope, resist_intercept = resist_coefs
         data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
         data.at[current_index, 'fixed_support_gradient'] = support_slope
+        support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
+        resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
+        data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
+        data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
         # Apply the calculated gradients to each candle in the window
         
         for j in range(lookback):
@@ -124,11 +128,11 @@ server=os.environ.get("SERVER")
 bot = TradingBot( login=account, password=password, server=server)
 symbol="BTCUSD"
 account_balance = 450
-lot_size = 0.02
+lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-06-10")
+start = pd.Timestamp("2024-04-10")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.Timestamp("2024-06-27 23:00:00")   
+end = pd.Timestamp("2024-04-20 23:00:00")   
 #end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
@@ -140,7 +144,9 @@ hour_data = bot.chart(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, en
 
 
 hour_data=auto_trendline(hour_data)
-hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma']]
+hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline']]
+
+hour_data.to_csv("beta/hour_data.csv",index=False)
 
 data['hourly_time']=data['time'].dt.floor('h')
 
