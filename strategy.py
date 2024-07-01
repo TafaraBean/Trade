@@ -4,7 +4,7 @@ import pandas_ta as ta
 def h1_gold_strategy(data):
         data['ema_short'] = ta.ema(data['close'], length=12)
         data['ema_long'] = ta.ema(data['close'], length=26)
-        data['lsma'] = ta.linreg(data['close'], length=30)
+        data['lsma'] = ta.linreg(data['close'], length=50)
         macd = ta.macd(data['close'], fast=15, slow=20, signal=4)
         data['macd_line'] = macd['MACD_15_20_4']
         data['lsma_stddev'] = data['close'].rolling(window=25).std()
@@ -35,7 +35,6 @@ def h1_gold_strategy(data):
 
 
 def m15_gold_strategy(data):
-    # Calculate indicators
     data['ema_short'] = ta.ema(data['close'], length=12)
     data['ema_long'] = ta.ema(data['close'], length=26)
     data['lsma'] = ta.linreg(data['close'], length=18)
@@ -104,5 +103,4 @@ def m15_gold_strategy(data):
     data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 150
     
     return data
-
 

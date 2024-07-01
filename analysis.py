@@ -2,17 +2,8 @@ import pandas as pd
 import MetaTrader5 as mt5
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-timeframe_to_interval = {
-            mt5.TIMEFRAME_M1: "min",
-            mt5.TIMEFRAME_M5: "5min",
-            mt5.TIMEFRAME_M10: "10min",
-            mt5.TIMEFRAME_M15: "15min",
-            mt5.TIMEFRAME_M30: "30min",
-            mt5.TIMEFRAME_H1: "h",
-            mt5.TIMEFRAME_H4: "4h",
-            mt5.TIMEFRAME_D1: "D",
-        }
+from trading_bot import TradingBot
+import numpy as np
 
 
 
@@ -154,7 +145,25 @@ def calculate_percentage_completion(entry_price, goal_price, current_price, is_b
 
   return completion_ratio * 100  # Convert to percentage and return
 
+def calc_weekly_proft(executed_trades_df):
+    executed_trades_df['Week'] = executed_trades_df['time'].dt.isocalendar().week
 
+    # Calculate weekly profit by grouping by 'Week' and summing 'profit'
+    weekly_profit = executed_trades_df.groupby('Week')['profit'].sum()
+
+    # Create a new DataFrame with 'Week' and 'Weekly Profit' columns
+    weekly_df = pd.DataFrame({'Week': weekly_profit.index, 'Weekly Profit': weekly_profit.values})
+    return weekly_profit
+
+def calc_monthly_proft(executed_trades_df):
+    # Set the 'Month' column based on the year and month number
+    executed_trades_df['Month'] = executed_trades_df['time'].dt.month
+
+    # Calculate monthly profit by grouping by 'Month' and summing 'profit'
+    monthly_profit = executed_trades_df.groupby('Month')['profit'].sum()
+    monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
+
+    return monthly_df
 
 import pandas as pd
 import numpy as np
@@ -165,7 +174,8 @@ def check_trend_line(support: bool, pivot: int, slope: float, y: np.array):
     # return negative val if invalid 
     
     # Find the intercept of the line going through pivot point with given slope
-    intercept = -slope * pivot + y[pivot]
+
+    intercept = -slope * pivot + y.iloc[pivot]
     line_vals = slope * np.arange(len(y)) + intercept
      
     diffs = line_vals - y
@@ -236,7 +246,7 @@ def optimize_slope(support: bool, pivot:int , init_slope: float, y: np.array):
             get_derivative = True # Recompute derivative
     
     # Optimize done, return best slope and intercept
-    return (best_slope, -best_slope * pivot + y[pivot])
+    return (best_slope, -best_slope * pivot + y.iloc[pivot])
 
 
 def fit_trendlines_single(data: np.array):
@@ -322,3 +332,261 @@ r_seq2 = get_line_points(candles, resist_line_c)
 mpf.plot(candles, alines=dict(alines=[s_seq, r_seq, s_seq2, r_seq2], colors=['w', 'w', 'b', 'b']), type='candle', style='charles', ax=ax)
 plt.show()
 '''
+
+from typing import Dict, Any
+
+def analyse(filtered_df: pd.DataFrame, 
+            symbol: str, bot: TradingBot, 
+            account_balance: float,
+            lot_size: float,
+            timeframe,
+            #start: pd.Timestamp,
+            end: pd.Timestamp
+            ) -> dict:
+    
+    total_trades = 0
+    unexecuted_trades = 0
+    successful_trades = 0
+    unsuccessful_trades = 0
+    gross_profit = 0
+    loss = 0
+    executed_trades = [] 
+    break_even = 0
+    conversion = bot.timeframe_to_interval.get(timeframe, 3600)
+
+    for index, row in filtered_df.iterrows():
+        #if trade is in valid, no further processing
+        
+        if check_invalid_stopouts(row):
+            unexecuted_trades += 1
+            print(f"trade invalid stopouts: {row['time']}")
+            continue
+
+        # allways add 15 min to start time because position was started at cnadle close and not open
+        start_time= (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion) #add 1 second to be able to apply ceil function
+        #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
+        relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end)
+        second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=(end + pd.Timedelta(seconds=1)).ceil(conversion))
+        
+        # Check if stop loss or take profit or trailing stop was reached 
+        stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
+        take_profit_reached = (relevant_ticks['bid'] >= row["tp"]) if row["is_buy2"] else (relevant_ticks['bid'] <= row["tp"])
+        trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
+
+        #find the index at which it each level was reached... argmax will return the first occurence of this
+        trailing_stop_index = np.argmax(trailing_stop_reached) if trailing_stop_reached.any() else -1
+        stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
+        take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
+        
+        #find the corresponding time to the indexes
+        time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
+        time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
+        time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
+        
+        #trail stop loss if needed, 
+        #also factor in probability of trading still running and none of the levels were ever reached
+        if time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max:
+            row['sl_updated'] = False
+        else:
+            row['sl_updated'] = min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
+        
+        row['time_updated'] = time_to_trail if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else None
+
+        #update actual sl and refind teh indexes
+        if  row['sl_updated']:
+            relevant_ticks = bot.get_ticks_range(symbol=symbol,start=time_to_trail,end=end) # Filter ticks dataframe from time_value onwards
+            
+            #update the stop loss level
+            row['sl'] = row['be']
+            stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
+
+            #find the new time for ehich stop loss was hit
+            stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
+            time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
+        
+        #save final updated times
+        row['time_to_trail'] = None if time_to_trail == pd.Timestamp.max else time_to_trail
+        row['time_tp_hit'] = None if time_tp_hit == pd.Timestamp.max else time_tp_hit
+        row['time_sl_hit'] = None if time_sl_hit == pd.Timestamp.max else time_sl_hit
+
+        print(f"Currently Working on Trade: {row['time']} where sl update is: {row['sl_updated']}")
+        print(f"tp time: {row['time_tp_hit']}")
+        print(f"sl time: {row['time_sl_hit'] }")
+        print(f"tr time: {row['time_to_trail']}")
+
+        filtered_ticks = relevant_ticks[
+            (relevant_ticks['time'] >= (time_to_trail if row['sl_updated'] else start_time)) & 
+            (relevant_ticks['time'] <= min(time_sl_hit, time_tp_hit))
+        ].copy()
+        
+        max_min = filtered_ticks['bid'].max() if row['is_buy2'] else filtered_ticks['bid'].min()
+        row['max_completion'] = calculate_percentage_completion(entry_price=row['close'], goal_price=row['tp'], current_price=max_min, is_buy=row['is_buy2'])
+        row['max_floating_profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=max_min) \
+                                        if row['is_buy2'] else \
+                                        bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=max_min)        
+
+        if stop_loss_index == 0 or take_profit_index == 0:
+            print(f"take profit or stop loss reached ar zero for trade {row['time']}")
+            unexecuted_trades +=1
+            continue
+        total_trades+=1
+        executed_trades.append(row)
+
+        if stop_loss_index > -1 and take_profit_index > -1:
+            if(min(time_sl_hit, time_tp_hit) == time_tp_hit):
+                print("trade successful")
+                row['type'] = "success"
+                row['success'] = True
+                successful_trades+=1
+                if row["is_buy2"]:
+                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
+                    gross_profit += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+                else: 
+                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
+                    gross_profit +=  row['profit'] 
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+            
+            elif(row['sl_updated']):       
+                row['type'] = "even"
+                print("trade broke even")
+                row['success'] = True
+                break_even +=1
+                if row["is_buy2"]:
+                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    gross_profit += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+                else: 
+                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                    gross_profit +=  row['profit'] 
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+
+            else:
+                print("trade failed")
+                row['type'] = "fail"
+                row['success'] = False
+                unsuccessful_trades +=1            
+                if row["is_buy2"]:
+                    row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    loss += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+                else: 
+                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                    loss += row["profit"]
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+        elif take_profit_index == -1 and stop_loss_index != -1:
+            if(row['sl_updated']):
+                print("trade broke even")
+                row['type'] = "even"
+                row['success'] = True
+                break_even +=1
+                if row["is_buy2"]:
+                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    gross_profit += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+                else: 
+                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                    gross_profit +=  row['profit'] 
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+            else:
+                print("trade failed")
+                row['type'] = "fail"
+                row['success'] = False
+                unsuccessful_trades+=1            
+                if row["is_buy2"]:
+                    row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    loss += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+                else: 
+                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                    loss += row["profit"]
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+        elif stop_loss_index == -1 and take_profit_index != -1:
+            print("trade successful")
+            successful_trades+=1
+            row['type'] = "success"
+            row['success'] = True
+
+            if row["is_buy2"]:
+                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
+                    gross_profit += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+            else: 
+                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
+                gross_profit +=  row['profit'] 
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+        else:
+            row['type'] = "running"
+            row['success'] = False
+            row["account_balance"] = account_balance
+            row['profit'] = 0
+            row['position_close_time'] = row['time'] + pd.Timedelta(hours=3)
+            print(f"Neither stop loss nor take profit was reached for trade. {row["time"]}")
+
+    executed_trades_df = pd.DataFrame(executed_trades)
+    if loss != 0:
+        profit_factor = gross_profit / abs(loss)
+    else:
+        profit_factor = float('inf')  # Handle case where there are no losing trades
+
+    if total_trades > 0:
+        percentage_profitability = ((successful_trades+break_even) / (total_trades)) * 100
+    else:
+        percentage_profitability = 0  # Handle case where there are no trades
+        
+    weekly_profit, monthly_profit = aggregate_profit(executed_trades_df=executed_trades_df)
+    return {
+        "percentage_profitability": percentage_profitability,
+        "profit_factor": profit_factor,
+        "executed_trades_df": executed_trades_df,
+        "total_trades": total_trades,
+        "unexecuted_trades": unexecuted_trades,
+        "unsuccessful_trades": unsuccessful_trades,
+        "successful_trades": successful_trades,
+        "weekly_profit": weekly_profit,
+        "monthly_profit": monthly_profit,
+        "gross_profit": gross_profit,
+        "loss": loss,
+        "break_even": break_even
+    }
+
+def aggregate_profit(executed_trades_df: pd.DataFrame):
+    grouper = (executed_trades_df['success'] != executed_trades_df['success'].shift()).cumsum()
+    executed_trades_df['win_streak'] = executed_trades_df.groupby(grouper)['success'].transform('cumsum')
+    # Calculate losing streak
+    executed_trades_df['losing_streak'] = (
+        ~executed_trades_df['success'].copy()  # Invert a copy of the success column
+        ).groupby(grouper).cumsum()
+
+    # Set the 'Week' column based on the year and week number
+    executed_trades_df['Week'] = executed_trades_df['time'].dt.isocalendar().week
+
+    # Calculate weekly profit by grouping by 'Week' and summing 'profit'
+    weekly_profit = executed_trades_df.groupby('Week')['profit'].sum()
+
+    # Create a new DataFrame with 'Week' and 'Weekly Profit' columns
+    weekly_df = pd.DataFrame({'Week': weekly_profit.index, 'Weekly Profit': weekly_profit.values})
+
+
+    # Set the 'Month' column based on the year and month number
+    executed_trades_df['Month'] = executed_trades_df['time'].dt.month
+
+    # Calculate monthly profit by grouping by 'Month' and summing 'profit'
+    monthly_profit = executed_trades_df.groupby('Month')['profit'].sum()
+
+    # Create a new DataFrame with 'Month' and 'Monthly Profit' columns (optional)
+    monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
+
+    return weekly_df, monthly_df

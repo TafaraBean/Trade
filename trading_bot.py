@@ -1,11 +1,7 @@
 import MetaTrader5 as mt5
 import time
 import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-from analysis import *
-from datetime import datetime
-import pandas_ta as ta
+from typing import Callable
 
 class Account:
     def __init__(self):
@@ -26,40 +22,53 @@ class Account:
         raise AttributeError(f"'Account' object has no attribute '{attr}'")
     
 class TradingBot:   
-    def __init__(self, login, password, server):
+    def __init__(self, login: int, password: str, server: str):
         self.account = Account()
         self.login = login
         self.password = password
         self.server = server
         self.positions = {}
-        self.initialize_api()
+        self.initialize_bot()
 
         self.timeframe_to_interval = {
             mt5.TIMEFRAME_M1: "min",
+            mt5.TIMEFRAME_M2: "2min",
+            mt5.TIMEFRAME_M3: "3min",
+            mt5.TIMEFRAME_M4: "4min",
             mt5.TIMEFRAME_M5: "5min",
+            mt5.TIMEFRAME_M6: "6min",
             mt5.TIMEFRAME_M10: "10min",
+            mt5.TIMEFRAME_M12: "12min",
             mt5.TIMEFRAME_M15: "15min",
+            mt5.TIMEFRAME_M20: "20min",
             mt5.TIMEFRAME_M30: "30min",
             mt5.TIMEFRAME_H1: "h",
+            mt5.TIMEFRAME_H2: "2h",
+            mt5.TIMEFRAME_H3: "3h",
             mt5.TIMEFRAME_H4: "4h",
-            mt5.TIMEFRAME_D1: "D",
+            mt5.TIMEFRAME_H6: "6h",
+            mt5.TIMEFRAME_H8: "8h",
+            mt5.TIMEFRAME_H12: "12h",
+            mt5.TIMEFRAME_D1: "d",
         }
 
-    def initialize_api(self):
+    def initialize_bot(self) -> None:
         # Initialize the MetaTrader 5 connection
         if not mt5.initialize():
             print(f"initialize() failed, error code = {mt5.last_error()}")
+            quit()
         else:
            print("MetaTrader5 package version: ",mt5.__version__)
         # Attempt to login to the trade account
         if not mt5.login(self.login, password=self.password, server=self.server):
             print(f"Failed to connect to trade account {self.login}, error code = {mt5.last_error()}")
+            quit()
         else:
             print("connected to account #{}".format(self.login))
     
-    def open_buy_order(self, symbol, lot, sl=0.0, tp=0.0) -> dict:
+    def open_buy_position(self, symbol: str, lot: float, sl: float=0.0, tp: float=0.0) -> dict:
         """
-        Open a buy order for a given symbol.
+        Open a buy order for a given symbol. by default 0,0 means no sl or tp will be set
         """
         request = {
             "action": mt5.TRADE_ACTION_DEAL,
@@ -81,10 +90,9 @@ class TradingBot:
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
             # Add the order to the positions dictionary
             self.positions[order['order']] = symbol
-        
         return order
 
-    def open_sell_order(self, symbol, lot, sl=0.0, tp=0.0) -> dict:
+    def open_sell_position(self, symbol: str, lot: float, sl: float=0.0, tp: float=0.0) -> dict:
         """
         Open a sell order for a given symbol.
         """
@@ -109,15 +117,23 @@ class TradingBot:
             # Add the order to the positions dictionary
             self.positions[order['order']] = symbol
         return order
-
-    def close_position(self, position_id, lot, symbol) -> pd.DataFrame:
+    
+    def positions_total(self) -> int:
+        '''Get the number of open positions.'''
+        total=mt5.positions_total()
+        return total
+    
+    def orders_total(self) -> int:
+        '''Get the number of active orders.'''
+        total=mt5.orders_total()
+        return total
+    
+    #this close position function needs to be refined
+    def close_position(self, position_id: int, lot: float, symbol: str) -> dict:
         """
         Close the position for a given symbol.
         """
          # create a close request
-
-        order = self.get_position(ticket=position_id)
-        trade_type = mt5.order['type']
         request={
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
@@ -135,7 +151,7 @@ class TradingBot:
         result = mt5.order_send(request)._asdict()
         return result
 
-    def get_position(self,ticket) -> dict:
+    def get_position(self,ticket: int) -> dict:
         """
         Get the current position for a given symbol.
         """
@@ -143,7 +159,8 @@ class TradingBot:
         trade_position =order[0]
         return trade_position._asdict()
     
-    def get_position_all(self,symbol) -> pd.DataFrame:
+    def get_position_all(self,symbol: str) -> pd.DataFrame:
+        """Retrives all positions for a specified symbol"""
         positions=mt5.positions_get(symbol=symbol)
 
         if len(positions) != 0:
@@ -155,9 +172,7 @@ class TradingBot:
         
         return df
 
-    def cal_profit(self, symbol, order_type, lot, distance, tp=0, sl=0):
-        # get account currency
-        account_currency=self.account.currency
+    def cal_profit(self, symbol: str, order_type, lot: float, open_price: float, close_price:float) -> float:
 
         #fetch symbol data        
         symbol_info=mt5.symbol_info(symbol)
@@ -169,35 +184,66 @@ class TradingBot:
             if not mt5.symbol_select(symbol,True):
                 print("symbol_select({}}) failed, skipped",symbol)
                 return None
-   
-        point=mt5.symbol_info(symbol).point
-        symbol_tick=mt5.symbol_info_tick(symbol)
-        ask=symbol_tick.ask
-        bid=symbol_tick.bid
 
         
         if order_type == mt5.ORDER_TYPE_BUY:
-            buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,ask,ask+distance*point)
+            buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,open_price, close_price)
             
-            if buy_profit!=None:
-                #print("   buy {} {} lot: profit on {} points => {} {}".format(symbol,lot,distance,buy_profit,account_currency))
+            if buy_profit!=None:            
                 return buy_profit
             else:
                 print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
+                raise ValueError("Profit value not a number")
         
         elif order_type == mt5.ORDER_TYPE_SELL:
-            sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,bid,bid-distance*point)
+            sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,open_price, close_price)
             if sell_profit!=None:
-                #print("   sell {} {} lots: profit on {} points => {} {}".format(symbol,lot,distance,sell_profit,account_currency))
-                
                 return sell_profit
             else:
                 print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
+                raise ValueError("Profit value not a number")
         else:
-            print("Invalid order type")
-            return None
+            raise ValueError("Invalid order type")
+                
+    def copy_chart_range(self, symbol: str, timeframe, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+        "Retrives chart data from specified start date till end date"
+        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
+        ohlc_data = pd.DataFrame(ohlc_data)
+        # Convert 'date' column to datetime type
+        if len(ohlc_data) != 0:
+            ohlc_data['time'] = pd.to_datetime(ohlc_data['time'],unit='s')
+        return ohlc_data
 
-    def changesltp(self, ticket,symbol ,sl,tp):
+    def copy_chart_count(self, symbol: str, timeframe, start: pd.Timestamp, count: int) -> pd.DataFrame:
+        "Retrives chart data from specified start date till end date"
+        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
+        ohlc_data = pd.DataFrame(ohlc_data)
+        # Convert 'date' column to datetime type
+        if len(ohlc_data) != 0:
+            ohlc_data['time'] = pd.to_datetime(ohlc_data['time'],unit='s')
+        return ohlc_data
+
+    def shutdown(self) -> None:
+        mt5.shutdown()
+        print("MetaTrader 5 connection closed")
+
+    def get_ticks_range(self,symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
+        # request ticks start date till end date
+        ticks = mt5.copy_ticks_range(symbol, start, end, mt5.COPY_TICKS_ALL)
+        ticks = pd.DataFrame(ticks)
+        if len(ticks) != 0:
+            ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
+        return ticks
+       
+    def get_ticks_count(self,symbol: str, start: pd.Timestamp, count: int) -> pd.DataFrame:
+        # request  ticks from start date with specified count of candles
+        ticks = mt5.copy_ticks_from(symbol, start, count, mt5.COPY_TICKS_ALL)
+        ticks = pd.DataFrame(ticks)
+        if len(ticks) != 0:
+            ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
+        return ticks
+        
+    def changesltp(self, ticket: str, symbol: str, sl:float ,tp: float) -> dict:
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
             "position": ticket,
@@ -212,13 +258,14 @@ class TradingBot:
             #"ENUM_ORDER_STATE": mt5.ORDER_FILLING_RETURN,
         }
         #// perform the check and display the result 'as is'
-        result = mt5.order_send(request)
+        result = mt5.order_send(request)._asdict()
 
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             print("4. order_send failed, retcode={}".format(result.retcode))
 
         return result
 
+<<<<<<< HEAD
     def chart(self, symbol, timeframe, start, end) -> pd.DataFrame:
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
         df = pd.DataFrame(ohlc_data)
@@ -291,6 +338,14 @@ class TradingBot:
         return data
 
     def run(self, symbol, timeframe, start, strategy_func, lot):
+=======
+    def symbol_info_tick(self, symbol: str) -> dict:
+        #get the latests tick information for a specified symbol
+        symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
+        return symbol_info_tick_dict
+    
+    def run(self, symbol: str, timeframe, start: pd.Timestamp, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
+>>>>>>> 3658e7a25e8d52a967ba1957f874002ff731cfc6
         while True:
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
@@ -307,8 +362,8 @@ class TradingBot:
             # Fetch the market data and apply the trading strategy
             
             
-            df = self.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
-            hour_data = self.chart(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
+            df = self.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
+            hour_data = self.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
 
 
 
@@ -326,9 +381,9 @@ class TradingBot:
 
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
-                self.open_buy_order(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
+                self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
             elif latest_signal["is_sell2"]:
-                self.open_sell_order(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
             #trail any stop losses as needed
             open_positions_df = self.get_position_all(symbol=symbol)
