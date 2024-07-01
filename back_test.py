@@ -1,12 +1,10 @@
-from datetime import datetime
 import  MetaTrader5 as mt5 
-from beta_trading_bot import TradingBot
-from dotenv import load_dotenv
+from trading_bot import TradingBot
 import os
 import pandas as pd
 import pandas_ta as ta
 
-from beta_strategy import *
+from strategy import *
 import numpy as np
 from analysis import *
 
@@ -64,7 +62,7 @@ def auto_trendline(data):
             data.at[data.index[idx], 'support_gradient'] = support_slope
             data.at[data.index[idx], 'resistance_gradient'] = resist_slope
 
-    data.to_csv("beta/test.csv",index=False)
+    data.to_csv("csv/test.csv",index=False)
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
         x=data.index,
@@ -107,19 +105,6 @@ def auto_trendline(data):
     return data
 
 
-timeframe_to_interval = {
-            mt5.TIMEFRAME_M1: "min",
-            mt5.TIMEFRAME_M5: "5min",
-            mt5.TIMEFRAME_M10: "10min",
-            mt5.TIMEFRAME_M15: "15min",
-            mt5.TIMEFRAME_M30: "30min",
-            mt5.TIMEFRAME_H1: "h",
-            mt5.TIMEFRAME_H4: "4h",
-            mt5.TIMEFRAME_D1: "D",
-        }
-
-
-load_dotenv()
 account=int(os.environ.get("ACCOUNT"))
 password=os.environ.get("PASSWORD")
 server=os.environ.get("SERVER")
@@ -130,23 +115,22 @@ symbol="BTCUSD"
 account_balance = 450
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-04-10")
-conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.Timestamp("2024-04-20 23:00:00")   
+conversion = bot.timeframe_to_interval.get(timeframe, 3600)
+
+start = pd.Timestamp("2024-05-29")
+end = pd.Timestamp("2024-05-30 23:00:00")
 #end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
-data = bot.chart(symbol=symbol, timeframe=timeframe, start=start, end=end)
-
-
-hour_data = bot.chart(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
+data = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
+hour_data = bot.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
 
 
 
 hour_data=auto_trendline(hour_data)
 hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline']]
 
-hour_data.to_csv("beta/hour_data.csv",index=False)
+hour_data.to_csv("csv/hour_data.csv",index=False)
 
 data['hourly_time']=data['time'].dt.floor('h')
 
@@ -164,11 +148,11 @@ unsuccessful_trades = 0
 gross_profit = 0
 loss = 0
 executed_trades = [] 
-biggest_loss = 0
-biggest_win = 0
 
 inital_balance = account_balance
 break_even = 0
+
+
 
 for index, row in filtered_df.iterrows():
     #if trade is in valid, no further processing
@@ -180,9 +164,10 @@ for index, row in filtered_df.iterrows():
 
     # allways add 15 min to start time because position was started at cnadle close and not open
     start_time= (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion) #add 1 second to be able to apply ceil function
+    end_time= end + pd.Timedelta(hours=1).ceil(conversion)
     #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
-    relevant_ticks = bot.get_ticks(symbol=symbol,start=start_time,end=end)
-    second_chart = bot.chart(symbol=symbol, timeframe=timeframe, start=start_time, end=end)
+    relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time)
+    second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time)
     
     # Check if stop loss or take profit or trailing stop was reached 
     stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
@@ -199,13 +184,18 @@ for index, row in filtered_df.iterrows():
     time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
     time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
     
-    #trail stop loss if needed
-    row['sl_updated'] = True if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else False
+    #trail stop loss if needed, 
+    #also factor in probability of trading still running and none of the levels were ever reached
+    if time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max:
+        row['sl_updated'] = False
+    else:
+        row['sl_updated'] = min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
+    
     row['time_updated'] = time_to_trail if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else None
 
     #update actual sl and refind teh indexes
     if  row['sl_updated']:
-        relevant_ticks = bot.get_ticks(symbol=symbol,start=time_to_trail,end=end) # Filter ticks dataframe from time_value onwards
+        relevant_ticks = bot.get_ticks_range(symbol=symbol,start=time_to_trail,end=end_time) # Filter ticks dataframe from time_value onwards
         
         #update the stop loss level
         row['sl'] = row['be']
@@ -291,7 +281,7 @@ for index, row in filtered_df.iterrows():
                 loss += row["profit"]
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
-    elif take_profit_index == -1 :
+    elif take_profit_index == -1 and stop_loss_index != -1:
         if(row['sl_updated']):
             print("trade broke even")
             row['type'] = "even"
@@ -322,7 +312,7 @@ for index, row in filtered_df.iterrows():
                 loss += row["profit"]
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
-    elif stop_loss_index == -1:
+    elif stop_loss_index == -1 and take_profit_index != -1:
         print("trade successful")
         successful_trades+=1
         row['type'] = "success"
@@ -395,10 +385,10 @@ print(f"\nweekly profit:\n {weekly_df}")
 print(f"\nmonthly profit:\n {monthly_df}")
 
 
-df.to_csv('beta/output.csv', index=False)
+df.to_csv('csv/output.csv', index=False)
 # filtered_df.to_csv('csv/filtered_df.csv', index=False)
-executed_trades_df.to_excel('beta/filtered_excel_df.xlsx')
-executed_trades_df.to_csv('beta/executed_trades_df.csv', index=False)
+executed_trades_df.to_excel('filtered_excel_df.xlsx')
+executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
 # bot.get_ticks(symbol=symbol,start=start,end=end).to_csv("csv/ticks.csv", index=False)
 
 print(f"\nanalysis from {start} to {end}\n")
