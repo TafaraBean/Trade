@@ -55,7 +55,7 @@ def m15_gold_strategy(data):
     data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.35) + (data['lsma_slope'] >= 0) * 1.5
     data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.35) - (data['lsma_slope'] <= 0) * 1.5
 
-    #stochastic 
+    # Calculate stochastic oscillator
     stochastic = ta.stoch(data['high'], data['low'], data['close'], k=14, d=3)
     data['stoch_k'] = stochastic['STOCHk_14_3_3']
     data['stoch_d'] = stochastic['STOCHd_14_3_3']
@@ -65,22 +65,35 @@ def m15_gold_strategy(data):
 
     
     # Generate signals
-    data['is_buy2'] =(data['close'].shift(1) < data['hour_lsma'].shift(1)) & (data['close'] > data['hour_lsma'])&\
-                        (data['macd_line']>data['macd_signal']) &(data['lsma_slope']>0.5) & (data['fixed_support_gradient']>0) & (data['fixed_resistance_gradient']>0)& \
-                      (data['stoch_k'] > data['stoch_d'])
-                        
-                       
-
-    data['is_sell2'] = (data['close'].shift(1) > data['hour_lsma'].shift(1)) & (data['close'] < data['hour_lsma'])&\
-                         (data['macd_line']<data['macd_signal']) &(data['lsma_slope']<-0.5) & (data['fixed_support_gradient']<0) & (data['fixed_resistance_gradient']<0)& \
-                       (data['stoch_k'] < data['stoch_d'])
+    data['is_buy2'] = (
+        ((data['close'].shift(1) < data['fixed_support_trendline'].shift(1)) & 
+        (data['fixed_support_gradient'] > 0) & 
+        (data['fixed_resistance_gradient'] > 0) & 
+        (data['prev_hour_lsma_slope'] > 0) & 
+        (data['prev_hour_macd_line'] > 0) & 
+        (data['close'] > data['fixed_support_trendline'].shift(1))) | (
+        (data['close'].shift(1) > data['fixed_resistance_trendline'].shift(1)) & 
+        (data['close'] > data['fixed_resistance_trendline'].shift(1)) &
+        (data['fixed_resistance_trendline'] > data['fixed_resistance_trendline'].shift(1)))
+    )
+    
+    data['is_sell2'] = (
+        ((data['close'].shift(1) > data['fixed_resistance_trendline'].shift(1)) & 
+        (data['fixed_resistance_gradient'] < 0) & 
+        (data['fixed_support_gradient'] < 0) & 
+        (data['prev_hour_lsma_slope'] < 0) & 
+        (data['prev_hour_macd_line'] < 0) & 
+        (data['close'] < data['fixed_resistance_trendline'].shift(1))) |
+        ((data['close'].shift(1) < data['fixed_support_trendline'].shift(1)) & 
+        (data['close'] < data['fixed_support_trendline'].shift(1)) &
+        (data['fixed_support_trendline'] < data['fixed_support_trendline'].shift(1)))
+    )
                 
     
-    # Set take profit and stop loss
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 400
-    data.loc[data['is_buy2'], 'sl'] = data['close'] - 200
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 400
-    data.loc[data['is_sell2'], 'sl'] = data['close'] + 200
+    data.loc[data['is_buy2'], 'tp'] = data['close'] + 500
+    data.loc[data['is_buy2'], 'sl'] = data['close'] - 400
+    data.loc[data['is_sell2'], 'tp'] = data['close'] - 500
+    data.loc[data['is_sell2'], 'sl'] = data['close'] + 400
 
     #set new trailling stop loss
     data.loc[data['is_buy2'], 'be'] = data['close'] + 100

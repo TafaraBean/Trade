@@ -130,9 +130,9 @@ symbol="BTCUSD"
 account_balance = 450
 lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
-start = pd.Timestamp("2024-04-10")
+start = pd.Timestamp("2024-03-10")
 conversion = timeframe_to_interval.get(timeframe, 3600)
-end = pd.Timestamp("2024-04-20 23:00:00")   
+end = pd.Timestamp("2024-03-20 23:00:00")   
 #end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data

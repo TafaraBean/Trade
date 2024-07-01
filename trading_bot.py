@@ -236,6 +236,13 @@ class TradingBot:
         print(data)
         print("==========")
 
+        print("appling auto trendline...")
+        data['time2'] = data['time'].astype('datetime64[s]')
+        data = data.set_index('time', drop=True)
+        print("hourly data:")
+        print(data)
+        print("==========")
+
         # Take natural log of data to resolve price scaling issues
         df_log = np.log(data[['high', 'low', 'close']])
 
@@ -248,6 +255,12 @@ class TradingBot:
         data['support_gradient'] = np.nan
         data['resistance_gradient'] = np.nan
         data['hour_lsma'] = ta.linreg(data['close'], length=8)
+        data['prev_hour_lsma']=data['hour_lsma'].shift(1)
+        data['hour_lsma_slope'] = data['hour_lsma'].diff()
+        data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
+        macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
+        data['hour_macd_line'] = macd['MACD_12_26_9']
+        data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
 
 
         # Iterate over the dataset in overlapping windows of 15 candles
@@ -261,6 +274,10 @@ class TradingBot:
             resist_slope, resist_intercept = resist_coefs
             data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
             data.at[current_index, 'fixed_support_gradient'] = support_slope
+            support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
+            resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
+            data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
+            data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
             # Apply the calculated gradients to each candle in the window
             
             for j in range(lookback):
@@ -271,8 +288,6 @@ class TradingBot:
                 data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
                 data.at[data.index[idx], 'support_gradient'] = support_slope
                 data.at[data.index[idx], 'resistance_gradient'] = resist_slope
-
-        # Create a candlestick chart
         return data
 
     def run(self, symbol, timeframe, start, strategy_func, lot):
@@ -298,7 +313,7 @@ class TradingBot:
 
 
             hour_data=self.auto_trendline(hour_data)
-            hourly_data = hour_data[['time2', 'fixed_support_gradient', 'fixed_resistance_gradient','hour_lsma']]
+            hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline']]
 
             df['hourly_time']=df['time'].dt.floor('h')
 
@@ -320,18 +335,18 @@ class TradingBot:
 
             for index, row in open_positions_df.iterrows():
                 #condition to check how far above opwn price a candle should close before sl is adjusted for buy orders
-                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] +1.2):                        
+                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] + 150):                        
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open'] +1), # how much should the stop loss be adjusted above entry
+                                    sl=float(row['price_open'] +100), # how much should the stop loss be adjusted above entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
 
                 #condition to check how far below opwn price a candle should close before sl is adjusted for sell orders
-                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -1.2):
+                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -150):
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open']-1),# how much should the stop loss be adjusted below entry
+                                    sl=float(row['price_open']-100),# how much should the stop loss be adjusted below entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
             # Calculate and display performance metrics
