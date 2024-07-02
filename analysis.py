@@ -1,8 +1,8 @@
 import pandas as pd
+import pandas_ta as ta
 import MetaTrader5 as mt5
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from trading_bot import TradingBot
 import numpy as np
 from typing import Tuple
 
@@ -335,7 +335,8 @@ plt.show()
 
 
 def analyse(filtered_df: pd.DataFrame, 
-            symbol: str, bot: TradingBot, 
+            symbol: str, 
+            bot, 
             account_balance: float,
             lot_size: float,
             timeframe,
@@ -361,8 +362,12 @@ def analyse(filtered_df: pd.DataFrame,
             continue
 
         # allways add 15 min to start time because position was started at cnadle close and not open
-        start_time= pd.to_datetime(row['time'] + pd.Timedelta(seconds=1)).ceil(conversion) #add 1 second to be able to apply ceil function
-        end_time =  start_time + pd.Timedelta(days=4)
+        start_time= pd.to_datetime(row['time'] + pd.Timedelta(seconds=1))
+        start_time = start_time.ceil(conversion) #add 1 second to be able to apply ceil function
+        day_of_week = start_time.dayofweek
+
+        # Add 4 days if the start_time is on a Friday, otherwise add 3 days
+        end_time = start_time + pd.Timedelta(days=4) if day_of_week == 4 else start_time + pd.Timedelta(days=2)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
         relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time)
         second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time)
@@ -583,3 +588,100 @@ def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd
     monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
 
     return weekly_df, monthly_df
+
+
+def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
+    print("appling auto trendline...")
+    data['time2'] = data['time'].astype('datetime64[s]')
+    data = data.set_index('time', drop=True)
+    print("hourly data:")
+    #print(data)
+    print("==========")
+
+    # Take natural log of data to resolve price scaling issues
+    df_log = np.log(data[['high', 'low', 'close']])
+
+    # Trendline parameter
+    lookback = 30
+
+    # Initialize columns for trendlines and their gradients
+    data['support_trendline'] = np.nan
+    data['resistance_trendline'] = np.nan
+    data['support_gradient'] = np.nan
+    data['resistance_gradient'] = np.nan
+    data['hour_lsma'] = ta.linreg(data['close'], length=8)
+    data['prev_hour_lsma']=data['hour_lsma'].shift(1)
+    data['hour_lsma_slope'] = data['hour_lsma'].diff()
+    data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
+    macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
+    data['hour_macd_line'] = macd['MACD_12_26_9']
+    data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
+
+
+    # Iterate over the dataset in overlapping windows of 15 candles
+    for i in range(lookback, len(df_log) + 1):
+        current_index = df_log.index[i-1]
+        window_data = df_log.iloc[i - lookback:i]
+        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
+        
+        # Extract slope and intercept
+        support_slope, support_intercept = support_coefs
+        resist_slope, resist_intercept = resist_coefs
+        data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
+        data.at[current_index, 'fixed_support_gradient'] = support_slope
+        support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
+        resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
+        data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
+        data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
+        # Apply the calculated gradients to each candle in the window
+        
+        for j in range(lookback):
+            idx = i - lookback + j
+            support_value = support_slope * j + support_intercept
+            resist_value = resist_slope * j + resist_intercept
+            data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
+            data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
+            data.at[data.index[idx], 'support_gradient'] = support_slope
+            data.at[data.index[idx], 'resistance_gradient'] = resist_slope
+
+    data.to_csv("csv/test.csv",index=False)
+    # Create a candlestick chart
+    fig = go.Figure(data=[go.Candlestick(
+        x=data.index,
+        open=data['open'],
+        high=data['high'],
+        low=data['low'],
+        close=data['close']
+    )])
+
+    # Add support and resistance lines
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['support_trendline'],
+        mode='lines',
+        name='Support Line',
+        line=dict(color='green'),
+        connectgaps=False
+    ))
+
+    fig.add_trace(go.Scatter(
+        x=data.index,
+        y=data['resistance_trendline'],
+        mode='lines',
+        name='Resistance Line',
+        line=dict(color='red'),
+        connectgaps=False
+    ))
+
+    # Update layout
+    fig.update_layout(
+        title='Candlestick Chart with Support and Resistance Lines',
+        xaxis_title='Date',
+        yaxis_title='Price',
+        xaxis_rangeslider_visible=False,
+        template='plotly_dark'
+    )
+
+    # Show the figure
+    fig.show()
+    return data

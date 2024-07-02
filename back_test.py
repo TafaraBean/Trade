@@ -2,107 +2,10 @@ import  MetaTrader5 as mt5
 from trading_bot import TradingBot
 import os
 import pandas as pd
-import pandas_ta as ta
 
 from strategy import *
-import numpy as np
 from analysis import *
 
-def auto_trendline(data):
-    print("appling auto trendline...")
-    data['time2'] = data['time'].astype('datetime64[s]')
-    data = data.set_index('time', drop=True)
-    print("hourly data:")
-    print(data)
-    print("==========")
-
-    # Take natural log of data to resolve price scaling issues
-    df_log = np.log(data[['high', 'low', 'close']])
-
-    # Trendline parameter
-    lookback = 30
-
-    # Initialize columns for trendlines and their gradients
-    data['support_trendline'] = np.nan
-    data['resistance_trendline'] = np.nan
-    data['support_gradient'] = np.nan
-    data['resistance_gradient'] = np.nan
-    data['hour_lsma'] = ta.linreg(data['close'], length=8)
-    data['prev_hour_lsma']=data['hour_lsma'].shift(1)
-    data['hour_lsma_slope'] = data['hour_lsma'].diff()
-    data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
-    macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
-    data['hour_macd_line'] = macd['MACD_12_26_9']
-    data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
-
-
-    # Iterate over the dataset in overlapping windows of 15 candles
-    for i in range(lookback, len(df_log) + 1):
-        current_index = df_log.index[i-1]
-        window_data = df_log.iloc[i - lookback:i]
-        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-        
-        # Extract slope and intercept
-        support_slope, support_intercept = support_coefs
-        resist_slope, resist_intercept = resist_coefs
-        data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
-        data.at[current_index, 'fixed_support_gradient'] = support_slope
-        support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
-        resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
-        data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
-        data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
-        # Apply the calculated gradients to each candle in the window
-        
-        for j in range(lookback):
-            idx = i - lookback + j
-            support_value = support_slope * j + support_intercept
-            resist_value = resist_slope * j + resist_intercept
-            data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
-            data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
-            data.at[data.index[idx], 'support_gradient'] = support_slope
-            data.at[data.index[idx], 'resistance_gradient'] = resist_slope
-
-    data.to_csv("csv/test.csv",index=False)
-    # Create a candlestick chart
-    fig = go.Figure(data=[go.Candlestick(
-        x=data.index,
-        open=data['open'],
-        high=data['high'],
-        low=data['low'],
-        close=data['close']
-    )])
-
-    # Add support and resistance lines
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['support_trendline'],
-        mode='lines',
-        name='Support Line',
-        line=dict(color='green'),
-        connectgaps=False
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['resistance_trendline'],
-        mode='lines',
-        name='Resistance Line',
-        line=dict(color='red'),
-        connectgaps=False
-    ))
-
-    # Update layout
-    fig.update_layout(
-        title='Candlestick Chart with Support and Resistance Lines',
-        xaxis_title='Date',
-        yaxis_title='Price',
-        xaxis_rangeslider_visible=False,
-        template='plotly_dark'
-    )
-
-    # Show the figure
-    fig.show()
-    return data
 
 
 account=int(os.environ.get("ACCOUNT"))
@@ -118,7 +21,7 @@ lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-04-10")
+start = pd.Timestamp("2024-01-01")
 #end = pd.Timestamp("2024-03-20 23:00:00")   
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 

@@ -2,7 +2,7 @@ import MetaTrader5 as mt5
 import time
 import pandas as pd
 from typing import Callable
-
+from analysis import *
 class Account:
     def __init__(self):
         self._info = None
@@ -270,8 +270,9 @@ class TradingBot:
         symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
         return symbol_info_tick_dict
     
-    def run(self, symbol: str, timeframe, start: pd.Timestamp, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
+    def run(self, symbol: str, timeframe, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
         while True:
+            start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=4)
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
             conversion = self.timeframe_to_interval.get(timeframe, 3600)
@@ -282,7 +283,7 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(time_difference)
+            #time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             
@@ -292,7 +293,7 @@ class TradingBot:
 
 
 
-            hour_data=self.auto_trendline(hour_data)
+            hour_data= auto_trendline(hour_data)
             hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline']]
 
             df['hourly_time']=df['time'].dt.floor('h')

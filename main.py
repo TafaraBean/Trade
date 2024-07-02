@@ -1,4 +1,3 @@
-from datetime import datetime
 import MetaTrader5 as mt5
 from trading_bot import TradingBot
 from dotenv import load_dotenv
@@ -17,8 +16,8 @@ server = os.environ.get("SERVER")
 bot = TradingBot(login=account, password=password, server=server)
 symbol = "BTCUSD"
 timeframe = mt5.TIMEFRAME_M15   # Change this as needed
-start = pd.Timestamp("2024-06-20")
+
 lot= 0.01
 
-bot.run(symbol=symbol, timeframe=timeframe, strategy_func=m15_gold_strategy, start=start, lot=lot)
+bot.run(symbol=symbol, timeframe=timeframe, strategy_func=m15_gold_strategy, lot=lot)
 
