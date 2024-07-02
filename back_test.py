@@ -20,7 +20,7 @@ def auto_trendline(data):
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 8
+    lookback = 30
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -118,7 +118,7 @@ lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-03-19")
+start = pd.Timestamp("2024-03-10")
 end = pd.Timestamp("2024-03-20 23:00:00")   
 #end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
@@ -144,75 +144,72 @@ filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 
 
 
+if not filtered_df.empty:
+    results = analyse(filtered_df=filtered_df,
+            symbol=symbol,
+            bot=bot,
+            account_balance=account_balance,
+            lot_size=lot_size,
+            timeframe=timeframe,
+            end=end)
 
-results = analyse(filtered_df=filtered_df,
-        symbol=symbol,
-        bot=bot,
-        account_balance=account_balance,
-        lot_size=lot_size,
-        timeframe=timeframe,
-        end=end)
-
-executed_trades_df = pd.DataFrame(results['executed_trades_df'])
-weekly_df = pd.DataFrame(results['weekly_profit'])
-monthly_df = pd.DataFrame(results['monthly_profit'])
-percentage_profitability= results['percentage_profitability']
-profit_factor =results['profit_factor']
-total_trades = results['total_trades']
-unexecuted_trades = results['unexecuted_trades']
-unsuccessful_trades = results['unsuccessful_trades']
-successful_trades = results['successful_trades']
-break_even = results['break_even']
-profit_factor = results['profit_factor']
-gross_profit = results['gross_profit']
-loss = results['loss']
-
-
+    executed_trades_df = pd.DataFrame(results['executed_trades_df'])
+    weekly_df = pd.DataFrame(results['weekly_profit'])
+    monthly_df = pd.DataFrame(results['monthly_profit'])
+    percentage_profitability= results['percentage_profitability']
+    profit_factor =results['profit_factor']
+    total_trades = results['total_trades']
+    unexecuted_trades = results['unexecuted_trades']
+    unsuccessful_trades = results['unsuccessful_trades']
+    successful_trades = results['successful_trades']
+    break_even = results['break_even']
+    profit_factor = results['profit_factor']
+    gross_profit = results['gross_profit']
+    loss = results['loss']
 
 
 
-df.to_csv('csv/output.csv', index=False)
-# filtered_df.to_csv('csv/filtered_df.csv', index=False)
-executed_trades_df.to_excel('filtered_excel_df.xlsx')
-executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
-# bot.get_ticks(symbol=symbol,start=start,end=end).to_csv("csv/ticks.csv", index=False)
+    print(f"\nanalysis from {start} to {end}\n")
+    print(f"\nPROFITABILITY\n")
 
-print(f"\nanalysis from {start} to {end}\n")
-print(f"\nPROFITABILITY\n")
-
-print(f"lot size used: {lot_size}")
-print(f"Total trades: {total_trades}")
-print(f"Total unexecuted trades: {unexecuted_trades}")
-print(f"Total successful trades: {successful_trades}") 
-print(f"Total unsuccessful trades: {unsuccessful_trades}")
-print(f"Total break even trades: {break_even}")
-print(f"gross profit: {round(gross_profit, 2)} {bot.account.currency}")
-print(f"loss: {round(loss, 2)} {bot.account.currency}")
-print(f"percentage profitability: {percentage_profitability} %")
-print(f'max win streak: {executed_trades_df['win_streak'].max()}')
-print(f'max loosing streak: {executed_trades_df['losing_streak'].max()}')
-print(f'avg maximum order fill: {executed_trades_df['max_completion'].mean()} %')
-print(f'lowest order fill: {executed_trades_df['max_completion'].min()} %')
+    print(f"lot size used: {lot_size}")
+    print(f"Total trades: {total_trades}")
+    print(f"Total unexecuted trades: {unexecuted_trades}")
+    print(f"Total successful trades: {successful_trades}") 
+    print(f"Total unsuccessful trades: {unsuccessful_trades}")
+    print(f"Total break even trades: {break_even}")
+    print(f"gross profit: {round(gross_profit, 2)} {bot.account.currency}")
+    print(f"loss: {round(loss, 2)} {bot.account.currency}")
+    print(f"percentage profitability: {percentage_profitability} %")
+    print(f'max win streak: {executed_trades_df['win_streak'].max()}')
+    print(f'max loosing streak: {executed_trades_df['losing_streak'].max()}')
+    print(f'avg maximum order fill: {executed_trades_df['max_completion'].mean()} %')
+    print(f'lowest order fill: {executed_trades_df['max_completion'].min()} %')
 
 
 
-print(f"profit factor: {round(profit_factor, 2)}")
-print(f"\nACCOUNT DETAILS\n")
-print(f"lot size used: {lot_size}")
-print(f"biggest single loss: {round(executed_trades_df['profit'].min(), 2)} {bot.account.currency}")
-print(f"biggest single win: {round(executed_trades_df['profit'].max(), 2)} {bot.account.currency}")
-print(f"initial balance: {round(inital_balance, 2)} {bot.account.currency}")
-print(f"account balance: {round(account_balance, 2)} {bot.account.currency}")
-print(f"lowest account balance: {round(executed_trades_df['account_balance'].min(), 2)} {bot.account.currency}")
-print(f"net profit: {round(gross_profit + loss, 2)} {bot.account.currency}")
-# Print the DataFrame with monthly profit (optional)
-print(f"\nweekly profit:\n {weekly_df}")
-print(f"\nmonthly profit:\n {monthly_df}")
+    print(f"profit factor: {round(profit_factor, 2)}")
+    print(f"\nACCOUNT DETAILS\n")
+    print(f"lot size used: {lot_size}")
+    print(f"biggest single loss: {round(executed_trades_df['profit'].min(), 2)} {bot.account.currency}")
+    print(f"biggest single win: {round(executed_trades_df['profit'].max(), 2)} {bot.account.currency}")
+    print(f"initial balance: {round(inital_balance, 2)} {bot.account.currency}")
+    print(f"account balance: {round(account_balance, 2)} {bot.account.currency}")
+    print(f"lowest account balance: {round(executed_trades_df['account_balance'].min(), 2)} {bot.account.currency}")
+    print(f"net profit: {round(gross_profit + loss, 2)} {bot.account.currency}")
+    # Print the DataFrame with monthly profit (optional)
+    print(f"\nweekly profit:\n {weekly_df}")
+    print(f"\nmonthly profit:\n {monthly_df}")
 
-
+    executed_trades_df.to_excel('filtered_excel_df.xlsx')
+    executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
+else:
+    print("No Buy or Sell signals were generated using this strategy")
 # Show the plot
 display_chart(df)
 
+#print out dataframes to csv
+merged_data.to_csv('csv/merged_data.csv', index=False)
+filtered_df.to_csv('csv/filtered_df.csv', index=False)
 
-#nothing
-
+# bot.get_ticks(symbol=symbol,start=start,end=end).to_csv("csv/ticks.csv", index=False)
