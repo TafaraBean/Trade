@@ -70,7 +70,10 @@ def m15_gold_strategy(data):
         (data['fixed_resistance_gradient'] > 0) & 
         (data['prev_hour_lsma_slope'] > 0) & 
         (data['prev_hour_macd_line'] > 0) & 
-        (data['close'] > data['fixed_support_trendline'].shift(1))) 
+        (data['close'] > data['fixed_support_trendline'].shift(1))) | (
+        (data['close'].shift(1) > data['fixed_resistance_trendline'].shift(1)) & 
+        (data['close'] > data['fixed_resistance_trendline'].shift(1)) &
+        (data['fixed_resistance_trendline'] > data['fixed_resistance_trendline'].shift(1)))
     )
     
     data['is_sell2'] = (
@@ -79,7 +82,10 @@ def m15_gold_strategy(data):
         (data['fixed_support_gradient'] < 0) & 
         (data['prev_hour_lsma_slope'] < 0) & 
         (data['prev_hour_macd_line'] < 0) & 
-        (data['close'] < data['fixed_resistance_trendline'].shift(1)))
+        (data['close'] < data['fixed_resistance_trendline'].shift(1))) |
+        ((data['close'].shift(1) < data['fixed_support_trendline'].shift(1)) & 
+        (data['close'] < data['fixed_support_trendline'].shift(1)) &
+        (data['fixed_support_trendline'] < data['fixed_support_trendline'].shift(1)))
     )
                 
     

@@ -418,10 +418,6 @@ def analyse(filtered_df: pd.DataFrame,
         ].copy()
         
         max_min = filtered_ticks['bid'].max() if row['is_buy2'] else filtered_ticks['bid'].min()
-        row['max_completion'] = calculate_percentage_completion(entry_price=row['close'], goal_price=row['tp'], current_price=max_min, is_buy=row['is_buy2'])
-        row['max_floating_profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=max_min) \
-                                        if row['is_buy2'] else \
-                                        bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=max_min)        
 
         if stop_loss_index == 0 or take_profit_index == 0:
             print(f"take profit or stop loss reached ar zero for trade {row['time']}")

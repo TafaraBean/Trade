@@ -130,7 +130,6 @@ hour_data = bot.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, star
 
 hour_data=auto_trendline(hour_data)
 hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline']]
-
 hour_data.to_csv("csv/hour_data.csv",index=False)
 
 data['hourly_time']=data['time'].dt.floor('h')
@@ -139,7 +138,6 @@ merged_data = pd.merge(data,hourly_data, left_on='hourly_time', right_on='time2'
 
 
 df = m15_gold_strategy(merged_data)
-
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 
 
@@ -182,8 +180,6 @@ if not filtered_df.empty:
     print(f"percentage profitability: {percentage_profitability} %")
     print(f'max win streak: {executed_trades_df['win_streak'].max()}')
     print(f'max loosing streak: {executed_trades_df['losing_streak'].max()}')
-    print(f'avg maximum order fill: {executed_trades_df['max_completion'].mean()} %')
-    print(f'lowest order fill: {executed_trades_df['max_completion'].min()} %')
 
 
 
