@@ -383,15 +383,17 @@ def analyse(filtered_df: pd.DataFrame,
         
         #trail stop loss if needed, 
         #also factor in probability of trading still running and none of the levels were ever reached
+        row['time_updated'] = None
         if time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max:
             row['sl_updated'] = False
         else:
             row['sl_updated'] = min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
+            
         
-        row['time_updated'] = time_to_trail if row['sl_updated'] else None
 
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
+            row['time_updated'] = time_to_trail
             relevant_ticks = bot.get_ticks_range(symbol=symbol,start=time_to_trail,end=end_time) # Filter ticks dataframe from time_value onwards
             
             #update the stop loss level
@@ -417,6 +419,7 @@ def analyse(filtered_df: pd.DataFrame,
             print(f"take profit or stop loss reached ar zero for trade {row['time']}")
             unexecuted_trades +=1
             continue
+        
         total_trades+=1
         executed_trades.append(row)
 
