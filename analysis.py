@@ -417,7 +417,6 @@ def analyse(filtered_df: pd.DataFrame,
             (relevant_ticks['time'] <= min(time_sl_hit, time_tp_hit))
         ].copy()
         
-        max_min = filtered_ticks['bid'].max() if row['is_buy2'] else filtered_ticks['bid'].min()
 
         if stop_loss_index == 0 or take_profit_index == 0:
             print(f"take profit or stop loss reached ar zero for trade {row['time']}")
