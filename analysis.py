@@ -411,11 +411,6 @@ def analyse(filtered_df: pd.DataFrame,
         print(f"tp time: {row['time_tp_hit']}")
         print(f"sl time: {row['time_sl_hit'] }")
         print(f"tr time: {row['time_to_trail']}")
-
-        filtered_ticks = relevant_ticks[
-            (relevant_ticks['time'] >= (time_to_trail if row['sl_updated'] else start_time)) & 
-            (relevant_ticks['time'] <= min(time_sl_hit, time_tp_hit))
-        ].copy()
         
 
         if stop_loss_index == 0 or take_profit_index == 0:
