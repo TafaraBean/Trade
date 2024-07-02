@@ -164,9 +164,6 @@ def calc_monthly_proft(executed_trades_df):
 
     return monthly_df
 
-import pandas as pd
-import numpy as np
-
 
 def check_trend_line(support: bool, pivot: int, slope: float, y: np.array):
     # compute sum of differences between line and prices, 
@@ -602,7 +599,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 30
+    lookback = 8
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan

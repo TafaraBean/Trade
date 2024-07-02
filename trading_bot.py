@@ -272,7 +272,7 @@ class TradingBot:
     
     def run(self, symbol: str, timeframe, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
         while True:
-            start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=4)
+            start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=10)
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
             conversion = self.timeframe_to_interval.get(timeframe, 3600)
@@ -282,8 +282,8 @@ class TradingBot:
             # Calculate the difference in seconds
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
-            print(f"Sleeping for {time_difference / 60.0} miniutes until the next interval.")
-            #time.sleep(time_difference)
+            print(f"\nSleeping for {time_difference / 60.0} miniutes until the next interval.")
+            time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             
