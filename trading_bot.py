@@ -265,87 +265,12 @@ class TradingBot:
 
         return result
 
-<<<<<<< HEAD
-    def chart(self, symbol, timeframe, start, end) -> pd.DataFrame:
-        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
-        df = pd.DataFrame(ohlc_data)
-        df['time'] = pd.to_datetime(df['time'], unit='s')
-        return df
-
-    def shutdown(self):
-        mt5.shutdown()
-        print("MetaTrader 5 connection closed")
-
-    def auto_trendline(self,data):
-        data['time2'] = data['time'].astype('datetime64[s]')
-        data = data.set_index('time', drop=True)
-        print("hourly data:")
-        print(data)
-        print("==========")
-
-        print("appling auto trendline...")
-        data['time2'] = data['time'].astype('datetime64[s]')
-        data = data.set_index('time', drop=True)
-        print("hourly data:")
-        print(data)
-        print("==========")
-
-        # Take natural log of data to resolve price scaling issues
-        df_log = np.log(data[['high', 'low', 'close']])
-
-        # Trendline parameter
-        lookback = 8
-
-        # Initialize columns for trendlines and their gradients
-        data['support_trendline'] = np.nan
-        data['resistance_trendline'] = np.nan
-        data['support_gradient'] = np.nan
-        data['resistance_gradient'] = np.nan
-        data['hour_lsma'] = ta.linreg(data['close'], length=8)
-        data['prev_hour_lsma']=data['hour_lsma'].shift(1)
-        data['hour_lsma_slope'] = data['hour_lsma'].diff()
-        data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
-        macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
-        data['hour_macd_line'] = macd['MACD_12_26_9']
-        data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
-
-
-        # Iterate over the dataset in overlapping windows of 15 candles
-        for i in range(lookback, len(df_log) + 1):
-            current_index = df_log.index[i-1]
-            window_data = df_log.iloc[i - lookback:i]
-            support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-            
-            # Extract slope and intercept
-            support_slope, support_intercept = support_coefs
-            resist_slope, resist_intercept = resist_coefs
-            data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
-            data.at[current_index, 'fixed_support_gradient'] = support_slope
-            support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
-            resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
-            data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
-            data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
-            # Apply the calculated gradients to each candle in the window
-            
-            for j in range(lookback):
-                idx = i - lookback + j
-                support_value = support_slope * j + support_intercept
-                resist_value = resist_slope * j + resist_intercept
-                data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
-                data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
-                data.at[data.index[idx], 'support_gradient'] = support_slope
-                data.at[data.index[idx], 'resistance_gradient'] = resist_slope
-        return data
-
-    def run(self, symbol, timeframe, start, strategy_func, lot):
-=======
     def symbol_info_tick(self, symbol: str) -> dict:
         #get the latests tick information for a specified symbol
         symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
         return symbol_info_tick_dict
     
     def run(self, symbol: str, timeframe, start: pd.Timestamp, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
->>>>>>> 3658e7a25e8d52a967ba1957f874002ff731cfc6
         while True:
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time

@@ -4,8 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from trading_bot import TradingBot
 import numpy as np
-
-
+from typing import Tuple
 
 def check_invalid_stopouts(row):
     """
@@ -333,7 +332,7 @@ mpf.plot(candles, alines=dict(alines=[s_seq, r_seq, s_seq2, r_seq2], colors=['w'
 plt.show()
 '''
 
-from typing import Dict, Any
+
 
 def analyse(filtered_df: pd.DataFrame, 
             symbol: str, bot: TradingBot, 
@@ -342,7 +341,7 @@ def analyse(filtered_df: pd.DataFrame,
             timeframe,
             #start: pd.Timestamp,
             end: pd.Timestamp
-            ) -> dict:
+            ):
     
     total_trades = 0
     unexecuted_trades = 0
@@ -364,9 +363,10 @@ def analyse(filtered_df: pd.DataFrame,
 
         # allways add 15 min to start time because position was started at cnadle close and not open
         start_time= (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion) #add 1 second to be able to apply ceil function
+        end_time= end + pd.Timedelta(hours=1).ceil(conversion)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
-        relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end)
-        second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=(end + pd.Timedelta(seconds=1)).ceil(conversion))
+        relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time)
+        second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time)
         
         # Check if stop loss or take profit or trailing stop was reached 
         stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
@@ -394,7 +394,7 @@ def analyse(filtered_df: pd.DataFrame,
 
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
-            relevant_ticks = bot.get_ticks_range(symbol=symbol,start=time_to_trail,end=end) # Filter ticks dataframe from time_value onwards
+            relevant_ticks = bot.get_ticks_range(symbol=symbol,start=time_to_trail,end=end_time) # Filter ticks dataframe from time_value onwards
             
             #update the stop loss level
             row['sl'] = row['be']
@@ -535,6 +535,7 @@ def analyse(filtered_df: pd.DataFrame,
             row['position_close_time'] = row['time'] + pd.Timedelta(hours=3)
             print(f"Neither stop loss nor take profit was reached for trade. {row["time"]}")
 
+ 
     executed_trades_df = pd.DataFrame(executed_trades)
     if loss != 0:
         profit_factor = gross_profit / abs(loss)
@@ -550,19 +551,19 @@ def analyse(filtered_df: pd.DataFrame,
     return {
         "percentage_profitability": percentage_profitability,
         "profit_factor": profit_factor,
-        "executed_trades_df": executed_trades_df,
+        "gross_profit": gross_profit,
+        "loss": loss,        
         "total_trades": total_trades,
         "unexecuted_trades": unexecuted_trades,
         "unsuccessful_trades": unsuccessful_trades,
         "successful_trades": successful_trades,
+        "break_even": break_even,
+        "executed_trades_df": executed_trades_df,
         "weekly_profit": weekly_profit,
-        "monthly_profit": monthly_profit,
-        "gross_profit": gross_profit,
-        "loss": loss,
-        "break_even": break_even
+        "monthly_profit": monthly_profit,        
     }
 
-def aggregate_profit(executed_trades_df: pd.DataFrame):
+def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     grouper = (executed_trades_df['success'] != executed_trades_df['success'].shift()).cumsum()
     executed_trades_df['win_streak'] = executed_trades_df.groupby(grouper)['success'].transform('cumsum')
     # Calculate losing streak
