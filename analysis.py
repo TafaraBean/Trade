@@ -339,8 +339,6 @@ def analyse(filtered_df: pd.DataFrame,
             account_balance: float,
             lot_size: float,
             timeframe,
-            #start: pd.Timestamp,
-            end: pd.Timestamp
             ):
     
     total_trades = 0
@@ -352,7 +350,8 @@ def analyse(filtered_df: pd.DataFrame,
     executed_trades = [] 
     break_even = 0
     conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-
+    end_time = (filtered_df.iloc[-1]['time'] + pd.Timedelta(minutes=30))
+    
     for index, row in filtered_df.iterrows():
         #if trade is in valid, no further processing
         
@@ -363,7 +362,6 @@ def analyse(filtered_df: pd.DataFrame,
 
         # allways add 15 min to start time because position was started at cnadle close and not open
         start_time= (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion) #add 1 second to be able to apply ceil function
-        end_time= end + pd.Timedelta(hours=1).ceil(conversion)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
         relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time)
         second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time)
@@ -390,7 +388,7 @@ def analyse(filtered_df: pd.DataFrame,
         else:
             row['sl_updated'] = min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
         
-        row['time_updated'] = time_to_trail if min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail else None
+        row['time_updated'] = time_to_trail if row['sl_updated'] else None
 
         #update actual sl and refind teh indexes
         if  row['sl_updated']:

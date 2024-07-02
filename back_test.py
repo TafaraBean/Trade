@@ -150,8 +150,7 @@ if not filtered_df.empty:
             bot=bot,
             account_balance=account_balance,
             lot_size=lot_size,
-            timeframe=timeframe,
-            end=end)
+            timeframe=timeframe)
 
     executed_trades_df = pd.DataFrame(results['executed_trades_df'])
     weekly_df = pd.DataFrame(results['weekly_profit'])
@@ -205,11 +204,10 @@ if not filtered_df.empty:
     executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
 else:
     print("No Buy or Sell signals were generated using this strategy")
-# Show the plot
+
+
 display_chart(df)
 
-#print out dataframes to csv
 merged_data.to_csv('csv/merged_data.csv', index=False)
 filtered_df.to_csv('csv/filtered_df.csv', index=False)
-
 # bot.get_ticks(symbol=symbol,start=start,end=end).to_csv("csv/ticks.csv", index=False)
