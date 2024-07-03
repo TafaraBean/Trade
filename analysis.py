@@ -587,6 +587,57 @@ def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd
     return weekly_df, monthly_df
 
 
+def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
+    print("applying auto trendline...")
+    data['time1'] = data['time'].astype('datetime64[s]')
+    data = data.set_index('time1', drop=True)
+    print("15-min data:")
+    #print(data)
+    print("==========")
+
+    # Take natural log of data to resolve price scaling issues
+    df_log = np.log(data[['high', 'low', 'close']])
+
+    # Trendline parameter
+    lookback = 11
+
+    # Initialize columns for trendlines and their gradients
+    data['support_trendline_15'] = np.nan
+    data['resistance_trendline_15'] = np.nan
+    data['support_gradient_15'] = np.nan
+    data['resistance_gradient_15'] = np.nan
+
+
+
+    # Iterate over the dataset in overlapping windows of 15 candles
+    for i in range(lookback, len(df_log) + 1):
+        current_index = df_log.index[i-1]
+        window_data = df_log.iloc[i - lookback:i]
+        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
+        
+        # Extract slope and intercept
+        support_slope, support_intercept = support_coefs
+        resist_slope, resist_intercept = resist_coefs
+        data.at[current_index, 'fixed_resistance_gradient_15'] = resist_slope
+        data.at[current_index, 'fixed_support_gradient_15'] = support_slope
+        support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
+        resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
+        data.at[current_index, 'fixed_support_trendline_15'] = np.exp(support_value)
+        data.at[current_index, 'fixed_resistance_trendline_15'] = np.exp(resist_value)
+        # Apply the calculated gradients to each candle in the window
+        
+        for j in range(lookback):
+            idx = i - lookback + j
+            support_value = support_slope * j + support_intercept
+            resist_value = resist_slope * j + resist_intercept
+            data.at[data.index[idx], 'support_trendline_15'] = np.exp(support_value)
+            data.at[data.index[idx], 'resistance_trendline_15'] = np.exp(resist_value)
+            data.at[data.index[idx], 'support_gradient_15'] = support_slope
+            data.at[data.index[idx], 'resistance_gradient_15'] = resist_slope
+
+    return data
+
+
 def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     print("appling auto trendline...")
     data['time2'] = data['time'].astype('datetime64[s]')
