@@ -349,6 +349,9 @@ def analyse(filtered_df: pd.DataFrame,
     break_even = 0
     conversion = bot.timeframe_to_interval.get(timeframe, 3600)
     
+        # Keep track of the month of the previous row
+    previous_month = None
+
     
     for index, row in filtered_df.iterrows():
         #if trade is in valid, no further processing
@@ -362,7 +365,14 @@ def analyse(filtered_df: pd.DataFrame,
         start_time= pd.to_datetime(row['time'] + pd.Timedelta(seconds=1))
         start_time = start_time.ceil(conversion) #add 1 second to be able to apply ceil function
         day_of_week = start_time.dayofweek
-
+                # Check if the current row's month is different from the previous row's month
+        current_month = start_time.month
+        if previous_month is not None and current_month != previous_month:
+            lot_size += 0.01
+            print(f"New month detected: {start_time.strftime('%B %Y')}, increased lot size to {lot_size}")
+        
+        # Update the previous month
+        previous_month = current_month
         # Add 4 days if the start_time is on a Friday, otherwise add 3 days
         end_time = start_time + pd.Timedelta(days=5) if day_of_week == 4 else start_time + pd.Timedelta(days=3)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
@@ -425,7 +435,7 @@ def analyse(filtered_df: pd.DataFrame,
         
         total_trades+=1
         executed_trades.append(row)
-
+        row['lot_size'] = lot_size
         #set the value for the type of trade this was, weather loss, even or success
         if stop_loss_index > -1 and take_profit_index > -1:
             if(min(time_sl_hit, time_tp_hit) == time_tp_hit):

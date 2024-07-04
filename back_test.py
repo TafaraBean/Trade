@@ -15,18 +15,18 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="BTCUSD"
-account_balance = 450
+account_balance = 700
 inital_balance = account_balance
-lot_size = 0.01
+lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-06-01")
+start = pd.Timestamp("2023-12-01")
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
-data=auto_trendline_15(data)
+#data=auto_trendline_15(data)
 
 hour_data = bot.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
 
