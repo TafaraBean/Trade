@@ -364,7 +364,7 @@ def analyse(filtered_df: pd.DataFrame,
         day_of_week = start_time.dayofweek
 
         # Add 4 days if the start_time is on a Friday, otherwise add 3 days
-        end_time = start_time + pd.Timedelta(days=4) if day_of_week == 4 else start_time + pd.Timedelta(days=2)
+        end_time = start_time + pd.Timedelta(days=5) if day_of_week == 4 else start_time + pd.Timedelta(days=3)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
         relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time)
         second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time)
@@ -426,101 +426,45 @@ def analyse(filtered_df: pd.DataFrame,
         total_trades+=1
         executed_trades.append(row)
 
+        #set the value for the type of trade this was, weather loss, even or success
         if stop_loss_index > -1 and take_profit_index > -1:
             if(min(time_sl_hit, time_tp_hit) == time_tp_hit):
                 print("trade successful")
                 row['type'] = "success"
                 row['success'] = True
                 successful_trades+=1
-                if row["is_buy2"]:
-                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
-                    gross_profit += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-                else: 
-                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
-                    gross_profit +=  row['profit'] 
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-            
+          
             elif(row['sl_updated']):       
                 row['type'] = "even"
                 print("trade broke even")
                 row['success'] = True
                 break_even +=1
-                if row["is_buy2"]:
-                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
-                    gross_profit += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-                else: 
-                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
-                    gross_profit +=  row['profit'] 
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
 
             else:
                 print("trade failed")
                 row['type'] = "fail"
                 row['success'] = False
                 unsuccessful_trades +=1            
-                if row["is_buy2"]:
-                    row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
-                    loss += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-                else: 
-                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
-                    loss += row["profit"]
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
+
         elif take_profit_index == -1 and stop_loss_index != -1:
             if(row['sl_updated']):
                 print("trade broke even")
                 row['type'] = "even"
                 row['success'] = True
                 break_even +=1
-                if row["is_buy2"]:
-                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
-                    gross_profit += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-                else: 
-                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
-                    gross_profit +=  row['profit'] 
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
+
             else:
                 print("trade failed")
                 row['type'] = "fail"
                 row['success'] = False
                 unsuccessful_trades+=1            
-                if row["is_buy2"]:
-                    row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
-                    loss += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-                else: 
-                    row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
-                    loss += row["profit"]
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
+
         elif stop_loss_index == -1 and take_profit_index != -1:
             print("trade successful")
             successful_trades+=1
             row['type'] = "success"
             row['success'] = True
 
-            if row["is_buy2"]:
-                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
-                    gross_profit += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-            else: 
-                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
-                gross_profit +=  row['profit'] 
-                account_balance  += row['profit']
-                row["account_balance"] = account_balance
         else:
             row['type'] = "running"
             row['success'] = False
@@ -529,7 +473,48 @@ def analyse(filtered_df: pd.DataFrame,
             row['position_close_time'] = row['time'] + pd.Timedelta(hours=3)
             print(f"Neither stop loss nor take profit was reached for trade. {row["time"]}")
 
- 
+        #calculate its profit value
+        if row['type'] == "success":
+            if row["is_buy2"]:
+                row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
+                gross_profit += row['profit']
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+            else: 
+                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
+                gross_profit +=  row['profit'] 
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+
+        elif row['type'] == "even": 
+            if row["is_buy2"]:
+                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    gross_profit += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+            else: 
+                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                gross_profit +=  row['profit'] 
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+        elif row['type'] == "fail":
+            if row["is_buy2"]:
+                    row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    loss += row['profit']
+                    account_balance  += row['profit']
+                    row["account_balance"] = account_balance
+            else: 
+                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                loss += row["profit"]
+                account_balance  += row['profit']
+                row["account_balance"] = account_balance
+        
+        else:
+            row["account_balance"] = account_balance
+            row['profit'] = 0
+            row['position_close_time'] = row['time'] + pd.Timedelta(hours=3)
+
+
     executed_trades_df = pd.DataFrame(executed_trades)
     if loss != 0:
         profit_factor = gross_profit / abs(loss)
@@ -556,6 +541,7 @@ def analyse(filtered_df: pd.DataFrame,
         "weekly_profit": weekly_profit,
         "monthly_profit": monthly_profit,        
     }
+
 
 def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
     grouper = (executed_trades_df['success'] != executed_trades_df['success'].shift()).cumsum()
