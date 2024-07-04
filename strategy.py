@@ -39,9 +39,9 @@ def m15_gold_strategy(data):
     data['ema_long'] = ta.ema(data['close'], length=26)
     data['lsma'] = ta.linreg(data['close'], length=18)
     
-    macd = ta.macd(data['close'], fast=20, slow=29, signal=9)
-    data['macd_line'] = macd['MACD_20_29_9']
-    data['macd_signal'] = macd['MACDs_20_29_9']
+    macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
+    data['macd_line'] = macd['MACD_12_26_9']
+    data['macd_signal'] = macd['MACDs_12_26_9']
     
     data['lsma_stddev'] = data['close'].rolling(window=25).std()
     
@@ -64,17 +64,35 @@ def m15_gold_strategy(data):
 
     
     # Generate signals
+
     data['is_buy2'] = (
-        ((data['open'].shift(1) < data['fixed_support_trendline_15'].shift(1)) & 
-        (data['fixed_resistance_gradient_15'] > 0) & 
-        (data['fixed_support_gradient_15'] > 0) & (data['open']<data['close'])) 
+        ((data['close'] < data['prev_fixed_support_trendline']) & 
+        (data['prev_fixed_support_gradient'] > 0) & 
+        (data['prev_hour_lsma_slope'] > 0) & 
+        (data['prev_hour_macd_line'] > 0) & (data['ema_50']<data['close']) &
+        (data['close'] > data['prev_fixed_support_trendline'])) | (
+        (data['close'].shift(1)> data['prev_fixed_resistance_trendline'].shift(1)) & 
+        (data['ema_50']<data['close']) & (data['close']>data['close'].shift(1)) & (data['stoch_k']>80) & (data['stoch_k']>data['stoch_d'])&(data['prev_hour_macd_line']>data['prev_hour_macd_signal']))
+        
     )
-    
+
     data['is_sell2'] = (
-        ((data['open'].shift(1) > data['fixed_resistance_trendline_15'].shift(1)) & 
-        (data['fixed_resistance_gradient_15'] < 0) & 
-        (data['fixed_support_gradient_15'] < 0) & (data['open']>data['close'])) 
-    )
+        ((data['close'] > data['prev_fixed_resistance_trendline']) & 
+        (data['prev_fixed_resistance_gradient'] < 0) &  
+        (data['prev_hour_lsma_slope'] < 0) & 
+        (data['prev_hour_macd_line'] < 0)  & (data['ema_50']>data['close'])&
+        (data['close'] < data['prev_fixed_resistance_trendline']))| (
+        (data['close'].shift(1)< data['prev_fixed_support_trendline'].shift(1)) & 
+        (data['ema_50']>data['close']) & (data['close']<data['close'].shift(1))& (data['stoch_k']<20) & (data['stoch_k']<data['stoch_d']) &(data['prev_hour_macd_line']<data['prev_hour_macd_signal'])))
+    # data['is_buy2'] = (
+    #     ((data['close'].shift(1) < data['fixed_support_trendline_15'].shift(1)) & (data['close']>data['fixed_support_trendline_15'].shift(1))&
+    #     (data['open']<data['close']) & (data['lsma_slope']>0) &(data['macd_line']>data['macd_signal'])) 
+    # )
+    
+    # data['is_sell2'] = (
+    #     ((data['close'].shift(1) > data['fixed_resistance_trendline_15'].shift(1)) & (data['close']<data['fixed_resistance_trendline_15'].shift(1)) &
+    #      (data['open']>data['close']) & (data['lsma_slope']<0)& (data['macd_line']<data['macd_signal'])) 
+    # )
 
 
     # data['is_sell2'] = (
@@ -90,17 +108,17 @@ def m15_gold_strategy(data):
     # )
                 
     
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 2000
-    data.loc[data['is_buy2'], 'sl'] = data['close'] - 1000
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 2000
-    data.loc[data['is_sell2'], 'sl'] = data['close'] + 1000
+    data.loc[data['is_buy2'], 'tp'] = data['close'] + 900
+    data.loc[data['is_buy2'], 'sl'] = data['close'] - 400
+    data.loc[data['is_sell2'], 'tp'] = data['close'] - 900
+    data.loc[data['is_sell2'], 'sl'] = data['close'] + 400
 
     #set new trailling stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 400
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 400
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 100
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 100
 
     #condition for setting new trailing stop
-    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 500
-    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 500
+    data.loc[data['is_buy2'], 'be_condition'] = data['close'] +  150
+    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 150
     
     return data

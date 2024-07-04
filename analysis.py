@@ -599,7 +599,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 11
+    lookback = 4
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline_15'] = np.nan
@@ -657,13 +657,30 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['resistance_trendline'] = np.nan
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
+
+    data['ema_50'] = ta.ema(data['close'], length=50)
+    data['ema_24'] = ta.ema(data['close'], length=24)
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
     data['prev_hour_lsma']=data['hour_lsma'].shift(1)
     data['hour_lsma_slope'] = data['hour_lsma'].diff()
     data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
+    
     macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
     data['hour_macd_line'] = macd['MACD_12_26_9']
-    data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
+    data['hour_macd_signal'] = macd['MACDs_12_26_9']
+
+    data['stoch_k']=np.nan
+    data['stoch_d']=np.nan
+
+    stochastic = ta.stoch(data['high'], data['low'], data['close'], k=14, d=3)
+    data['stoch_k'] = stochastic['STOCHk_14_3_3']
+    data['stoch_d'] = stochastic['STOCHd_14_3_3']
+
+    
+    data['prev_fixed_support_trendline'] = np.nan
+    data['prev_fixed_resistance_trendline'] = np.nan
+    data['prev_fixed_support_gradient']=np.nan
+    data['prev_fixed_resistance_gradient']=np.nan
 
 
     # Iterate over the dataset in overlapping windows of 15 candles
@@ -692,6 +709,12 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
             data.at[data.index[idx], 'support_gradient'] = support_slope
             data.at[data.index[idx], 'resistance_gradient'] = resist_slope
 
+    data['prev_fixed_support_trendline'] = data['fixed_support_trendline'].shift(1)
+    data['prev_fixed_resistance_trendline'] = data['fixed_resistance_trendline'].shift(1)
+    data['prev_fixed_support_gradient'] = data['fixed_support_gradient'].shift(1)
+    data['prev_fixed_resistance_gradient'] = data['fixed_resistance_gradient'].shift(1)
+    data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
+    data['prev_hour_macd_signal']=data['hour_macd_signal'].shift(1)
     data.to_csv("csv/test.csv",index=False)
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
