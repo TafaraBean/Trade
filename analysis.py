@@ -481,7 +481,6 @@ def analyse(filtered_df: pd.DataFrame,
             row['success'] = False
             row["account_balance"] = account_balance
             row['profit'] = 0
-            row['position_close_time'] = row['time'] + pd.Timedelta(hours=3)
             print(f"Neither stop loss nor take profit was reached for trade. {row["time"]}")
 
         #calculate its profit value
@@ -574,14 +573,14 @@ def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd
 
     # Set the 'Month' column based on the year and month number
     executed_trades_df['Month'] = executed_trades_df['time'].dt.month
-    
+    executed_trades_df['Month'] = executed_trades_df['Month'].apply(lambda x: calendar.month_name[x])
     # Calculate monthly profit by grouping by 'Month' and summing 'profit'
     monthly_profit = executed_trades_df.groupby('Month')['profit'].sum()
 
     # Create a new DataFrame with 'Month' and 'Monthly Profit' columns (optional)
     monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
     # Convert month number to month name
-    monthly_df['Month'] = monthly_df['Month'].apply(lambda x: calendar.month_name[x])
+
     return weekly_df, monthly_df
 
 
