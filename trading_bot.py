@@ -328,18 +328,18 @@ class TradingBot:
 
             for index, row in open_positions_df.iterrows():
                 #condition to check how far above opwn price a candle should close before sl is adjusted for buy orders
-                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] + 450):                        
+                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] + 500):                        
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open'] +410), # how much should the stop loss be adjusted above entry
+                                    sl=float(row['price_open'] +470), # how much should the stop loss be adjusted above entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
 
                 #condition to check how far below opwn price a candle should close before sl is adjusted for sell orders
-                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -450):
+                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -500):
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open']-410),# how much should the stop loss be adjusted below entry
+                                    sl=float(row['price_open']-470),# how much should the stop loss be adjusted below entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
             # Calculate and display performance metrics
