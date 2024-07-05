@@ -294,7 +294,8 @@ class TradingBot:
 
 
             hour_data= auto_trendline(hour_data)
-            hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline']]
+
+            hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','stoch_k','stoch_d','prev_hour_macd_signal']]
 
             df['hourly_time']=df['time'].dt.floor('h')
 
@@ -316,18 +317,18 @@ class TradingBot:
 
             for index, row in open_positions_df.iterrows():
                 #condition to check how far above opwn price a candle should close before sl is adjusted for buy orders
-                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] + 150):                        
+                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] + 450):                        
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open'] +100), # how much should the stop loss be adjusted above entry
+                                    sl=float(row['price_open'] +410), # how much should the stop loss be adjusted above entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
 
                 #condition to check how far below opwn price a candle should close before sl is adjusted for sell orders
-                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -150):
+                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -450):
                     self.changesltp(ticket=int(row['ticket']), 
                                     symbol=symbol, 
-                                    sl=float(row['price_open']-100),# how much should the stop loss be adjusted below entry
+                                    sl=float(row['price_open']-410),# how much should the stop loss be adjusted below entry
                                     tp=row['tp'])
                     print(f"sl adjusted for position {row['ticket']} ")
             # Calculate and display performance metrics

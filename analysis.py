@@ -366,13 +366,13 @@ def analyse(filtered_df: pd.DataFrame,
         start_time = start_time.ceil(conversion) #add 1 second to be able to apply ceil function
         day_of_week = start_time.dayofweek
                 # Check if the current row's month is different from the previous row's month
-        current_month = start_time.month
-        if previous_month is not None and current_month != previous_month:
-            lot_size += 0.01
-            print(f"New month detected: {start_time.strftime('%B %Y')}, increased lot size to {lot_size}")
+        # current_month = start_time.month
+        # if previous_month is not None and current_month != previous_month:
+        #     lot_size += 0.01
+        #     print(f"New month detected: {start_time.strftime('%B %Y')}, increased lot size to {lot_size}")
         
         # Update the previous month
-        previous_month = current_month
+        #previous_month = current_month
         # Add 4 days if the start_time is on a Friday, otherwise add 3 days
         end_time = start_time + pd.Timedelta(days=5) if day_of_week == 4 else start_time + pd.Timedelta(days=3)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
@@ -595,7 +595,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 4
+    lookback = 8
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline_15'] = np.nan
@@ -616,8 +616,8 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         resist_slope, resist_intercept = resist_coefs
         data.at[current_index, 'fixed_resistance_gradient_15'] = resist_slope
         data.at[current_index, 'fixed_support_gradient_15'] = support_slope
-        support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
-        resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
+        support_value = support_slope * window_data.at[current_index,'close'] + support_intercept
+        resist_value = resist_slope * window_data.at[current_index,'close'] + resist_intercept
         data.at[current_index, 'fixed_support_trendline_15'] = np.exp(support_value)
         data.at[current_index, 'fixed_resistance_trendline_15'] = np.exp(resist_value)
         # Apply the calculated gradients to each candle in the window
@@ -630,7 +630,6 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
             data.at[data.index[idx], 'resistance_trendline_15'] = np.exp(resist_value)
             data.at[data.index[idx], 'support_gradient_15'] = support_slope
             data.at[data.index[idx], 'resistance_gradient_15'] = resist_slope
-
     return data
 
 
@@ -661,9 +660,9 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['hour_lsma_slope'] = data['hour_lsma'].diff()
     data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
     
-    macd = ta.macd(data['close'], fast=12, slow=26, signal=9)
-    data['hour_macd_line'] = macd['MACD_12_26_9']
-    data['hour_macd_signal'] = macd['MACDs_12_26_9']
+    macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
+    data['hour_macd_line'] = macd['MACD_8_17_9']
+    data['hour_macd_signal'] = macd['MACDs_8_17_9']
 
     data['stoch_k']=np.nan
     data['stoch_d']=np.nan
@@ -690,8 +689,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
         resist_slope, resist_intercept = resist_coefs
         data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
         data.at[current_index, 'fixed_support_gradient'] = support_slope
-        support_value = support_slope * window_data.at[current_index,'low'] + support_intercept
-        resist_value = resist_slope * window_data.at[current_index,'high'] + resist_intercept
+        support_value = support_slope * window_data.at[current_index,'close'] + support_intercept
+        resist_value = resist_slope * window_data.at[current_index,'close'] + resist_intercept
         data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
         data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
         # Apply the calculated gradients to each candle in the window

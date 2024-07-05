@@ -66,24 +66,20 @@ def m15_gold_strategy(data):
     # Generate signals
 
     data['is_buy2'] = (
-        ((data['close'] < data['prev_fixed_support_trendline']) & 
-        (data['prev_fixed_support_gradient'] > 0) & 
-        (data['prev_hour_lsma_slope'] > 0) & 
-        (data['prev_hour_macd_line'] > 0) & (data['ema_50']<data['close']) &
-        (data['close'] > data['prev_fixed_support_trendline'])) | (
+        ((data['close'].shift(1) < data['prev_fixed_support_trendline'].shift(1)) &  
+        (data['prev_hour_macd_line'] > data['prev_hour_macd_signal']) & (data['ema_50']<data['close']) & (data['close']>data['close'].shift(1))& (data['stoch_k']>80) & (data['stoch_k']>data['stoch_d'])& (data['close'].shift(1)>data['close'].shift(2)))| (
         (data['close'].shift(1)> data['prev_fixed_resistance_trendline'].shift(1)) & 
         (data['ema_50']<data['close']) & (data['close']>data['close'].shift(1)) & (data['stoch_k']>80) & (data['stoch_k']>data['stoch_d'])&(data['prev_hour_macd_line']>data['prev_hour_macd_signal']))
         
     )
 
-    data['is_sell2'] = (
-        ((data['close'] > data['prev_fixed_resistance_trendline']) & 
-        (data['prev_fixed_resistance_gradient'] < 0) &  
-        (data['prev_hour_lsma_slope'] < 0) & 
-        (data['prev_hour_macd_line'] < 0)  & (data['ema_50']>data['close'])&
-        (data['close'] < data['prev_fixed_resistance_trendline']))| (
+    data['is_sell2'] = (((data['close'].shift(1) > data['prev_fixed_resistance_trendline'].shift(1)) &  
+        (data['prev_hour_macd_line'] < data['prev_hour_macd_signal']) & (data['ema_50']>data['close']) & (data['close']<data['close'].shift(1))& (data['stoch_k']<20) & (data['stoch_k']<data['stoch_d']) & (data['close'].shift(1)<data['close'].shift(2)))  | (
         (data['close'].shift(1)< data['prev_fixed_support_trendline'].shift(1)) & 
-        (data['ema_50']>data['close']) & (data['close']<data['close'].shift(1))& (data['stoch_k']<20) & (data['stoch_k']<data['stoch_d']) &(data['prev_hour_macd_line']<data['prev_hour_macd_signal'])))
+        (data['ema_50']>data['close']) & (data['close']<data['close'].shift(1))& (data['stoch_k']<20) & (data['stoch_k']<data['stoch_d']) &(data['prev_hour_macd_line']<data['prev_hour_macd_signal']))
+        )
+    
+
     # data['is_buy2'] = (
     #     ((data['close'].shift(1) < data['fixed_support_trendline_15'].shift(1)) & (data['close']>data['fixed_support_trendline_15'].shift(1))&
     #     (data['open']<data['close']) & (data['lsma_slope']>0) &(data['macd_line']>data['macd_signal'])) 
@@ -108,17 +104,17 @@ def m15_gold_strategy(data):
     # )
                 
     
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 900
-    data.loc[data['is_buy2'], 'sl'] = data['close'] - 400
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 900
-    data.loc[data['is_sell2'], 'sl'] = data['close'] + 400
+    data.loc[data['is_buy2'], 'tp'] = data['close'] + 1000
+    data.loc[data['is_buy2'], 'sl'] = data['close'] - 450
+    data.loc[data['is_sell2'], 'tp'] = data['close'] - 1000
+    data.loc[data['is_sell2'], 'sl'] = data['close'] + 450
 
     #set new trailling stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 410
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 410
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 470
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 470
 
     #condition for setting new trailing stop
-    data.loc[data['is_buy2'], 'be_condition'] = data['close'] +  450
-    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 450
+    data.loc[data['is_buy2'], 'be_condition'] = data['close'] +  500
+    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 500
     
     return data
