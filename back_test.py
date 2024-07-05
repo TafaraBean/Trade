@@ -69,7 +69,7 @@ if not filtered_df.empty:
     profit_factor = results['profit_factor']
     gross_profit = results['gross_profit']
     loss = results['loss']
-
+    account_balance = results['account_balance']
 
 
     print(f"\nanalysis from {start} to {end}\n")

@@ -534,6 +534,7 @@ def analyse(filtered_df: pd.DataFrame,
                                                                 total_trades=total_trades)
     weekly_profit, monthly_profit = aggregate_profit(executed_trades_df=executed_trades_df)
     return {
+        "account_balance": account_balance,
         "percentage_profitability": percentage_profitability,
         "profit_factor": profit_factor,
         "gross_profit": gross_profit,
