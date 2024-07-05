@@ -21,7 +21,7 @@ lot_size = 0.02
 timeframe = mt5.TIMEFRAME_M15
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2023-12-01")
+start = pd.Timestamp("2024-01-01")
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
@@ -99,8 +99,8 @@ if not filtered_df.empty:
     print(f"lowest account balance: {round(executed_trades_df['account_balance'].min(), 2)} {bot.account.currency}")
     print(f"net profit: {round(gross_profit + loss, 2)} {bot.account.currency}")
     # Print the DataFrame with monthly profit (optional)
-    print(f"\nweekly profit:\n {weekly_df}")
-    print(f"\nmonthly profit:\n {monthly_df}")
+    print(f"\nweekly profit:\n{weekly_df.to_string(index=False)}")
+    print(f"\nmonthly profit:\n{monthly_df.to_string(index=False)}")
 
     executed_trades_df.to_excel('filtered_excel_df.xlsx')
     executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)

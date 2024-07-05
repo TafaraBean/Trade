@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 from typing import Tuple
+import calendar
 
 def check_invalid_stopouts(row):
     """
@@ -573,13 +574,14 @@ def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd
 
     # Set the 'Month' column based on the year and month number
     executed_trades_df['Month'] = executed_trades_df['time'].dt.month
-
+    
     # Calculate monthly profit by grouping by 'Month' and summing 'profit'
     monthly_profit = executed_trades_df.groupby('Month')['profit'].sum()
 
     # Create a new DataFrame with 'Month' and 'Monthly Profit' columns (optional)
     monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
-
+    # Convert month number to month name
+    monthly_df['Month'] = monthly_df['Month'].apply(lambda x: calendar.month_name[x])
     return weekly_df, monthly_df
 
 
