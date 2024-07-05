@@ -172,7 +172,12 @@ class TradingBot:
         
         return df
 
-    def cal_profit(self, symbol: str, order_type, lot: float, open_price: float, close_price:float) -> float:
+    def profit_loss(self, 
+                    symbol: str, 
+                    order_type:int , 
+                    lot: float, 
+                    open_price: float, 
+                    close_price:float) -> float:
 
         #fetch symbol data        
         symbol_info=mt5.symbol_info(symbol)
@@ -187,21 +192,27 @@ class TradingBot:
 
         
         if order_type == mt5.ORDER_TYPE_BUY:
-            buy_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,symbol,lot,open_price, close_price)
-            
-            if buy_profit!=None:            
-                return buy_profit
-            else:
-                print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
-                raise ValueError("Profit value not a number")
+            return mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,
+                                         symbol,
+                                         lot,
+                                         open_price,
+                                         close_price)
+     
+
+            #    print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
+             #   raise ValueError("Profit value not a number")
         
         elif order_type == mt5.ORDER_TYPE_SELL:
-            sell_profit=mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,symbol,lot,open_price, close_price)
-            if sell_profit!=None:
-                return sell_profit
-            else:
-                print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
-                raise ValueError("Profit value not a number")
+            return mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,
+                                              symbol,
+                                              lot,
+                                              open_price, 
+                                              close_price)
+            
+                 
+        
+                #print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
+                #raise ValueError("Profit value not a number")
         else:
             raise ValueError("Invalid order type")
                 

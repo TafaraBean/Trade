@@ -7,6 +7,7 @@ import numpy as np
 from typing import Tuple
 import calendar
 
+
 def check_invalid_stopouts(row):
     """
     Efficiently checks for invalid stopouts in a trade row.
@@ -486,35 +487,35 @@ def analyse(filtered_df: pd.DataFrame,
         #calculate its profit value
         if row['type'] == "success":
             if row["is_buy2"]:
-                row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
+                row['profit'] =  bot.profit_loss(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
                 gross_profit += row['profit']
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
             else: 
-                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
+                row['profit'] = bot.profit_loss(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
                 gross_profit +=  row['profit'] 
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
 
         elif row['type'] == "even": 
             if row["is_buy2"]:
-                    row['profit'] =  bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    row['profit'] =  bot.profit_loss(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
                     gross_profit += row['profit']
                     account_balance  += row['profit']
                     row["account_balance"] = account_balance
             else: 
-                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                row['profit'] = bot.profit_loss(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
                 gross_profit +=  row['profit'] 
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
         elif row['type'] == "fail":
             if row["is_buy2"]:
-                    row['profit'] = bot.cal_profit(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
+                    row['profit'] = bot.profit_loss(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
                     loss += row['profit']
                     account_balance  += row['profit']
                     row["account_balance"] = account_balance
             else: 
-                row['profit'] = bot.cal_profit(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
+                row['profit'] = bot.profit_loss(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
                 loss += row["profit"]
                 account_balance  += row['profit']
                 row["account_balance"] = account_balance
@@ -526,16 +527,11 @@ def analyse(filtered_df: pd.DataFrame,
 
 
     executed_trades_df = pd.DataFrame(executed_trades)
-    if loss != 0:
-        profit_factor = gross_profit / abs(loss)
-    else:
-        profit_factor = float('inf')  # Handle case where there are no losing trades
-
-    if total_trades > 0:
-        percentage_profitability = ((successful_trades+break_even) / (total_trades)) * 100
-    else:
-        percentage_profitability = 0  # Handle case where there are no trades
-        
+    profit_factor = calc_profit_factor(gross_profit=gross_profit,
+                                        loss=loss)
+    percentage_profitability = calc_percentage_profitability(successful_trades=successful_trades,
+                                                                break_even=break_even,
+                                                                total_trades=total_trades)
     weekly_profit, monthly_profit = aggregate_profit(executed_trades_df=executed_trades_df)
     return {
         "percentage_profitability": percentage_profitability,
@@ -573,15 +569,34 @@ def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd
 
     # Set the 'Month' column based on the year and month number
     executed_trades_df['Month'] = executed_trades_df['time'].dt.month
-    executed_trades_df['Month'] = executed_trades_df['Month'].apply(lambda x: calendar.month_name[x])
+   
     # Calculate monthly profit by grouping by 'Month' and summing 'profit'
     monthly_profit = executed_trades_df.groupby('Month')['profit'].sum()
 
     # Create a new DataFrame with 'Month' and 'Monthly Profit' columns (optional)
     monthly_df = pd.DataFrame({'Month': monthly_profit.index, 'Monthly Profit': monthly_profit.values})
     # Convert month number to month name
-
+    monthly_df['Month'] = monthly_df['Month'].apply(lambda x: calendar.month_name[x])
     return weekly_df, monthly_df
+
+def calc_profit_factor(loss: float,
+                       gross_profit: float):
+    if loss != 0:
+        profit_factor = gross_profit / abs(loss)
+    else:
+        profit_factor = float('inf')  # Handle case where there are no losing trades
+    
+    return profit_factor
+
+def calc_percentage_profitability(successful_trades: int,
+                       break_even: int,
+                       total_trades: int):
+    if total_trades > 0:
+        percentage_profitability = ((successful_trades+break_even) / (total_trades)) * 100
+    else:
+        percentage_profitability = 0  # Handle case where there are no trades
+    
+    return percentage_profitability
 
 
 def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
