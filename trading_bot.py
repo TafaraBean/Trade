@@ -215,7 +215,49 @@ class TradingBot:
                 #raise ValueError("Profit value not a number")
         else:
             raise ValueError("Invalid order type")
-                
+
+    # def profit_loss(self, 
+    #                 symbol: str, 
+    #                 order_type:int , 
+    #                 lot: float, 
+    #                 open_price: float, 
+    #                 close_price:float) -> float:
+
+    #     #fetch symbol data        
+    #     symbol_info=mt5.symbol_info(symbol)
+    #     currency_base =mt5.symbol_info("USDZAR")
+    #     if symbol_info is None:
+    #         print(symbol,"not found, skipped")
+    #         return None
+    #     if not symbol_info.visible:
+    #         print(symbol, "is not visible, trying to switch on")
+    #         if not mt5.symbol_select(symbol,True):
+    #             print("symbol_select({}}) failed, skipped",symbol)
+    #             return None
+    #     if not currency_base.visible:
+    #         print("USDZAR", "is not visible, trying to switch on")
+    #         if not mt5.symbol_select("USDZAR",True):
+    #             print("symbol_select({}}) failed, skipped",symbol)
+    #             return None
+
+        
+    #     if order_type == mt5.ORDER_TYPE_BUY:
+    #         # Profit for buy trade = (close price - open price) * lot size
+    #         profit_loss = (close_price - open_price) * lot
+    #     else:
+    #         # Profit for sell trade = (open price - close price) * lot size
+    #         profit_loss = (open_price - close_price) * lot
+
+    #     return round(profit_loss * currency_base.bid,2)
+                 
+        
+    #             #print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
+    #             #raise ValueError("Profit value not a number")
+    #     #else:
+    #     #    raise ValueError("Invalid order type")
+
+
+          
     def copy_chart_range(self, symbol: str, timeframe, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         "Retrives chart data from specified start date till end date"
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)

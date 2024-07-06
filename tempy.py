@@ -1,24 +1,38 @@
-def calc_profit_factor(loss: float,
-                       gross_profit: float):
-    if loss != 0:
-        profit_factor = gross_profit / abs(loss)
-    else:
-        profit_factor = float('inf')  # Handle case where there are no losing trades
-    
-    return profit_factor
+def calculate_profit_loss(lot_size, open_price, close_price, is_buy):
+  """
+  This function calculates the profit or loss for a given trade.
 
-def calc_percentage_profitability(successful_trades: int,
-                       break_even: int,
-                       total_trades: int):
-    if total_trades > 0:
-        percentage_profitability = ((successful_trades+break_even) / (total_trades)) * 100
-    else:
-        percentage_profitability = 0  # Handle case where there are no trades
-    
-    return percentage_profitability
+  Args:
+      lot_size: The number of units bought or sold (e.g., shares, contracts).
+      open_price: The price at which the trade was opened.
+      close_price: The price at which the trade was closed.
+      is_buy: A boolean flag indicating whether the trade was a buy (True) or sell (False).
 
-profit_factor = calc_profit_factor(gross_profit=gross_profit,
-                                    loss=loss)
-percentage_profitability = calc_percentage_profitability(successful_trades=successful_trades,
-                                                            break_even=break_even,
-                                                            total_trades=total_trades)
+  Returns:
+      The profit or loss for the trade. A positive value indicates profit, 
+      and a negative value indicates loss.
+  """
+
+  if is_buy:
+    # Profit for buy trade = (close price - open price) * lot size
+    profit_loss = (close_price - open_price) * lot_size
+  else:
+    # Profit for sell trade = (open price - close price) * lot size
+    profit_loss = (open_price - close_price) * lot_size
+
+  return profit_loss
+
+# Example usage
+lot_size = 0.02
+open_price = 62040.84
+close_price = 59612.85815427919
+is_buy = False  # Buy trade
+
+profit_loss = calculate_profit_loss(lot_size, open_price, close_price, is_buy)
+
+if profit_loss > 0:
+  print("Profit:", profit_loss)
+elif profit_loss < 0:
+  print("Loss:", abs(profit_loss))  # Print absolute value for loss
+else:
+  print("No profit or loss (break-even)")

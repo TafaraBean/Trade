@@ -34,7 +34,7 @@ def h1_gold_strategy(data):
 
 
 
-def m15_gold_strategy(data):
+def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['ema_short'] = ta.ema(data['close'], length=12)
     data['ema_long'] = ta.ema(data['close'], length=26)
     data['lsma'] = ta.linreg(data['close'], length=18)
@@ -59,60 +59,52 @@ def m15_gold_strategy(data):
     data['stoch_k'] = stochastic['STOCHk_14_3_3']
     data['stoch_d'] = stochastic['STOCHd_14_3_3']
 
-
-
-
-    
     # Generate signals
-
     data['is_buy2'] = (
-         (
-        (data['close'].shift(1)> data['prev_fixed_resistance_trendline'].shift(1)) & (abs(data['open']-data['close'])<300) &
-        (data['ema_50']<data['close']) & (data['stoch_k']>80) & (data['stoch_k']>data['stoch_d'])&(data['prev_hour_macd_line']>data['prev_hour_macd_signal']))
-        
+        (data['close'].shift(1) > data['prev_fixed_resistance_trendline'].shift(1)) & 
+        (abs(data['open'] - data['close']) < 300) & 
+        (data['ema_50'] < data['close']) & 
+        (data['stoch_k'] > 80) & 
+        (data['stoch_k'] > data['stoch_d']) & 
+        (data['prev_hour_macd_line'] > data['prev_hour_macd_signal'])
     )
 
-    data['is_sell2'] = ((
-        (data['close'].shift(1)< data['prev_fixed_support_trendline'].shift(1)) & (abs(data['open']-data['close'])<300) & 
-        (data['ema_50']>data['close']) & (data['stoch_k']<20) & (data['stoch_k']<data['stoch_d']) &(data['prev_hour_macd_line']<data['prev_hour_macd_signal']))
-        )
+    data['is_sell2'] = (
+        (data['close'].shift(1) < data['prev_fixed_support_trendline'].shift(1)) & 
+        (abs(data['open'] - data['close']) < 300) & 
+        (data['ema_50'] > data['close']) & 
+        (data['stoch_k'] < 20) & 
+        (data['stoch_k'] < data['stoch_d']) & 
+        (data['prev_hour_macd_line'] < data['prev_hour_macd_signal'])
+    )
     
+    data.loc[data['is_buy2'], 'tp'] = data['fixed_resistance_trendline']
+    data.loc[data['is_buy2'], 'sl'] = data['prev_fixed_support_trendline']
+    data.loc[data['is_sell2'], 'tp'] = data['fixed_support_trendline']
+    data.loc[data['is_sell2'], 'sl'] = data['prev_fixed_resistance_trendline']
 
-    # data['is_buy2'] = (
-    #     ((data['close'].shift(1) < data['fixed_support_trendline_15'].shift(1)) & (data['close']>data['fixed_support_trendline_15'].shift(1))&
-    #     (data['open']<data['close']) & (data['lsma_slope']>0) &(data['macd_line']>data['macd_signal'])) 
-    # )
-    
-    # data['is_sell2'] = (
-    #     ((data['close'].shift(1) > data['fixed_resistance_trendline_15'].shift(1)) & (data['close']<data['fixed_resistance_trendline_15'].shift(1)) &
-    #      (data['open']>data['close']) & (data['lsma_slope']<0)& (data['macd_line']<data['macd_signal'])) 
-    # )
+    # Ensuring tp is valid for buy and sell orders
+    data.loc[(data['is_buy2']) & (data['tp'] <= data['close']+250), 'tp'] = data['close'] + 500
+    data.loc[(data['is_sell2']) & (data['tp'] >= data['close']-250), 'tp'] = data['close'] - 500    
 
+    # Ensuring sl is valid for buy and sell orders
+    data.loc[(data['is_buy2']) & (data['sl'] >= data['close'])-150, 'sl'] = data['close'] - 350
+    data.loc[(data['is_sell2']) & (data['sl'] <= data['close']+150), 'sl'] = data['close'] + 350  
 
-    # data['is_sell2'] = (
-    #     ((data['close'].shift(1) > data['fixed_resistance_trendline_15'].shift(1)) & 
-    #     (data['fixed_resistance_gradient'] < 0) & 
-    #     (data['fixed_support_gradient'] < 0) & 
-    #     (data['fixed_support_gradient_15'] < 0) & 
-    #     (data['fixed_resistance_gradient_15'] < 0) & 
-    #     (data['close'] < data['fixed_resistance_trendline_15'].shift(1))) |
-    #     ((data['close'].shift(1) < data['fixed_support_trendline_15'].shift(1)) & 
-    #     (data['close'] < data['fixed_support_trendline_15'].shift(1)) &
-    #     (data['fixed_support_trendline_15'] < data['fixed_support_trendline_15'].shift(1)))
-    # )
-                
-    
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 500
-    data.loc[data['is_buy2'], 'sl'] = data['prev_fixed_support_trendline'].shift(1)
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 500
-    data.loc[data['is_sell2'], 'sl'] = data['prev_fixed_resistance_trendline'].shift(1)
-
-    #set new trailling stop loss
+    # Set new trailing stop loss
     data.loc[data['is_buy2'], 'be'] = data['close'] + 350
     data.loc[data['is_sell2'], 'be'] = data['close'] - 350
 
-    #condition for setting new trailing stop
-    data.loc[data['is_buy2'], 'be_condition'] = data['close'] +  400
+    # Condition for setting new trailing stop
+    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 400
     data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 400
-    
+
+    # Adjust signals based on SL and TP distances
+    #data['is_buy2'] = data['is_buy2'] & (
+    #    abs(data['sl'] - data['close']) <= 2.8 * abs(data['tp'] - data['close'])
+    #)
+    #data['is_sell2'] = data['is_sell2'] & (
+    #    abs(data['sl'] - data['close']) <= 2.8 * abs(data['tp'] - data['close'])
+    #)
+
     return data

@@ -27,7 +27,11 @@ def check_invalid_stopouts(row):
     # Consolidated condition for invalid stopouts based on buy/sell direction
     invalid_stopouts = (is_buy2 and (take_profit <= close_price or stop_loss >= close_price)) or \
                        (not is_buy2 and (take_profit >= close_price or stop_loss <= close_price))
-
+    if invalid_stopouts:
+        if is_buy2:
+            print(f"Details:\nType: buy \nsl invalid: {(stop_loss >= close_price) }\ntp invalid: {(take_profit <= close_price)}")
+        else:
+            print(f"Details:\nType: sell \nsl invalid: {(stop_loss <= close_price) }\ntp invald: {(take_profit >= close_price)}")
     return invalid_stopouts
 
 
@@ -768,3 +772,28 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     # Show the figure
     fig.show()
     return data
+
+
+# def profit_loss(lot_size, open_price, close_price, is_buy):
+#     """
+#     This function calculates the profit or loss for a given trade.
+
+#     Args:
+#         lot_size: The number of units bought or sold (e.g., shares, contracts).
+#         open_price: The price at which the trade was opened.
+#         close_price: The price at which the trade was closed.
+#         is_buy: A boolean flag indicating whether the trade was a buy (True) or sell (False).
+
+#     Returns:
+#         The profit or loss for the trade. A positive value indicates profit, 
+#         and a negative value indicates loss.
+#     """
+
+#     if is_buy:
+#         # Profit for buy trade = (close price - open price) * lot size
+#         profit_loss = (close_price - open_price) * lot_size
+#     else:
+#         # Profit for sell trade = (open price - close price) * lot size
+#         profit_loss = (open_price - close_price) * lot_size
+
+#     return profit_loss
