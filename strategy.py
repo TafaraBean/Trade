@@ -59,12 +59,19 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['stoch_k'] = stochastic['STOCHk_14_3_3']
     data['stoch_d'] = stochastic['STOCHd_14_3_3']
 
+    pip_size = 0.0001
+
+    # Set TP and SL in terms of pips
+    tp_pips = 30 * pip_size  # e.g., 50 pips
+    sl_pips = 108 * pip_size  # e.g., 20 pips
+    be_pips = 5 * pip_size
+
     # Generate signals
     data['is_buy2'] = (
         (data['close'].shift(1) > data['prev_fixed_resistance_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] < data['close']) & 
-        (data['stoch_k'] > 80) & 
+        (data['stoch_k'] > 70) & 
         (data['stoch_k'] > data['stoch_d']) & 
         (data['prev_hour_macd_line'] > data['prev_hour_macd_signal'])
     )
@@ -73,31 +80,25 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
         (data['close'].shift(1) < data['prev_fixed_support_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] > data['close']) & 
-        (data['stoch_k'] < 20) & 
+        (data['stoch_k'] < 30) & 
         (data['stoch_k'] < data['stoch_d']) & 
         (data['prev_hour_macd_line'] < data['prev_hour_macd_signal'])
     )
     
-    data.loc[data['is_buy2'], 'tp'] = data['fixed_resistance_trendline']
-    data.loc[data['is_buy2'], 'sl'] = data['prev_fixed_support_trendline']
-    data.loc[data['is_sell2'], 'tp'] = data['fixed_support_trendline']
-    data.loc[data['is_sell2'], 'sl'] = data['prev_fixed_resistance_trendline']
+    data.loc[data['is_buy2'], 'tp'] = data['close'] + tp_pips
+    data.loc[data['is_buy2'], 'sl'] = data['close'] - sl_pips
+    data.loc[data['is_sell2'], 'tp'] = data['close'] - tp_pips
+    data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Ensuring tp is valid for buy and sell orders
-    data.loc[(data['is_buy2']) & (data['tp'] <= data['close']+250), 'tp'] = data['close'] + 500
-    data.loc[(data['is_sell2']) & (data['tp'] >= data['close']-250), 'tp'] = data['close'] - 500    
-
-    # Ensuring sl is valid for buy and sell orders
-    data.loc[(data['is_buy2']) & (data['sl'] >= data['close'])-150, 'sl'] = data['close'] - 350
-    data.loc[(data['is_sell2']) & (data['sl'] <= data['close']+150), 'sl'] = data['close'] + 350  
-
+    
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 350
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 350
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 3 * pip_size
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 3 * pip_size
 
     # Condition for setting new trailing stop
-    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 400
-    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 400
+    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
+    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - be_pips
 
     # Adjust signals based on SL and TP distances
     #data['is_buy2'] = data['is_buy2'] & (
