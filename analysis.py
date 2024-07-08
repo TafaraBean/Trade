@@ -674,7 +674,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=30)
+    data['ema_50'] = ta.ema(data['close'], length=2)
     data['ema_24'] = ta.ema(data['close'], length=24)
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
     data['prev_hour_lsma']=data['hour_lsma'].shift(1)

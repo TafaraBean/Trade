@@ -71,7 +71,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
         (data['close'].shift(1) > data['prev_fixed_resistance_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] < data['close']) & 
-        (data['stoch_k'] > 70) & 
+        (data['stoch_k'] > 80) & 
         (data['stoch_k'] > data['stoch_d']) & 
         (data['prev_hour_macd_line'] > data['prev_hour_macd_signal'])
     )
@@ -80,7 +80,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
         (data['close'].shift(1) < data['prev_fixed_support_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] > data['close']) & 
-        (data['stoch_k'] < 30) & 
+        (data['stoch_k'] < 20) & 
         (data['stoch_k'] < data['stoch_d']) & 
         (data['prev_hour_macd_line'] < data['prev_hour_macd_signal'])
     )

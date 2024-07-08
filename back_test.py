@@ -17,12 +17,12 @@ bot = TradingBot( login=account, password=password, server=server)
 symbol="EURUSD"
 account_balance = 700
 inital_balance = account_balance
-lot_size = 0.02
+lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-01-01")
-#end = pd.Timestamp("2023-12-30")
+start = pd.Timestamp("2024-07-01")
+#end = pd.Timestamp("2024-06-28")
 end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
