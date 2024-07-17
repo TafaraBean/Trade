@@ -311,8 +311,8 @@ class TradingBot:
             #"ENUM_ORDER_STATE": mt5.ORDER_FILLING_RETURN,
         }
         #// perform the check and display the result 'as is'
-        result = mt5.order_send(request)._asdict()
-
+        result = mt5.order_send(request)
+        
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             print("4. order_send failed, retcode={}".format(result.retcode))
 
