@@ -486,7 +486,7 @@ def analyse(filtered_df: pd.DataFrame,
             row['success'] = False
             row["account_balance"] = account_balance
             row['profit'] = 0
-            print(f"Neither stop loss nor take profit was reached for trade. {row["time"]}")
+            print(f"Neither stop loss nor take profit was reached for trade. {row['time']}")
 
         #calculate its profit value
         if row['type'] == "success":
@@ -616,7 +616,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 16
+    lookback = 4
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline_15'] = np.nan
@@ -666,7 +666,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 16
+    lookback = 24
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -688,9 +688,15 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['stoch_k']=np.nan
     data['stoch_d']=np.nan
 
-    stochastic = ta.stoch(data['high'], data['low'], data['close'], k=14, d=3)
-    data['stoch_k'] = stochastic['STOCHk_14_3_3']
-    data['stoch_d'] = stochastic['STOCHd_14_3_3']
+
+    
+        # Calculate PSAR
+    data['psar'] = ta.psar(data['high'], data['low'], data['close'], af=0.02, max_af=0.2)['PSARl_0.02_0.2']
+    data['prev_psar']=data['psar'].shift(1)
+    
+    # Determine PSAR trend direction
+    data['psar_direction'] = data.apply(lambda row: 1 if row['psar'] < row['close'] else -1, axis=1)
+    data['prev_psar_direction']=data['psar_direction'].shift(1)
 
     
     data['prev_fixed_support_trendline'] = np.nan

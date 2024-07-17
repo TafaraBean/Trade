@@ -34,6 +34,7 @@ def h1_gold_strategy(data):
 
 
 
+
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['ema_short'] = ta.ema(data['close'], length=12)
     data['ema_long'] = ta.ema(data['close'], length=26)
@@ -51,38 +52,48 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_lsma_slope_2'] = data['lsma_slope'].shift(2)
     
     # Adjust LSMA bands based on trend
-    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.35) + (data['lsma_slope'] >= 0) * 1.5
-    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.35) - (data['lsma_slope'] <= 0) * 1.5
+    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] ) 
+    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] ) 
 
     # Calculate stochastic oscillator
     stochastic = ta.stoch(data['high'], data['low'], data['close'], k=14, d=3)
     data['stoch_k'] = stochastic['STOCHk_14_3_3']
     data['stoch_d'] = stochastic['STOCHd_14_3_3']
 
+
+
     pip_size = 0.0001
 
     # Set TP and SL in terms of pips
-    tp_pips = 30 * pip_size  # e.g., 50 pips
-    sl_pips = 108 * pip_size  # e.g., 20 pips
+    tp_pips = 50 * pip_size  # e.g., 50 pips
+    sl_pips = 90 * pip_size  # e.g., 20 pips
     be_pips = 10 * pip_size
 
     # Generate signals
     data['is_buy2'] = (
+        ((data['fixed_support_trendline_15'] < data['prev_fixed_support_trendline'].shift(1)) &
+        (data['open'] < data['close']) &
+        (data['prev_psar_direction'] == 1)) | (
         (data['close'].shift(1) > data['prev_fixed_resistance_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] < data['close']) & 
         (data['stoch_k'] > 80) & 
         (data['stoch_k'] > data['stoch_d']) & 
         (data['prev_hour_macd_line'] > data['prev_hour_macd_signal'])
+    ) # Only buy if PSAR indicates an uptrend
     )
 
     data['is_sell2'] = (
+        ((data['fixed_resistance_trendline_15'] > data['prev_fixed_resistance_trendline'].shift(1)) &
+        (data['open'] > data['close']) &
+        (data['prev_psar_direction'] == -1)) | (
         (data['close'].shift(1) < data['prev_fixed_support_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] > data['close']) & 
         (data['stoch_k'] < 20) & 
         (data['stoch_k'] < data['stoch_d']) & 
         (data['prev_hour_macd_line'] < data['prev_hour_macd_signal'])
+    )  # Only sell if PSAR indicates a downtrend
     )
     
     data.loc[data['is_buy2'], 'tp'] = data['close'] + tp_pips
@@ -90,8 +101,6 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'tp'] = data['close'] - tp_pips
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
-    # Ensuring tp is valid for buy and sell orders
-    
     # Set new trailing stop loss
     data.loc[data['is_buy2'], 'be'] = data['close'] + 8 * pip_size
     data.loc[data['is_sell2'], 'be'] = data['close'] - 8 * pip_size
@@ -99,13 +108,5 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
     data.loc[data['is_sell2'], 'be_condition'] = data['close'] - be_pips
-
-    # Adjust signals based on SL and TP distances
-    #data['is_buy2'] = data['is_buy2'] & (
-    #    abs(data['sl'] - data['close']) <= 2.8 * abs(data['tp'] - data['close'])
-    #)
-    #data['is_sell2'] = data['is_sell2'] & (
-    #    abs(data['sl'] - data['close']) <= 2.8 * abs(data['tp'] - data['close'])
-    #)
 
     return data
