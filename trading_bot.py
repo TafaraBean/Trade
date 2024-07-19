@@ -336,7 +336,7 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"\nSleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(time_difference)
+            time.sleep(5)
 
             # Fetch the market data and apply the trading strategy
             
@@ -380,10 +380,10 @@ class TradingBot:
 
                 # Append the last row to a CSV file
                 try:
-                    with open('csv/positoins.csv', 'x') as f:
+                    with open('csv/positions.csv', 'x') as f:
                         last_row.to_csv(f, header=True, index=False)
                 except FileExistsError:
-                    last_row.to_csv('csv/positoins.csv', mode='a', header=False, index=False)
+                    last_row.to_csv('csv/positions.csv', mode='a', header=False, index=False)
 
             df.to_csv('main.csv', index=False)
             
