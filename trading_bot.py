@@ -357,35 +357,82 @@ class TradingBot:
             merged_data = pd.merge(df,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
 
             df = strategy_func(merged_data)
+            
 
             # Check for new trading signals
             latest_signal = df.iloc[-1]
-
+            signal_generate = False
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
-                self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
-            elif latest_signal["is_sell2"]:
-                self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                order = self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
+                signal_generate = True
 
+            elif latest_signal["is_sell2"]:
+                order = self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                signal_generate = True
+
+            if signal_generate:
+                # Update the 'ticket' column in the last row
+                df.at[df.index[-1], 'ticket'] = order['order']
+
+                # Extract the last row of the DataFrame
+                last_row = df.tail(1)
+
+                # Append the last row to a CSV file
+                try:
+                    with open('csv/positoins.csv', 'x') as f:
+                        last_row.to_csv(f, header=True, index=False)
+                except FileExistsError:
+                    last_row.to_csv('csv/positoins.csv', mode='a', header=False, index=False)
+
+            df.to_csv('main.csv', index=False)
+            
             #trail any stop losses as needed
             open_positions_df = self.get_position_all(symbol=symbol)
 
             for index, row in open_positions_df.iterrows():
-                #condition to check how far above opwn price a candle should close before sl is adjusted for buy orders
-                if(row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= row['price_open'] + 10 * 0.0001):                        
-                    self.changesltp(ticket=int(row['ticket']), 
-                                    symbol=symbol, 
-                                    sl=float(row['price_open'] + 8 * 0.0001), # how much should the stop loss be adjusted above entry
-                                    tp=row['tp'])
-                    print(f"sl adjusted for position {row['ticket']} ")
+                positions_df = pd.read_csv('csv/positions.csv')
+                specific_row_index = positions_df.index[positions_df['ticket'] == row['ticket']]
 
-                #condition to check how far below opwn price a candle should close before sl is adjusted for sell orders
-                elif(row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= row['price_open'] -10 * 0.0001):
-                    self.changesltp(ticket=int(row['ticket']), 
-                                    symbol=symbol, 
-                                    sl=float(row['price_open']-8 * 0.0001),# how much should the stop loss be adjusted below entry
-                                    tp=row['tp'])
-                    print(f"sl adjusted for position {row['ticket']} ")
-            # Calculate and display performance metrics
-            df.to_csv('main.csv', index=False)
+                if not specific_row_index.empty:
+                    # Extract the specific row index
+                    idx = specific_row_index[0]
+                    
+                    # Extract the specific values
+                    be_condition = positions_df.at[idx, 'be_condition']
+                    be = positions_df.at[idx, 'be']
+                    
+                    # Condition to check how far above open price a candle should close before sl is adjusted for buy orders
+                    if row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= be_condition:
+                        result = self.changesltp(ticket=int(row['ticket']), 
+                                                symbol=symbol, 
+                                                sl=float(be),  # how much should the stop loss be adjusted above entry
+                                                tp=row['tp'])
+                        if result.retcode == mt5.TRADE_RETCODE_DONE:
+                            print(f"sl adjusted for position {row['ticket']} ")
+                            be_condition += 10 * 0.0001
+                            be += 8 * 0.0001
+                            
+                            # Update the DataFrame
+                            positions_df.at[idx, 'be_condition'] = be_condition
+                            positions_df.at[idx, 'be'] = be
+                    
+                    # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
+                    elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
+                        result = self.changesltp(ticket=int(row['ticket']), 
+                                                symbol=symbol, 
+                                                sl=float(be),  # how much should the stop loss be adjusted below entry
+                                                tp=row['tp'])
+                        if result.retcode == mt5.TRADE_RETCODE_DONE:
+                            print(f"sl adjusted for position {row['ticket']} ")
+                            be_condition -= 10 * 0.0001
+                            be -= 8 * 0.0001
+                            
+                            # Update the DataFrame
+                            positions_df.at[idx, 'be_condition'] = be_condition
+                            positions_df.at[idx, 'be'] = be
+                else:
+                    print(f"No specific row found for ticket {row['ticket']}")
 
+            # Save the updated DataFrame back to the CSV file
+            positions_df.to_csv('csv/positions.csv', index=False)
