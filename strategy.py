@@ -1,5 +1,7 @@
 import pandas as pd
 import pandas_ta as ta
+from scipy.stats import norm
+import numpy as np
 
 def h1_gold_strategy(data):
         data['ema_short'] = ta.ema(data['close'], length=12)
@@ -35,6 +37,23 @@ def h1_gold_strategy(data):
 
 
 
+def nadaraya_watson_smoother(x, y, bandwidth):
+    """Nadaraya-Watson kernel regression smoother."""
+    n = len(x)
+    y_hat = np.zeros(n)
+    
+    for i in range(n):
+        weights = norm.pdf((x - x[i]) / bandwidth)
+        weights /= weights.sum()
+        y_hat[i] = np.sum(weights * y)
+    
+    return y_hat
+
+def determine_trend(smoothed_prices):
+    """Determine market trend based on the smoothed prices."""
+    trends = np.diff(smoothed_prices)
+    return [np.nan] + ['bullish' if trend > 0 else 'bearish' for trend in trends]
+
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['ema_short'] = ta.ema(data['close'], length=12)
     data['ema_long'] = ta.ema(data['close'], length=26)
@@ -52,48 +71,56 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_lsma_slope_2'] = data['lsma_slope'].shift(2)
     
     # Adjust LSMA bands based on trend
-    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] ) 
-    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] ) 
+    data['lsma_upper_band'] = data['lsma'] + data['lsma_stddev']
+    data['lsma_lower_band'] = data['lsma'] - data['lsma_stddev']
 
     # Calculate stochastic oscillator
     stochastic = ta.stoch(data['high'], data['low'], data['close'], k=14, d=3)
     data['stoch_k'] = stochastic['STOCHk_14_3_3']
     data['stoch_d'] = stochastic['STOCHd_14_3_3']
 
+    # Nadaraya-Watson smoother
+    x = np.arange(len(data))
+    y = data['close'].values
+    bandwidth = 10  # Adjust as needed
 
+    data['nadaraya_watson'] = nadaraya_watson_smoother(x, y, bandwidth)
+    data['nadaraya_watson_trend'] = determine_trend(data['nadaraya_watson'])
 
     pip_size = 0.0001
 
     # Set TP and SL in terms of pips
-    tp_pips = 50 * pip_size  # e.g., 50 pips
-    sl_pips = 90 * pip_size  # e.g., 20 pips
+    tp_pips = 50 * pip_size
+    sl_pips = 90 * pip_size
     be_pips = 10 * pip_size
     data['ticket'] = None
     # Generate signals
     data['is_buy2'] = (
         ((data['fixed_support_trendline_15'] < data['prev_fixed_support_trendline'].shift(1)) &
-        (data['open'] < data['close']) &
-        (data['prev_psar_direction'] == 1)) | (
+         (data['open'] < data['close']) &
+         (data['prev_psar_direction'] == 1) &
+         (data['nadaraya_watson_trend'] == 'bullish')) | (
         (data['close'].shift(1) > data['prev_fixed_resistance_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] < data['close']) & 
         (data['stoch_k'] > 80) & 
         (data['stoch_k'] > data['stoch_d']) & 
-        (data['prev_hour_macd_line'] > data['prev_hour_macd_signal'])
-    ) # Only buy if PSAR indicates an uptrend
+        (data['prev_hour_macd_line'] > data['prev_hour_macd_signal']) 
+    )
     )
 
     data['is_sell2'] = (
         ((data['fixed_resistance_trendline_15'] > data['prev_fixed_resistance_trendline'].shift(1)) &
-        (data['open'] > data['close']) &
-        (data['prev_psar_direction'] == -1)) | (
+         (data['open'] > data['close']) &
+         (data['prev_psar_direction'] == -1) &
+         (data['nadaraya_watson_trend'] == 'bearish')) | (
         (data['close'].shift(1) < data['prev_fixed_support_trendline'].shift(1)) & 
         (abs(data['open'] - data['close']) < 300) & 
         (data['ema_50'] > data['close']) & 
         (data['stoch_k'] < 20) & 
         (data['stoch_k'] < data['stoch_d']) & 
         (data['prev_hour_macd_line'] < data['prev_hour_macd_signal'])
-    )  # Only sell if PSAR indicates a downtrend
+    )
     )
     
     data.loc[data['is_buy2'], 'tp'] = data['close'] + tp_pips
