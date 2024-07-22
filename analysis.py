@@ -763,6 +763,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_fixed_resistance_gradient'] = data['fixed_resistance_gradient'].shift(1)
     data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
     data['prev_hour_macd_signal']=data['hour_macd_signal'].shift(1)
+    data['prev_nadaraya_watson']=data['nadaraya_watson'].shift(1)
+    data['prev_nadaraya_watson_trend']=data['nadaraya_watson_trend'].shift(1)
     data.to_csv("csv/test.csv",index=False)
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
