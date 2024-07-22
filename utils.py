@@ -13,6 +13,7 @@ def add_missing_position(order: pd.Series, file_path: str, columns: List[str] = 
 
         else:
             order['be_condition'] = order['price_open'] + 10 * 0.0001
+            order['be'] = order['price_open'] + 8 * 0.0001
 
     else:
         if order['sl'] < order['price_open']:

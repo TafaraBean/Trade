@@ -326,10 +326,12 @@ class TradingBot:
             if latest_signal['is_buy2']:
                 order = self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
                 df.at[df.index[-1], 'ticket'] = order['order']
+                df.at[df.index[-1], 'type'] = mt5.ORDER_TYPE_BUY
 
             elif latest_signal["is_sell2"]:
                 order = self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
                 df.at[df.index[-1], 'ticket'] = order['order']
+                df.at[df.index[-1], 'type'] = mt5.ORDER_TYPE_SELL
             
             try:
                 # Try opening the file in 'x' mode to create it if it doesn't exist
