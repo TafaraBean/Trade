@@ -28,6 +28,7 @@ class TradingBot:
         self.password = password
         self.server = server
         self.positions = {}
+        self.positions_file_path = 'csv/positions.csv'
         self.initialize_bot()
 
         self.timeframe_to_interval = {
@@ -336,7 +337,7 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"\nSleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(5)
+            time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             
@@ -370,20 +371,28 @@ class TradingBot:
             elif latest_signal["is_sell2"]:
                 order = self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
                 signal_generate = True
-
+            
+            try:
+                # Try opening the file in 'x' mode to create it if it doesn't exist
+                with open(self.positions_file_path, 'x') as f:
+                    file_exists = False
+            except FileExistsError:
+                # File already exists, so we will append to it later
+                file_exists = True
+            # Update the 'ticket' column in the last row
+            
             if signal_generate:
-                # Update the 'ticket' column in the last row
                 df.at[df.index[-1], 'ticket'] = order['order']
 
-                # Extract the last row of the DataFrame
-                last_row = df.tail(1)
+            # Extract the last row of the DataFrame
+            last_row = df.tail(1)
+            # Append the last row to the CSV file
+            mode = 'w' if not file_exists else 'a'
+            header = not file_exists
 
-                # Append the last row to a CSV file
-                try:
-                    with open('csv/positions.csv', 'x') as f:
-                        last_row.to_csv(f, header=True, index=False)
-                except FileExistsError:
-                    last_row.to_csv('csv/positions.csv', mode='a', header=False, index=False)
+            with open(self.positions_file_path, mode) as f:
+                if signal_generate:
+                    last_row.to_csv(f, header=header, index=False) 
 
             df.to_csv('main.csv', index=False)
             
