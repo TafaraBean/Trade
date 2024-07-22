@@ -2,6 +2,7 @@ import pandas as pd
 import pandas_ta as ta
 from scipy.stats import norm
 import numpy as np
+import MetaTrader5 as mt5
 
 def h1_gold_strategy(data):
         data['ema_short'] = ta.ema(data['close'], length=12)
@@ -123,6 +124,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     )
     )
     
+    data.loc[data['is_buy2'], 'type'] = mt5.ORDER_TYPE_BUY
+    data.loc[data['is_sell2'], 'type'] = mt5.ORDER_TYPE_SELL 
     data.loc[data['is_buy2'], 'tp'] = data['close'] + tp_pips
     data.loc[data['is_buy2'], 'sl'] = data['close'] - sl_pips
     data.loc[data['is_sell2'], 'tp'] = data['close'] - tp_pips

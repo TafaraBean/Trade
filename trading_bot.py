@@ -1,8 +1,10 @@
 import MetaTrader5 as mt5
 import time
 import pandas as pd
+import os
 from typing import Callable
 from analysis import *
+from utils import *
 class Account:
     def __init__(self):
         self._info = None
@@ -217,48 +219,6 @@ class TradingBot:
         else:
             raise ValueError("Invalid order type")
 
-    # def profit_loss(self, 
-    #                 symbol: str, 
-    #                 order_type:int , 
-    #                 lot: float, 
-    #                 open_price: float, 
-    #                 close_price:float) -> float:
-
-    #     #fetch symbol data        
-    #     symbol_info=mt5.symbol_info(symbol)
-    #     currency_base =mt5.symbol_info("USDZAR")
-    #     if symbol_info is None:
-    #         print(symbol,"not found, skipped")
-    #         return None
-    #     if not symbol_info.visible:
-    #         print(symbol, "is not visible, trying to switch on")
-    #         if not mt5.symbol_select(symbol,True):
-    #             print("symbol_select({}}) failed, skipped",symbol)
-    #             return None
-    #     if not currency_base.visible:
-    #         print("USDZAR", "is not visible, trying to switch on")
-    #         if not mt5.symbol_select("USDZAR",True):
-    #             print("symbol_select({}}) failed, skipped",symbol)
-    #             return None
-
-        
-    #     if order_type == mt5.ORDER_TYPE_BUY:
-    #         # Profit for buy trade = (close price - open price) * lot size
-    #         profit_loss = (close_price - open_price) * lot
-    #     else:
-    #         # Profit for sell trade = (open price - close price) * lot size
-    #         profit_loss = (open_price - close_price) * lot
-
-    #     return round(profit_loss * currency_base.bid,2)
-                 
-        
-    #             #print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
-    #             #raise ValueError("Profit value not a number")
-    #     #else:
-    #     #    raise ValueError("Invalid order type")
-
-
-          
     def copy_chart_range(self, symbol: str, timeframe, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         "Retrives chart data from specified start date till end date"
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
@@ -337,7 +297,7 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"\nSleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(time_difference)
+            time.sleep(2)
 
             # Fetch the market data and apply the trading strategy
             
@@ -362,15 +322,14 @@ class TradingBot:
 
             # Check for new trading signals
             latest_signal = df.iloc[-1]
-            signal_generate = False
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
                 order = self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
-                signal_generate = True
+                df.at[df.index[-1], 'ticket'] = order['order']
 
             elif latest_signal["is_sell2"]:
                 order = self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
-                signal_generate = True
+                df.at[df.index[-1], 'ticket'] = order['order']
             
             try:
                 # Try opening the file in 'x' mode to create it if it doesn't exist
@@ -381,29 +340,49 @@ class TradingBot:
                 file_exists = True
             # Update the 'ticket' column in the last row
             
-            if signal_generate:
-                df.at[df.index[-1], 'ticket'] = order['order']
 
             # Extract the last row of the DataFrame
             last_row = df.tail(1)
             # Append the last row to the CSV file
             mode = 'w' if not file_exists else 'a'
-            header = not file_exists
+
+
+            
 
             with open(self.positions_file_path, mode) as f:
-                if signal_generate:
-                    last_row.to_csv(f, header=header, index=False) 
+                if (os.path.getsize(self.positions_file_path) == 0):
+                    headers_df = pd.DataFrame(columns=['ticket', 'sl', 'tp', 'be', 'be_condition'])
+                    headers_df.to_csv(self.positions_file_path, header=True, index=False)
+
+                if latest_signal['is_buy2'] or latest_signal['is_sell2']:
+                    latest_signal.to_csv(self.positions_file_path,header=False, index=False, columns=['ticket', 'sl', 'tp', 'be', 'be_condition'])
 
             df.to_csv('main.csv', index=False)
             
             #trail any stop losses as needed
             open_positions_df = self.get_position_all(symbol=symbol)
+            positions_df = pd.read_csv('csv/positions.csv')
+            valid_tickets = set(open_positions_df['ticket'])
+
+            # Track rows to keep
+            
 
             for index, row in open_positions_df.iterrows():
-                positions_df = pd.read_csv('csv/positions.csv')
+                
                 specific_row_index = positions_df.index[positions_df['ticket'] == row['ticket']]
+                
+                if specific_row_index.empty:
+                    add_missing_position(order=row,
+                                        file_path=self.positions_file_path)
+                    # Reload positions_df again to get the updated content
+                    positions_df = pd.read_csv('csv/positions.csv')
+                    
+                    # Find the new index of the added position
+                    specific_row_index = positions_df.index[positions_df['ticket'] == row['ticket']]
+    
 
                 if not specific_row_index.empty:
+
                     # Extract the specific row index
                     idx = specific_row_index[0]
                     
@@ -444,4 +423,6 @@ class TradingBot:
                     print(f"No specific row found for ticket {row['ticket']}")
 
             # Save the updated DataFrame back to the CSV file
-            positions_df.to_csv('csv/positions.csv', index=False)
+            # Save the updated DataFrame back to the CSV file
+            rows_to_keep = positions_df[positions_df['ticket'].isin(valid_tickets)]
+            rows_to_keep.to_csv('csv/positions.csv', index=False)
