@@ -4,6 +4,7 @@ import MetaTrader5 as mt5
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+from scipy.stats import norm
 from typing import Tuple
 import calendar
 
@@ -653,6 +654,23 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
             data.at[data.index[idx], 'resistance_gradient_15'] = resist_slope
     return data
 
+def nadaraya_watson_smoother(x, y, bandwidth):
+    """Nadaraya-Watson kernel regression smoother."""
+    n = len(x)
+    y_hat = np.zeros(n)
+    
+    for i in range(n):
+        weights = norm.pdf((x - x[i]) / bandwidth)
+        weights /= weights.sum()
+        y_hat[i] = np.sum(weights * y)
+    
+    return y_hat
+
+def determine_trend(smoothed_prices):
+    """Determine market trend based on the smoothed prices."""
+    trends = np.diff(smoothed_prices)
+    return [np.nan] + ['bullish' if trend > 0 else 'bearish' for trend in trends]
+
 
 def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     print("appling auto trendline...")
@@ -687,6 +705,14 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
     data['stoch_k']=np.nan
     data['stoch_d']=np.nan
+
+        # Nadaraya-Watson smoother
+    x = np.arange(len(data))
+    y = data['close'].values
+    bandwidth = 10  # Adjust as needed
+
+    data['nadaraya_watson'] = nadaraya_watson_smoother(x, y, bandwidth)
+    data['nadaraya_watson_trend'] = determine_trend(data['nadaraya_watson'])
 
 
     

@@ -1,6 +1,5 @@
 import pandas as pd
 import pandas_ta as ta
-from scipy.stats import norm
 import numpy as np
 import MetaTrader5 as mt5
 
@@ -38,22 +37,7 @@ def h1_gold_strategy(data):
 
 
 
-def nadaraya_watson_smoother(x, y, bandwidth):
-    """Nadaraya-Watson kernel regression smoother."""
-    n = len(x)
-    y_hat = np.zeros(n)
-    
-    for i in range(n):
-        weights = norm.pdf((x - x[i]) / bandwidth)
-        weights /= weights.sum()
-        y_hat[i] = np.sum(weights * y)
-    
-    return y_hat
 
-def determine_trend(smoothed_prices):
-    """Determine market trend based on the smoothed prices."""
-    trends = np.diff(smoothed_prices)
-    return [np.nan] + ['bullish' if trend > 0 else 'bearish' for trend in trends]
 
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['ema_short'] = ta.ema(data['close'], length=12)
@@ -80,13 +64,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['stoch_k'] = stochastic['STOCHk_14_3_3']
     data['stoch_d'] = stochastic['STOCHd_14_3_3']
 
-    # Nadaraya-Watson smoother
-    x = np.arange(len(data))
-    y = data['close'].values
-    bandwidth = 10  # Adjust as needed
 
-    data['nadaraya_watson'] = nadaraya_watson_smoother(x, y, bandwidth)
-    data['nadaraya_watson_trend'] = determine_trend(data['nadaraya_watson'])
 
     pip_size = 0.0001
 
