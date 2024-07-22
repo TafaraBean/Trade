@@ -22,9 +22,6 @@ def add_missing_position(order: pd.Series, file_path: str, columns: List[str] = 
         else:
             order['be_condition'] = order['price_open'] - 10 * 0.0001
             order['be'] = order['price_open']- 8 *0.0001
-    
-    order['be']= float(10.0)
-    order['be_condition']= float(20)
 
     order_df = order.to_frame().T
     
