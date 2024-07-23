@@ -21,9 +21,9 @@ lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M15
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-07-01")
-#end = pd.Timestamp("2024-06-28")
-end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
+start = pd.Timestamp("2024-01-01")
+end = pd.Timestamp("2024-01-28")
+#end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
 data = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
