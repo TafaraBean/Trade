@@ -117,7 +117,7 @@ def display_chart(df):
         ]
     )
     
-    #fig.show()
+    fig.show()
 
 
 def calculate_percentage_completion(entry_price, goal_price, current_price, is_buy):
@@ -804,7 +804,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Show the figure
-    #fig.show()
+    fig.show()
     return data
 
 
