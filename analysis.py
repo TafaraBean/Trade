@@ -350,6 +350,7 @@ def analyse(filtered_df: pd.DataFrame,
     unexecuted_trades = 0
     successful_trades = 0
     unsuccessful_trades = 0
+    running_trades = 0
     gross_profit = 0
     loss = 0
     executed_trades = [] 
@@ -363,6 +364,7 @@ def analyse(filtered_df: pd.DataFrame,
     for index, row in filtered_df.iterrows():
         #if trade is in valid, no further processing
         
+        print(f"Currently Working on Trade: {row['time']}", end=" ")
         if check_invalid_stopouts(row):
             unexecuted_trades += 1
             print(f"trade invalid stopouts: {row['time']}")
@@ -381,10 +383,10 @@ def analyse(filtered_df: pd.DataFrame,
         # Update the previous month
         #previous_month = current_month
         # Add 4 days if the start_time is on a Friday, otherwise add 3 days
-        end_time = start_time + pd.Timedelta(days=5) if day_of_week == 4 else start_time + pd.Timedelta(days=3)
+        end_time = start_time + pd.Timedelta(days=8)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
-        relevant_ticks = bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time)
-        second_chart = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time)
+        relevant_ticks = pd.DataFrame(bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time))
+        second_chart = pd.DataFrame(bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time))
         
         # Check if stop loss or take profit or trailing stop was reached 
         stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
@@ -403,33 +405,51 @@ def analyse(filtered_df: pd.DataFrame,
         
         #trail stop loss if needed, 
         #also factor in probability of trading still running and none of the levels were ever reached
-        row['time_updated'] = None
+        
         if time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max:
             row['sl_updated'] = False
         else:
             row['sl_updated'] = min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
             
         
-
+        sl_updated = 0
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
-            row['time_updated'] = time_to_trail
-            relevant_ticks = bot.get_ticks_range(symbol=symbol,start=time_to_trail,end=end_time) # Filter ticks dataframe from time_value onwards
-            
-            #update the stop loss level
-            row['sl'] = row['be']
-            stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
+            while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not(time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max)):
+                sl_updated+=1
+                relevant_ticks = relevant_ticks[relevant_ticks['time'] >= time_to_trail]
+                second_chart = second_chart[second_chart['time'] >= time_to_trail]
+                
+                relevant_ticks.reset_index(drop=True, inplace=True)
+                second_chart.reset_index(drop=True, inplace=True)
 
-            #find the new time for ehich stop loss was hit
-            stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
-            time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
-        
+                #update the stop loss level
+                row['sl'] = row['be']
+
+                if row['is_buy2']:
+                    row['be'] += 8 * 0.0001 
+                    row['be_condition'] += 10* 0.0001
+                else:
+                    row['be'] -= 8 * 0.0001 
+                    row['be_condition'] -= 10* 0.0001
+
+                stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
+                trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
+
+                #find the new time for ehich stop loss was hit
+                stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
+                trailing_stop_index = np.argmax(trailing_stop_reached) if trailing_stop_reached.any() else -1
+                
+                time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
+                time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
+
+        print(f"sl updated {sl_updated} times")
         #save final updated times
         row['time_to_trail'] = None if time_to_trail == pd.Timestamp.max else time_to_trail
         row['time_tp_hit'] = None if time_tp_hit == pd.Timestamp.max else time_tp_hit
         row['time_sl_hit'] = None if time_sl_hit == pd.Timestamp.max else time_sl_hit
 
-        print(f"Currently Working on Trade: {row['time']} where sl update is: {row['sl_updated']}")
+        
         print(f"tp time: {row['time_tp_hit']}")
         print(f"sl time: {row['time_sl_hit'] }")
         print(f"tr time: {row['time_to_trail']}")
@@ -487,6 +507,7 @@ def analyse(filtered_df: pd.DataFrame,
             row['success'] = False
             row["account_balance"] = account_balance
             row['profit'] = 0
+            running_trades += 1
             print(f"Neither stop loss nor take profit was reached for trade. {row['time']}")
 
         #calculate its profit value
@@ -551,7 +572,8 @@ def analyse(filtered_df: pd.DataFrame,
         "break_even": break_even,
         "executed_trades_df": executed_trades_df,
         "weekly_profit": weekly_profit,
-        "monthly_profit": monthly_profit,        
+        "monthly_profit": monthly_profit,  
+        "running_trades": running_trades,      
     }
 
 

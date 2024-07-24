@@ -22,7 +22,7 @@ timeframe = mt5.TIMEFRAME_M15
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
 start = pd.Timestamp("2024-01-01")
-end = pd.Timestamp("2024-01-28")
+end = pd.Timestamp("2024-01-30")
 #end = (pd.Timestamp.now() + pd.Timedelta(hours=1)).floor(conversion)
 
 #creating dataframe by importing trade data
@@ -71,6 +71,7 @@ if not filtered_df.empty:
     gross_profit = results['gross_profit']
     loss = results['loss']
     account_balance = results['account_balance']
+    running_trades = results['running_trades']
 
 
     print(f"\nanalysis from {start} to {end}\n")
@@ -82,6 +83,7 @@ if not filtered_df.empty:
     print(f"Total successful trades: {successful_trades}") 
     print(f"Total unsuccessful trades: {unsuccessful_trades}")
     print(f"Total break even trades: {break_even}")
+    print(f"Total running trades: {running_trades}")
     print(f"gross profit: {round(gross_profit, 2)} {bot.account.currency}")
     print(f"loss: {round(loss, 2)} {bot.account.currency}")
     print(f"percentage profitability: {percentage_profitability} %")

@@ -286,7 +286,7 @@ class TradingBot:
     
     def run(self, symbol: str, timeframe, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
         while True:
-            start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=5)
+            start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=4)
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
             conversion = self.timeframe_to_interval.get(timeframe, 3600)
