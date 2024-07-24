@@ -72,7 +72,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     tp_pips = 50 * pip_size
     sl_pips = 90 * pip_size
     be_pips = 10 * pip_size
-    data['ticket'] = None
+    data['ticket'] = np.nan
     # Generate signals
     data['is_buy2'] = (
         ((data['fixed_support_trendline_15'] < data['prev_fixed_support_trendline'].shift(1)) &
