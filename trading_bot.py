@@ -363,8 +363,12 @@ class TradingBot:
             
             #trail any stop losses as needed
             open_positions_df = self.get_position_all(symbol=symbol)
+            print(open_positions_df)
+            if 'ticket' in open_positions_df.columns:
+                valid_tickets = set(open_positions_df['ticket'])
+
             positions_df = pd.read_csv('csv/positions.csv')
-            valid_tickets = set(open_positions_df['ticket'])
+            
 
             # Track rows to keep
             
@@ -426,5 +430,6 @@ class TradingBot:
 
             # Save the updated DataFrame back to the CSV file
             # Save the updated DataFrame back to the CSV file
-            rows_to_keep = positions_df[positions_df['ticket'].isin(valid_tickets)]
-            rows_to_keep.to_csv('csv/positions.csv', index=False)
+            if 'ticket' in open_positions_df.columns:
+                rows_to_keep = positions_df[positions_df['ticket'].isin(valid_tickets)]
+                rows_to_keep.to_csv('csv/positions.csv', index=False)
