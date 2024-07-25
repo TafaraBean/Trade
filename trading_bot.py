@@ -297,7 +297,7 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"\nSleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(time_difference)
+            time.sleep(2)
 
             # Fetch the market data and apply the trading strategy
             
@@ -321,7 +321,10 @@ class TradingBot:
             
 
             # Check for new trading signals
+            
             latest_signal = df.iloc[-1]
+            print(latest_signal)
+            required_columns = ['ticket', 'sl', 'tp', 'be', 'be_condition']
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
                 order = self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
@@ -357,7 +360,10 @@ class TradingBot:
                     headers_df.to_csv(self.positions_file_path, header=True, index=False)
 
                 if latest_signal['is_buy2'] or latest_signal['is_sell2']:
-                    latest_signal.to_csv(self.positions_file_path,header=False, index=False, columns=['ticket', 'sl', 'tp', 'be', 'be_condition'])
+                # Convert Series to DataFrame before writing to CSV
+                    latest_signal_df = latest_signal.to_frame().T
+                    latest_signal_df.to_csv(self.positions_file_path, header=False, index=False, columns=required_columns)
+
 
             df.to_csv('main.csv', index=False)
             
@@ -369,12 +375,16 @@ class TradingBot:
 
             positions_df = pd.read_csv('csv/positions.csv')
             
+            print(positions_df)
+            
 
             # Track rows to keep
             
 
             for index, row in open_positions_df.iterrows():
-                
+                print('=================================================================================')
+                print(row)
+                print('=================================================================================')
                 specific_row_index = positions_df.index[positions_df['ticket'] == row['ticket']]
                 
                 if specific_row_index.empty:
