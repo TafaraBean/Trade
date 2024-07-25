@@ -74,9 +74,19 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     be_pips = 10 * pip_size
     data['ticket'] = np.nan
     # Generate signals
-    data['is_buy2'] = False
+    data['is_buy2'] = (
+        ((data['fixed_support_trendline_15'] < data['prev_fixed_support_trendline'].shift(1)) &
+         (data['open'] < data['close']) &
+         (data['prev_psar_direction'] == 1) &
+         (data['prev_nadaraya_watson_trend'] == 'bullish'))
+    )
 
-    data['is_sell2'] = True
+    data['is_sell2'] = (
+        ((data['fixed_resistance_trendline_15'] > data['prev_fixed_resistance_trendline'].shift(1)) &
+         (data['open'] > data['close']) &
+         (data['prev_psar_direction'] == -1) &
+         (data['prev_nadaraya_watson_trend'] == 'bearish'))
+    )
     
     data.loc[data['is_buy2'], 'signal'] = mt5.ORDER_TYPE_BUY
     data.loc[data['is_sell2'], 'signal'] = mt5.ORDER_TYPE_SELL 
