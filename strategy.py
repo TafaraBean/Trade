@@ -78,8 +78,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
     data['is_sell2'] = True
     
-    data.loc[data['is_buy2'], 'type'] = mt5.ORDER_TYPE_BUY
-    data.loc[data['is_sell2'], 'type'] = mt5.ORDER_TYPE_SELL 
+    data.loc[data['is_buy2'], 'signal'] = mt5.ORDER_TYPE_BUY
+    data.loc[data['is_sell2'], 'signal'] = mt5.ORDER_TYPE_SELL 
     data.loc[data['is_buy2'], 'tp'] = data['close'] + tp_pips
     data.loc[data['is_buy2'], 'sl'] = data['close'] - sl_pips
     data.loc[data['is_sell2'], 'tp'] = data['close'] - tp_pips

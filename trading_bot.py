@@ -306,9 +306,6 @@ class TradingBot:
             df=auto_trendline_15(df)
             
             hour_data = self.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
-
-
-
             hour_data= auto_trendline(hour_data)
 
             hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','stoch_k','stoch_d','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend']]
@@ -323,8 +320,7 @@ class TradingBot:
             # Check for new trading signals
             
             latest_signal = df.iloc[-1]
-            print(latest_signal)
-            required_columns = ['ticket', 'sl', 'tp', 'be', 'be_condition']
+            
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
                 order = self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
@@ -335,66 +331,56 @@ class TradingBot:
                 order = self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
                 df.at[df.index[-1], 'ticket'] = order['order']
                 df.at[df.index[-1], 'type'] = mt5.ORDER_TYPE_SELL
-            
+
+            required_columns = ['ticket', 'sl', 'tp', 'be', 'be_condition']
             try:
-                # Try opening the file in 'x' mode to create it if it doesn't exist
-                with open(self.positions_file_path, 'x') as f:
-                    file_exists = False
-            except FileExistsError:
-                # File already exists, so we will append to it later
-                file_exists = True
-            # Update the 'ticket' column in the last row
-            
-
-            # Extract the last row of the DataFrame
-            last_row = df.tail(1)
-            # Append the last row to the CSV file
-            mode = 'w' if not file_exists else 'a'
-
-
-            
-
-            with open(self.positions_file_path, mode) as f:
-                if (os.path.getsize(self.positions_file_path) == 0):
-                    headers_df = pd.DataFrame(columns=['ticket', 'sl', 'tp', 'be', 'be_condition'])
+                # Try to open the file in read mode
+                with open(self.positions_file_path, 'r') as file:
+                    headers_df = pd.DataFrame(columns=required_columns)
+                    headers_df.to_csv(self.positions_file_path, mode='a', header=not pd.read_csv(self.positions_file_path).empty, index=False)
+        
+            except FileNotFoundError:
+                # If the file does not exist, create it
+                with open(self.positions_file_path, 'w') as file:
+                    headers_df = pd.DataFrame(columns=required_columns)
                     headers_df.to_csv(self.positions_file_path, header=True, index=False)
 
+
+
+            with open(self.positions_file_path, 'a') as f:
                 if latest_signal['is_buy2'] or latest_signal['is_sell2']:
                 # Convert Series to DataFrame before writing to CSV
-                    latest_signal_df = latest_signal.to_frame().T
-                    latest_signal_df.to_csv(self.positions_file_path, header=False, index=False, columns=required_columns)
+                    last_row = df.tail(1)
+                    last_row.to_csv(self.positions_file_path, header=True, index=False, columns=required_columns)
 
 
             df.to_csv('main.csv', index=False)
             
             #trail any stop losses as needed
             open_positions_df = self.get_position_all(symbol=symbol)
-            print(open_positions_df)
+            csv_positions_df = pd.read_csv('csv/positions.csv')
+
             if 'ticket' in open_positions_df.columns:
                 valid_tickets = set(open_positions_df['ticket'])
 
-            positions_df = pd.read_csv('csv/positions.csv')
             
-            print(positions_df)
+        
             
 
             # Track rows to keep
             
 
             for index, row in open_positions_df.iterrows():
-                print('=================================================================================')
-                print(row)
-                print('=================================================================================')
-                specific_row_index = positions_df.index[positions_df['ticket'] == row['ticket']]
+                specific_row_index = csv_positions_df.index[csv_positions_df['ticket'] == row['ticket']]
                 
                 if specific_row_index.empty:
                     add_missing_position(order=row,
                                         file_path=self.positions_file_path)
                     # Reload positions_df again to get the updated content
-                    positions_df = pd.read_csv('csv/positions.csv')
+                    csv_positions_df = pd.read_csv('csv/positions.csv')
                     
                     # Find the new index of the added position
-                    specific_row_index = positions_df.index[positions_df['ticket'] == row['ticket']]
+                    specific_row_index = csv_positions_df.index[csv_positions_df['ticket'] == row['ticket']]
     
 
                 if not specific_row_index.empty:
@@ -403,8 +389,8 @@ class TradingBot:
                     idx = specific_row_index[0]
                     
                     # Extract the specific values
-                    be_condition = positions_df.at[idx, 'be_condition']
-                    be = positions_df.at[idx, 'be']
+                    be_condition = csv_positions_df.at[idx, 'be_condition']
+                    be = csv_positions_df.at[idx, 'be']
                     
                     # Condition to check how far above open price a candle should close before sl is adjusted for buy orders
                     if row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= be_condition:
@@ -418,8 +404,8 @@ class TradingBot:
                             be += 8 * 0.0001
                             
                             # Update the DataFrame
-                            positions_df.at[idx, 'be_condition'] = be_condition
-                            positions_df.at[idx, 'be'] = be
+                            csv_positions_df.at[idx, 'be_condition'] = be_condition
+                            csv_positions_df.at[idx, 'be'] = be
                     
                     # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
                     elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
@@ -433,13 +419,13 @@ class TradingBot:
                             be -= 8 * 0.0001
                             
                             # Update the DataFrame
-                            positions_df.at[idx, 'be_condition'] = be_condition
-                            positions_df.at[idx, 'be'] = be
+                            csv_positions_df.at[idx, 'be_condition'] = be_condition
+                            csv_positions_df.at[idx, 'be'] = be
                 else:
                     print(f"No specific row found for ticket {row['ticket']}")
 
             # Save the updated DataFrame back to the CSV file
             # Save the updated DataFrame back to the CSV file
             if 'ticket' in open_positions_df.columns:
-                rows_to_keep = positions_df[positions_df['ticket'].isin(valid_tickets)]
+                rows_to_keep = csv_positions_df[csv_positions_df['ticket'].isin(valid_tickets)]
                 rows_to_keep.to_csv('csv/positions.csv', index=False)

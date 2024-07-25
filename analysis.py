@@ -385,9 +385,13 @@ def analyse(filtered_df: pd.DataFrame,
         # Add 4 days if the start_time is on a Friday, otherwise add 3 days
         end_time = start_time + pd.Timedelta(days=8)
         #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
-        relevant_ticks = pd.DataFrame(bot.get_ticks_range(symbol=symbol,start=start_time,end=end_time))
-        second_chart = pd.DataFrame(bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start_time, end=end_time))
-        
+
+        second_chart = pd.DataFrame(mt5.copy_rates_range(symbol, timeframe, start_time, end_time))
+        relevant_ticks = pd.DataFrame(mt5.copy_ticks_range(symbol, start_time, end_time, mt5.COPY_TICKS_ALL))
+        if len(second_chart) != 0:
+            second_chart['time'] = pd.to_datetime(second_chart['time'],unit='s')
+        if len(relevant_ticks) != 0:
+            relevant_ticks['time'] = pd.to_datetime(relevant_ticks['time'],unit='s')
         # Check if stop loss or take profit or trailing stop was reached 
         stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
         take_profit_reached = (relevant_ticks['bid'] >= row["tp"]) if row["is_buy2"] else (relevant_ticks['bid'] <= row["tp"])
@@ -413,6 +417,7 @@ def analyse(filtered_df: pd.DataFrame,
             
         
         sl_updated = 0
+        timestamps_list = []
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
             while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not(time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max)):
@@ -439,11 +444,15 @@ def analyse(filtered_df: pd.DataFrame,
                 #find the new time for ehich stop loss was hit
                 stop_loss_index = np.argmax(stop_loss_reached) if stop_loss_reached.any() else -1
                 trailing_stop_index = np.argmax(trailing_stop_reached) if trailing_stop_reached.any() else -1
-                
+                #add timestamp before updating it
+                timestamps_list.append(time_to_trail)
                 time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
                 time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
-
-        print(f"sl updated {sl_updated} times")
+                
+        print(f"sl updated {sl_updated} times at")
+        for timestamp in timestamps_list:
+            print(timestamp)
+        
         #save final updated times
         row['time_to_trail'] = None if time_to_trail == pd.Timestamp.max else time_to_trail
         row['time_tp_hit'] = None if time_tp_hit == pd.Timestamp.max else time_tp_hit
@@ -504,13 +513,13 @@ def analyse(filtered_df: pd.DataFrame,
 
         else:
             row['type'] = "running"
-            row['success'] = False
+            row['success'] = None
             row["account_balance"] = account_balance
             row['profit'] = 0
             running_trades += 1
             print(f"Neither stop loss nor take profit was reached for trade. {row['time']}")
 
-        #calculate its profit value
+      #calculate its profit value
         if row['type'] == "success":
             if row["is_buy2"]:
                 row['profit'] =  bot.profit_loss(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
@@ -549,8 +558,6 @@ def analyse(filtered_df: pd.DataFrame,
         else:
             row["account_balance"] = account_balance
             row['profit'] = 0
-            row['position_close_time'] = row['time'] + pd.Timedelta(hours=3)
-
 
     executed_trades_df = pd.DataFrame(executed_trades)
     profit_factor = calc_profit_factor(gross_profit=gross_profit,

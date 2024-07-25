@@ -95,7 +95,9 @@ if not filtered_df.empty:
     print(f"profit factor: {round(profit_factor, 2)}")
     print(f"\nACCOUNT DETAILS\n")
     print(f"lot size used: {lot_size}")
-    print(f"biggest single loss: {round(executed_trades_df['profit'].min(), 2)} {bot.account.currency}")
+    min_profit = executed_trades_df['profit'].min()
+    adjusted_min_profit = min_profit if min_profit < 0 else 0
+    print(f"biggest single loss: {round(adjusted_min_profit, 2)} {bot.account.currency}")
     print(f"biggest single win: {round(executed_trades_df['profit'].max(), 2)} {bot.account.currency}")
     print(f"initial balance: {round(inital_balance, 2)} {bot.account.currency}")
     print(f"account balance: {round(account_balance, 2)} {bot.account.currency}")
