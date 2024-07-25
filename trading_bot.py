@@ -297,7 +297,7 @@ class TradingBot:
             time_difference = (next_interval - current_time).total_seconds()
             end = pd.to_datetime(current_time).floor(conversion)
             print(f"\nSleeping for {time_difference / 60.0} miniutes until the next interval.")
-            time.sleep(2)
+            time.sleep(time_difference)
 
             # Fetch the market data and apply the trading strategy
             
