@@ -358,7 +358,6 @@ def analyse(filtered_df: pd.DataFrame,
     conversion = bot.timeframe_to_interval.get(timeframe, 3600)
     
         # Keep track of the month of the previous row
-    previous_month = None
 
     
     for index, row in filtered_df.iterrows():
@@ -373,18 +372,8 @@ def analyse(filtered_df: pd.DataFrame,
         # allways add 15 min to start time because position was started at cnadle close and not open
         start_time= pd.to_datetime(row['time'] + pd.Timedelta(seconds=1))
         start_time = start_time.ceil(conversion) #add 1 second to be able to apply ceil function
-        day_of_week = start_time.dayofweek
-                # Check if the current row's month is different from the previous row's month
-        # current_month = start_time.month
-        # if previous_month is not None and current_month != previous_month:
-        #     lot_size += 0.01
-        #     print(f"New month detected: {start_time.strftime('%B %Y')}, increased lot size to {lot_size}")
-        
-        # Update the previous month
-        #previous_month = current_month
-        # Add 4 days if the start_time is on a Friday, otherwise add 3 days
+       
         end_time = start_time + pd.Timedelta(days=8)
-        #fetch data to compare stop levels and see which was reached first, trailing stop is calculated only after every candle close
 
         second_chart = pd.DataFrame(mt5.copy_rates_range(symbol, timeframe, start_time, end_time))
         relevant_ticks = pd.DataFrame(mt5.copy_ticks_range(symbol, start_time, end_time, mt5.COPY_TICKS_ALL))
@@ -513,7 +502,7 @@ def analyse(filtered_df: pd.DataFrame,
 
         else:
             row['type'] = "running"
-            row['success'] = None
+            row['success'] = False
             row["account_balance"] = account_balance
             row['profit'] = 0
             running_trades += 1

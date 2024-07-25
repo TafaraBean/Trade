@@ -161,7 +161,11 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-*.xlsx
+filtered_excel_df.xlsx
 csv/
+csv/hour_data.csv
+csv/positions.csv
 csv/main.csv
 csv/test.csv
+csv/merged_data.csv
+csv/executed_trades_df.csv
