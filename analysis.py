@@ -117,7 +117,7 @@ def display_chart(df):
         ]
     )
     
-    #fig.show()
+    fig.show()
 
 
 def calculate_percentage_completion(entry_price, goal_price, current_price, is_buy):
@@ -357,7 +357,6 @@ def analyse(filtered_df: pd.DataFrame,
     break_even = 0
     conversion = bot.timeframe_to_interval.get(timeframe, 3600)
     
-        # Keep track of the month of the previous row
 
     
     for index, row in filtered_df.iterrows():
@@ -372,9 +371,13 @@ def analyse(filtered_df: pd.DataFrame,
         # allways add 15 min to start time because position was started at cnadle close and not open
         start_time= pd.to_datetime(row['time'] + pd.Timedelta(seconds=1))
         start_time = start_time.ceil(conversion) #add 1 second to be able to apply ceil function
-       
+
         end_time = start_time + pd.Timedelta(days=8)
 
+        
+        row['order_type'] = mt5.ORDER_TYPE_BUY if row['is_buy2'] else mt5.ORDER_TYPE_SELL
+        row['lot'] = lot_size
+        
         second_chart = pd.DataFrame(mt5.copy_rates_range(symbol, timeframe, start_time, end_time))
         relevant_ticks = pd.DataFrame(mt5.copy_ticks_range(symbol, start_time, end_time, mt5.COPY_TICKS_ALL))
         if len(second_chart) != 0:
@@ -409,7 +412,7 @@ def analyse(filtered_df: pd.DataFrame,
         timestamps_list = []
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
-            while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not(time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max)):
+            while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail):
                 sl_updated+=1
                 relevant_ticks = relevant_ticks[relevant_ticks['time'] >= time_to_trail]
                 second_chart = second_chart[second_chart['time'] >= time_to_trail]
@@ -443,14 +446,29 @@ def analyse(filtered_df: pd.DataFrame,
             print(timestamp)
         
         #save final updated times
-        row['time_to_trail'] = None if time_to_trail == pd.Timestamp.max else time_to_trail
-        row['time_tp_hit'] = None if time_tp_hit == pd.Timestamp.max else time_tp_hit
-        row['time_sl_hit'] = None if time_sl_hit == pd.Timestamp.max else time_sl_hit
+        row['time_to_trail'] = pd.NA if time_to_trail == pd.Timestamp.max else time_to_trail
+        row['time_tp_hit'] = pd.NA if time_tp_hit == pd.Timestamp.max else time_tp_hit
+        row['time_sl_hit'] = pd.NA if time_sl_hit == pd.Timestamp.max else time_sl_hit
 
+        row['entry_time'] = (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
+        row['entry_price'] = row['close']
+
+        row['exit_time'] = min(time_sl_hit,time_tp_hit,time_to_trail)
         
+
+        matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
+        if not matching_row.empty:
+            row['exit_price'] = matching_row.iloc[0]['bid']
+        else:
+            row['exit_price'] =  pd.NA
+        
+        #set exit time  to none after use
+        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
+
         print(f"tp time: {row['time_tp_hit']}")
         print(f"sl time: {row['time_sl_hit'] }")
         print(f"tr time: {row['time_to_trail']}")
+        
         
 
         if stop_loss_index == 0 or take_profit_index == 0:
@@ -463,90 +481,53 @@ def analyse(filtered_df: pd.DataFrame,
         row['lot_size'] = lot_size
         #set the value for the type of trade this was, weather loss, even or success
         if stop_loss_index > -1 and take_profit_index > -1:
-            if(min(time_sl_hit, time_tp_hit) == time_tp_hit):
-                print("trade successful")
+            if(min(time_sl_hit, time_tp_hit) == time_tp_hit):                
                 row['type'] = "success"
-                row['success'] = True
                 successful_trades+=1
           
             elif(row['sl_updated']):       
                 row['type'] = "even"
-                print("trade broke even")
-                row['success'] = True
                 break_even +=1
 
             else:
-                print("trade failed")
                 row['type'] = "fail"
-                row['success'] = False
                 unsuccessful_trades +=1            
 
         elif take_profit_index == -1 and stop_loss_index != -1:
             if(row['sl_updated']):
-                print("trade broke even")
                 row['type'] = "even"
-                row['success'] = True
                 break_even +=1
 
             else:
-                print("trade failed")
                 row['type'] = "fail"
-                row['success'] = False
                 unsuccessful_trades+=1            
 
         elif stop_loss_index == -1 and take_profit_index != -1:
-            print("trade successful")
             successful_trades+=1
             row['type'] = "success"
-            row['success'] = True
 
         else:
             row['type'] = "running"
-            row['success'] = False
-            row["account_balance"] = account_balance
-            row['profit'] = 0
             running_trades += 1
-            print(f"Neither stop loss nor take profit was reached for trade. {row['time']}")
 
+        print(f"trade {row['type']}")
+        row['success'] = row['type'] in['success', 'even']
       #calculate its profit value
-        if row['type'] == "success":
-            if row["is_buy2"]:
-                row['profit'] =  bot.profit_loss(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["tp"])
-                gross_profit += row['profit']
-                account_balance  += row['profit']
-                row["account_balance"] = account_balance
-            else: 
-                row['profit'] = bot.profit_loss(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["tp"])        
-                gross_profit +=  row['profit'] 
-                account_balance  += row['profit']
-                row["account_balance"] = account_balance
-
-        elif row['type'] == "even": 
-            if row["is_buy2"]:
-                    row['profit'] =  bot.profit_loss(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
-                    gross_profit += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-            else: 
-                row['profit'] = bot.profit_loss(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
-                gross_profit +=  row['profit'] 
-                account_balance  += row['profit']
-                row["account_balance"] = account_balance
-        elif row['type'] == "fail":
-            if row["is_buy2"]:
-                    row['profit'] = bot.profit_loss(symbol=symbol, order_type=mt5.ORDER_TYPE_BUY, lot=lot_size, open_price=row["close"], close_price=row["sl"])
-                    loss += row['profit']
-                    account_balance  += row['profit']
-                    row["account_balance"] = account_balance
-            else: 
-                row['profit'] = bot.profit_loss(symbol=symbol,order_type=mt5.ORDER_TYPE_SELL,lot=lot_size, open_price=row["close"], close_price=row["sl"])        
-                loss += row["profit"]
-                account_balance  += row['profit']
-                row["account_balance"] = account_balance
         
+        row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) \
+        if row['type'] in ["success", "even", 'fail'] else 0
+        
+        account_balance  += row['profit']
+        row["account_balance"] = account_balance
+        
+        if row['type'] in ['success', 'even']:
+            gross_profit += row['profit']
         else:
-            row["account_balance"] = account_balance
-            row['profit'] = 0
+            loss += row["profit"]
+        account_balance  += row['profit']
+        row["account_balance"] = account_balance
+        
+
 
     executed_trades_df = pd.DataFrame(executed_trades)
     profit_factor = calc_profit_factor(gross_profit=gross_profit,
@@ -555,6 +536,9 @@ def analyse(filtered_df: pd.DataFrame,
                                                                 break_even=break_even,
                                                                 total_trades=total_trades)
     weekly_profit, monthly_profit = aggregate_profit(executed_trades_df=executed_trades_df)
+
+ 
+
     return {
         "account_balance": account_balance,
         "percentage_profitability": percentage_profitability,
@@ -822,7 +806,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Show the figure
-    #fig.show()
+    fig.show()
     return data
 
 
