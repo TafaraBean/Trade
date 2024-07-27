@@ -15,7 +15,7 @@ server = os.environ.get("SERVER")
 # Initialize the trading bot
 bot = TradingBot(login=account, password=password, server=server)
 symbol = "EURUSD.Z"
-timeframe = mt5.TIMEFRAME_M15   # Change this as needed
+timeframe = mt5.TIMEFRAME_M5   # Change this as needed
 
 lot= 0.03
 
