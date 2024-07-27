@@ -29,7 +29,7 @@ def get_market_price(symbol, time):
 # Generate 5-minute intervals for the analysis
 start_time = df_trades['entry_time'].min()
 end_time = df_trades['entry_time'].max()  # End time of the analysis period
-time_intervals = pd.date_range(start=start_time, end=end_time, freq='30min')
+time_intervals = pd.date_range(start=start_time, end=end_time, freq='10min')
 
 # Create an empty DataFrame to store the equity calculations
 equity_df = pd.DataFrame(time_intervals, columns=['time'])
@@ -51,6 +51,9 @@ def calculate_running_trade_profit(trade, current_time):
         return 0
 # Calculate equity for each time interval
 for index, row in equity_df.iterrows():
+ 
+    if  index  % 100 == 0:
+        print(index)
     current_time = row['time']
     
     # Calculate the profit for closed trades
