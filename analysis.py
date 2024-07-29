@@ -524,8 +524,7 @@ def analyse(filtered_df: pd.DataFrame,
             gross_profit += row['profit']
         else:
             loss += row["profit"]
-        account_balance  += row['profit']
-        row["account_balance"] = account_balance
+
         
 
 

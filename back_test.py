@@ -15,15 +15,15 @@ server=os.environ.get("SERVER")
 
 bot = TradingBot( login=account, password=password, server=server)
 symbol="EURUSD.Z"
-account_balance = 700
+account_balance = 6182.38
 inital_balance = account_balance
-lot_size = 0.01
+lot_size = 0.04
 timeframe = mt5.TIMEFRAME_M5
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-02-01")
-end = pd.Timestamp("2024-02-28")
-#end = (pd.Timestamp.now() + pd.Timedelta(days=1))
+start = pd.Timestamp("2024-07-24")
+#end = pd.Timestamp("2024-07-27")
+end = (pd.Timestamp.now() + pd.Timedelta(days=1))
 
 #creating dataframe by importing trade data
 data = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
