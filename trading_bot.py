@@ -400,8 +400,8 @@ class TradingBot:
                                                 tp=row['tp'])
                         if result.retcode == mt5.TRADE_RETCODE_DONE:
                             print(f"sl adjusted for position {row['ticket']} ")
-                            be_condition += 5 * 0.0001
-                            be += 3 * 0.0001
+                            be_condition += 10 * 0.0001
+                            be += 8 * 0.0001
                             
                             # Update the DataFrame
                             csv_positions_df.at[idx, 'be_condition'] = be_condition
@@ -415,8 +415,8 @@ class TradingBot:
                                                 tp=row['tp'])
                         if result.retcode == mt5.TRADE_RETCODE_DONE:
                             print(f"sl adjusted for position {row['ticket']} ")
-                            be_condition -= 5 * 0.0001
-                            be -= 3 * 0.0001
+                            be_condition -= 10 * 0.0001
+                            be -= 8 * 0.0001
                             
                             # Update the DataFrame
                             csv_positions_df.at[idx, 'be_condition'] = be_condition

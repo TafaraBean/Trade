@@ -665,27 +665,27 @@ def nadaraya_watson_smoother(x, y, bandwidth):
         weights /= weights.sum()
         y_hat[i] = np.sum(weights * y)
     
-    return y_hat
+    return y_hat[-1]
 
-def determine_trend(smoothed_prices):
-    """Determine market trend based on the smoothed prices."""
-    trends = np.diff(smoothed_prices)
-    return [np.nan] + ['bullish' if trend > 0 else 'bearish' for trend in trends]
+def determine_trend(current_value, previous_value):
+    """Determine market trend based on the current and previous smoothed prices."""
+    if np.isnan(previous_value):
+        return np.nan  # Not enough data to determine trend
+    return 'bullish' if current_value > previous_value else 'bearish'
 
 
 def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
-    print("appling auto trendline...")
+    print("applying auto trendline...")
     data['time2'] = data['time'].astype('datetime64[s]')
     data = data.set_index('time', drop=True)
     print("hourly data:")
-    #print(data)
     print("==========")
 
     # Take natural log of data to resolve price scaling issues
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 5
+    lookback = 3
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -693,62 +693,78 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=2)
+    data['ema_50'] = ta.ema(data['close'], length=20)
     data['ema_24'] = ta.ema(data['close'], length=24)
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
-    data['prev_hour_lsma']=data['hour_lsma'].shift(1)
+    data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
     data['hour_lsma_slope'] = data['hour_lsma'].diff()
-    data['prev_hour_lsma_slope']= data['hour_lsma_slope'].shift(1)
-    
+    data['prev_hour_lsma_slope'] = data['hour_lsma_slope'].shift(1)
+
     macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
     data['hour_macd_line'] = macd['MACD_8_17_9']
     data['hour_macd_signal'] = macd['MACDs_8_17_9']
 
-    data['stoch_k']=np.nan
-    data['stoch_d']=np.nan
+    data['stoch_k'] = np.nan
+    data['stoch_d'] = np.nan
 
-        # Nadaraya-Watson smoother
-    x = np.arange(len(data))
-    y = data['close'].values
+    data['nadaraya_watson'] = np.nan
+    data['nadaraya_watson_trend'] = np.nan
+    data['psar']=np.nan
+    data['psar_direction']=np.nan
+
     bandwidth = 10  # Adjust as needed
 
-    data['nadaraya_watson'] = nadaraya_watson_smoother(x, y, bandwidth)
-    data['nadaraya_watson_trend'] = determine_trend(data['nadaraya_watson'])
-
-
+    previous_value = np.nan
     
-        # Calculate PSAR
-    data['psar'] = ta.psar(data['high'], data['low'], data['close'], af=0.02, max_af=0.2)['PSARl_0.02_0.2']
-    data['prev_psar']=data['psar'].shift(1)
+    lookback2=50
     
-    # Determine PSAR trend direction
-    data['psar_direction'] = data.apply(lambda row: 1 if row['psar'] < row['close'] else -1, axis=1)
-    data['prev_psar_direction']=data['psar_direction'].shift(1)
-
-    
-    data['prev_fixed_support_trendline'] = np.nan
-    data['prev_fixed_resistance_trendline'] = np.nan
-    data['prev_fixed_support_gradient']=np.nan
-    data['prev_fixed_resistance_gradient']=np.nan
-
-
-    # Iterate over the dataset in overlapping windows of 15 candles
-    for i in range(lookback, len(df_log) + 1):
-        current_index = df_log.index[i-1]
+    for i in range(lookback2,len(df_log)+1):
+        current_index = df_log.index[i - 1]
         window_data = df_log.iloc[i - lookback:i]
-        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
         
+        x = np.arange(len(window_data))
+        y = window_data['close'].values
+        current_value = nadaraya_watson_smoother(x, y, bandwidth)
+        data.at[current_index, 'nadaraya_watson'] = current_value
+        # Determine trend based on Nadaraya-Watson
+        data.at[current_index, 'nadaraya_watson_trend'] = determine_trend(current_value, previous_value)
+        previous_value = current_value
+        
+        psar_series = ta.psar(window_data['high'], window_data['low'], window_data['close'], af=0.02, max_af=0.2)['PSARl_0.02_0.2']
+        data[current_index,'psar']=psar_series.iloc[-1]
+        
+        
+        # Determine PSAR trend direction
+        if window_data['close'].iloc[-1] > psar_series.iloc[-1]:
+            psar_direction = 1  # Bullish
+        else:
+            psar_direction = -1  # Bearish
+
+        data.at[current_index, 'psar_direction'] = psar_direction
+        
+        
+
+    for i in range(lookback, len(df_log) + 1):
+        current_index = df_log.index[i - 1]
+        window_data = df_log.iloc[i - lookback:i]
+
+        # Calculate Nadaraya-Watson estimator using only past data
+        
+
+        
+
+        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
+
         # Extract slope and intercept
         support_slope, support_intercept = support_coefs
         resist_slope, resist_intercept = resist_coefs
         data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
         data.at[current_index, 'fixed_support_gradient'] = support_slope
-        support_value = support_slope * window_data.at[current_index,'close'] + support_intercept
-        resist_value = resist_slope * window_data.at[current_index,'close'] + resist_intercept
+        support_value = support_slope * window_data['close'].iloc[-1] + support_intercept
+        resist_value = resist_slope * window_data['close'].iloc[-1] + resist_intercept
         data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
         data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
-        # Apply the calculated gradients to each candle in the window
-        
+
         for j in range(lookback):
             idx = i - lookback + j
             support_value = support_slope * j + support_intercept
@@ -762,11 +778,13 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_fixed_resistance_trendline'] = data['fixed_resistance_trendline'].shift(1)
     data['prev_fixed_support_gradient'] = data['fixed_support_gradient'].shift(1)
     data['prev_fixed_resistance_gradient'] = data['fixed_resistance_gradient'].shift(1)
-    data['prev_hour_macd_line']=data['hour_macd_line'].shift(1)
-    data['prev_hour_macd_signal']=data['hour_macd_signal'].shift(1)
-    data['prev_nadaraya_watson']=data['nadaraya_watson'].shift(1)
-    data['prev_nadaraya_watson_trend']=data['nadaraya_watson_trend'].shift(1)
-    data.to_csv("csv/test.csv",index=False)
+    data['prev_hour_macd_line'] = data['hour_macd_line'].shift(1)
+    data['prev_hour_macd_signal'] = data['hour_macd_signal'].shift(1)
+    data['prev_nadaraya_watson'] = data['nadaraya_watson'].shift(1)
+    data['prev_nadaraya_watson_trend'] = data['nadaraya_watson_trend'].shift(1)
+    data['prev_psar']=data['psar'].shift(1)
+    data['prev_psar_direction']=data['psar_direction'].shift(1)
+    data.to_csv("csv/test.csv", index=False)
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
         x=data.index,
