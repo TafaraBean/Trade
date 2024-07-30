@@ -99,8 +99,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 2 * pip_size
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 2 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 8 * pip_size
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 8 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips

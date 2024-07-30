@@ -685,7 +685,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 5
+    lookback = 3
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -693,7 +693,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=50)
+    data['ema_50'] = ta.ema(data['close'], length=20)
     data['ema_24'] = ta.ema(data['close'], length=24)
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
