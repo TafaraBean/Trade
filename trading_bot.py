@@ -186,12 +186,12 @@ class TradingBot:
         symbol_info=mt5.symbol_info(symbol)
         if symbol_info is None:
             print(symbol,"not found, skipped")
-            return None
+            return 0
         if not symbol_info.visible:
             print(symbol, "is not visible, trying to switch on")
             if not mt5.symbol_select(symbol,True):
                 print("symbol_select({}}) failed, skipped",symbol)
-                return None
+                return 0
 
         
         if order_type == mt5.ORDER_TYPE_BUY:
