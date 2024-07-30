@@ -221,7 +221,7 @@ class TradingBot:
 
     def copy_chart_range(self, symbol: str, timeframe, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         "Retrives chart data from specified start date till end date"
-        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
+        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start.to_pydatetime(), end.to_pydatetime())
         ohlc_data = pd.DataFrame(ohlc_data)
         # Convert 'date' column to datetime type
         if len(ohlc_data) != 0:
@@ -230,7 +230,7 @@ class TradingBot:
 
     def copy_chart_count(self, symbol: str, timeframe, start: pd.Timestamp, count: int) -> pd.DataFrame:
         "Retrives chart data from specified start date till end date"
-        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
+        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start.to_pydatetime(), count)
         ohlc_data = pd.DataFrame(ohlc_data)
         # Convert 'date' column to datetime type
         if len(ohlc_data) != 0:
@@ -243,7 +243,7 @@ class TradingBot:
 
     def get_ticks_range(self,symbol: str, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         # request ticks start date till end date
-        ticks = mt5.copy_ticks_range(symbol, start, end, mt5.COPY_TICKS_ALL)
+        ticks = mt5.copy_ticks_range(symbol, start.to_pydatetime(), end.to_pydatetime(), mt5.COPY_TICKS_ALL)
         ticks = pd.DataFrame(ticks)
         if len(ticks) != 0:
             ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
@@ -251,7 +251,7 @@ class TradingBot:
        
     def get_ticks_count(self,symbol: str, start: pd.Timestamp, count: int) -> pd.DataFrame:
         # request  ticks from start date with specified count of candles
-        ticks = mt5.copy_ticks_from(symbol, start, count, mt5.COPY_TICKS_ALL)
+        ticks = mt5.copy_ticks_from(symbol, start.to_pydatetime(), count, mt5.COPY_TICKS_ALL)
         ticks = pd.DataFrame(ticks)
         if len(ticks) != 0:
             ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
