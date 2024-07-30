@@ -6,7 +6,8 @@ from plotly.subplots import make_subplots
 import numpy as np
 from scipy.stats import norm
 from typing import Tuple
-import calendar
+from multiprocessing import Pool
+
 
 
 def check_invalid_stopouts(row):
@@ -395,7 +396,7 @@ def analyse(filtered_df: pd.DataFrame,
         take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
         
         #find the corresponding time to the indexes
-        time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
+        time_to_trail = pd.Timestamp(second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
         time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
         time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
         
@@ -439,7 +440,7 @@ def analyse(filtered_df: pd.DataFrame,
                 #add timestamp before updating it
                 timestamps_list.append(time_to_trail)
                 time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
-                time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
+                time_to_trail = pd.Timestamp(second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
                 
         print(f"sl updated {sl_updated} times at")
         for timestamp in timestamps_list:
@@ -450,10 +451,10 @@ def analyse(filtered_df: pd.DataFrame,
         row['time_tp_hit'] = pd.NA if time_tp_hit == pd.Timestamp.max else time_tp_hit
         row['time_sl_hit'] = pd.NA if time_sl_hit == pd.Timestamp.max else time_sl_hit
 
-        row['entry_time'] = (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
+        row['entry_time'] = pd.Timestamp(row['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
         row['entry_price'] = row['close']
 
-        row['exit_time'] = min(time_sl_hit,time_tp_hit,time_to_trail)
+        row['exit_time'] = min(time_sl_hit,time_tp_hit)
         
 
         matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
