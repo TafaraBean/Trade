@@ -89,6 +89,8 @@ if not filtered_df.empty:
     print(f"percentage profitability: {percentage_profitability} %")
     print(f"max win streak: {executed_trades_df['win_streak'].max()}")
     print(f"max loosing streak: {executed_trades_df['losing_streak'].max()}")
+    print(f"average win: {executed_trades_df[executed_trades_df['profit'] > 0]['profit'].mean()}")
+    print(f"average loss: {executed_trades_df[executed_trades_df['profit'] < 0]['profit'].mean()}")
 
 
 
