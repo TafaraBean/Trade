@@ -70,25 +70,21 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
     # Set TP and SL in terms of pips
     tp_pips = 100 * pip_size
-    sl_pips = 60 * pip_size
+    sl_pips = 30 * pip_size
     be_pips = 10 * pip_size
     data['ticket'] = np.nan
     # Generate signals
     data['is_buy2'] = (
         ((data['fixed_support_trendline_15'] < data['prev_fixed_support_trendline'].shift(1)) &
-         (data['open'] < data['close']) &
-         (data['prev_psar_direction'] == 1) &
-         (data['prev_nadaraya_watson_trend'] == 'bullish')&
-         (data['ema_50']<data['close']))
+         (data['ema_50']<data['close'])&
+         (data['stoch_k']>data['stoch_d']))
         
     )
 
     data['is_sell2'] = (
         ((data['fixed_resistance_trendline_15'] > data['prev_fixed_resistance_trendline'].shift(1)) &
-         (data['open'] > data['close']) &
-         (data['prev_psar_direction'] == -1) &
-         (data['prev_nadaraya_watson_trend'] == 'bearish')&
-         (data['ema_50']>data['close']))
+         (data['ema_50']>data['close'])&
+        (data['stoch_k']<data['stoch_d']))
     )
     
     data.loc[data['is_buy2'], 'signal'] = mt5.ORDER_TYPE_BUY
@@ -99,8 +95,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 8 * pip_size
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 8 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] 
+    data.loc[data['is_sell2'], 'be'] = data['close'] 
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips

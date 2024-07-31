@@ -21,9 +21,9 @@ lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M5
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-07-26")
-#end = pd.Timestamp("2024-07-27")
-end = (pd.Timestamp.now() + pd.Timedelta(days=1))
+start = pd.Timestamp("2024-01-01")
+end = pd.Timestamp("2024-01-30")
+#end = (pd.Timestamp.now() + pd.Timedelta(days=1))
 
 #creating dataframe by importing trade data
 data = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
@@ -35,7 +35,7 @@ hour_data = bot.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, star
 
 hour_data=auto_trendline(hour_data)
 
-hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','stoch_k','stoch_d','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend']]
+hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','stoch_k','stoch_d','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope']]
 
 hour_data.to_csv("csv/hour_data.csv",index=False)
 
@@ -89,8 +89,6 @@ if not filtered_df.empty:
     print(f"percentage profitability: {percentage_profitability} %")
     print(f"max win streak: {executed_trades_df['win_streak'].max()}")
     print(f"max loosing streak: {executed_trades_df['losing_streak'].max()}")
-    print(f"average win: {executed_trades_df[executed_trades_df['profit'] > 0]['profit'].mean()}")
-    print(f"average loss: {executed_trades_df[executed_trades_df['profit'] < 0]['profit'].mean()}")
 
 
 

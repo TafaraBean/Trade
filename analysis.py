@@ -6,8 +6,7 @@ from plotly.subplots import make_subplots
 import numpy as np
 from scipy.stats import norm
 from typing import Tuple
-from multiprocessing import Pool
-
+import calendar
 
 
 def check_invalid_stopouts(row):
@@ -396,7 +395,7 @@ def analyse(filtered_df: pd.DataFrame,
         take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
         
         #find the corresponding time to the indexes
-        time_to_trail = pd.Timestamp(second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
+        time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
         time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
         time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
         
@@ -440,7 +439,7 @@ def analyse(filtered_df: pd.DataFrame,
                 #add timestamp before updating it
                 timestamps_list.append(time_to_trail)
                 time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
-                time_to_trail = pd.Timestamp(second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
+                time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
                 
         print(f"sl updated {sl_updated} times at")
         for timestamp in timestamps_list:
@@ -451,10 +450,10 @@ def analyse(filtered_df: pd.DataFrame,
         row['time_tp_hit'] = pd.NA if time_tp_hit == pd.Timestamp.max else time_tp_hit
         row['time_sl_hit'] = pd.NA if time_sl_hit == pd.Timestamp.max else time_sl_hit
 
-        row['entry_time'] = pd.Timestamp(row['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
+        row['entry_time'] = (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
         row['entry_price'] = row['close']
 
-        row['exit_time'] = min(time_sl_hit,time_tp_hit)
+        row['exit_time'] = min(time_sl_hit,time_tp_hit,time_to_trail)
         
 
         matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
@@ -619,7 +618,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 4
+    lookback = 5
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline_15'] = np.nan
@@ -666,7 +665,7 @@ def nadaraya_watson_smoother(x, y, bandwidth):
         weights /= weights.sum()
         y_hat[i] = np.sum(weights * y)
     
-    return y_hat[-1]
+    return y_hat
 
 def determine_trend(current_value, previous_value):
     """Determine market trend based on the current and previous smoothed prices."""
@@ -686,7 +685,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 3
+    lookback = 24
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -694,7 +693,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=20)
+    data['ema_50'] = ta.ema(data['close'], length=100)
     data['ema_24'] = ta.ema(data['close'], length=24)
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
@@ -710,6 +709,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
     data['nadaraya_watson'] = np.nan
     data['nadaraya_watson_trend'] = np.nan
+    data['nadaraya_upper_envelope']=np.nan
+    data['nadaraya_lower_envelope']=np.nan
     data['psar']=np.nan
     data['psar_direction']=np.nan
 
@@ -717,23 +718,35 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
     previous_value = np.nan
     
-    lookback2=50
+    lookback2=100
     
-    for i in range(lookback2,len(df_log)+1):
+    for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
         window_data = df_log.iloc[i - lookback:i]
         
         x = np.arange(len(window_data))
         y = window_data['close'].values
-        current_value = nadaraya_watson_smoother(x, y, bandwidth)
+        y_smoothed = nadaraya_watson_smoother(x, y, bandwidth)
+        current_value = y_smoothed[-1]
+        
+        # Calculate residuals
+        residuals = y - y_smoothed
+        std_residuals = np.std(residuals)
+        
+        # Compute upper and lower envelopes
+        upper_envelope = y_smoothed + 2 * std_residuals  # 2 standard deviations for example
+        lower_envelope = y_smoothed - 2 * std_residuals
+
         data.at[current_index, 'nadaraya_watson'] = current_value
+        data.at[current_index, 'nadaraya_upper_envelope'] = upper_envelope[-1]
+        data.at[current_index, 'nadaraya_lower_envelope'] = lower_envelope[-1]
+        
         # Determine trend based on Nadaraya-Watson
         data.at[current_index, 'nadaraya_watson_trend'] = determine_trend(current_value, previous_value)
         previous_value = current_value
         
         psar_series = ta.psar(window_data['high'], window_data['low'], window_data['close'], af=0.02, max_af=0.2)['PSARl_0.02_0.2']
-        data[current_index,'psar']=psar_series.iloc[-1]
-        
+        data.at[current_index, 'psar'] = psar_series.iloc[-1]
         
         # Determine PSAR trend direction
         if window_data['close'].iloc[-1] > psar_series.iloc[-1]:
