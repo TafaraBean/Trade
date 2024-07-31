@@ -618,7 +618,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 5
+    lookback = 10
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline_15'] = np.nan
@@ -685,7 +685,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 24
+    lookback = 30
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -693,12 +693,13 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=100)
-    data['ema_24'] = ta.ema(data['close'], length=24)
+    data['ema_50'] = ta.ema(data['close'], length=30)
+    data['ema_24'] = ta.ema(data['close'], length=17)
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
     data['hour_lsma_slope'] = data['hour_lsma'].diff()
     data['prev_hour_lsma_slope'] = data['hour_lsma_slope'].shift(1)
+    data['wma_10'] = ta.wma(data['close'], length=17)
 
     macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
     data['hour_macd_line'] = macd['MACD_8_17_9']

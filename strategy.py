@@ -3,6 +3,7 @@ import pandas_ta as ta
 import numpy as np
 import MetaTrader5 as mt5
 
+
 def h1_gold_strategy(data):
         data['ema_short'] = ta.ema(data['close'], length=12)
         data['ema_long'] = ta.ema(data['close'], length=26)
@@ -76,14 +77,14 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (
         ((data['fixed_support_trendline_15'] < data['prev_fixed_support_trendline'].shift(1)) &
-         (data['ema_50']<data['close'])&
+         (data['wma_10']<data['close'])&
          (data['stoch_k']>data['stoch_d']))
         
     )
 
     data['is_sell2'] = (
         ((data['fixed_resistance_trendline_15'] > data['prev_fixed_resistance_trendline'].shift(1)) &
-         (data['ema_50']>data['close'])&
+         (data['wma_10']>data['close'])&
         (data['stoch_k']<data['stoch_d']))
     )
     
