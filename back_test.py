@@ -21,8 +21,8 @@ lot_size = 0.01
 timeframe = mt5.TIMEFRAME_M5
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-01-01")
-end = pd.Timestamp("2024-01-30")
+start = pd.Timestamp("2024-06-01")
+end = pd.Timestamp("2024-06-29")
 #end = (pd.Timestamp.now() + pd.Timedelta(days=1))
 
 #creating dataframe by importing trade data

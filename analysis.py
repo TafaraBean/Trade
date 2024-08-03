@@ -644,6 +644,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         data.at[current_index, 'fixed_support_trendline_15'] = np.exp(support_value)
         data.at[current_index, 'fixed_resistance_trendline_15'] = np.exp(resist_value)
         # Apply the calculated gradients to each candle in the window
+        data['avg_support_grad'] = data['fixed_support_gradient_15'].tail(10).mean()
         
         for j in range(lookback):
             idx = i - lookback + j
@@ -693,7 +694,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=30)
+    data['ema_50'] = ta.ema(data['close'], length=100)
     data['ema_24'] = ta.ema(data['close'], length=17)
     data['hour_lsma'] = ta.linreg(data['close'], length=8)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
@@ -723,20 +724,28 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
-        window_data = df_log.iloc[i - lookback:i]
+        window_data = df_log.iloc[:i]  # Use all data up to the current point
         
         x = np.arange(len(window_data))
         y = window_data['close'].values
-        y_smoothed = nadaraya_watson_smoother(x, y, bandwidth)
-        current_value = y_smoothed[-1]
+        y_smoothed_log = nadaraya_watson_smoother(x, y, bandwidth)
+        current_value_log = y_smoothed_log[-1]
+        
+        # Convert back to original scale
+        y_smoothed = np.exp(y_smoothed_log)
+        current_value = np.exp(current_value_log)
         
         # Calculate residuals
-        residuals = y - y_smoothed
+        residuals = window_data['close'] - y_smoothed_log
         std_residuals = np.std(residuals)
         
-        # Compute upper and lower envelopes
-        upper_envelope = y_smoothed + 2 * std_residuals  # 2 standard deviations for example
-        lower_envelope = y_smoothed - 2 * std_residuals
+        # Compute upper and lower envelopes on the log scale
+        upper_envelope_log = y_smoothed_log + 2 * std_residuals  # 3 standard deviations for example
+        lower_envelope_log = y_smoothed_log - 2 * std_residuals
+
+        # Convert envelopes back to original scale
+        upper_envelope = np.exp(upper_envelope_log)
+        lower_envelope = np.exp(lower_envelope_log)
 
         data.at[current_index, 'nadaraya_watson'] = current_value
         data.at[current_index, 'nadaraya_upper_envelope'] = upper_envelope[-1]
@@ -746,7 +755,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
         data.at[current_index, 'nadaraya_watson_trend'] = determine_trend(current_value, previous_value)
         previous_value = current_value
         
-        psar_series = ta.psar(window_data['high'], window_data['low'], window_data['close'], af=0.02, max_af=0.2)['PSARl_0.02_0.2']
+        psar_series = ta.psar(np.exp(window_data['high']), np.exp(window_data['low']), np.exp(window_data['close']), af=0.02, max_af=0.2)['PSARl_0.02_0.2']
         data.at[current_index, 'psar'] = psar_series.iloc[-1]
         
         # Determine PSAR trend direction
