@@ -18,11 +18,11 @@ symbol="EURUSD.Z"
 account_balance = 700
 inital_balance = account_balance
 lot_size = 0.01
-timeframe = mt5.TIMEFRAME_M5
+timeframe = mt5.TIMEFRAME_H1
 
 conversion = bot.timeframe_to_interval.get(timeframe, 3600)
-start = pd.Timestamp("2024-06-01")
-end = pd.Timestamp("2024-06-29")
+start = pd.Timestamp("2024-01-01")
+end = pd.Timestamp("2024-01-29")
 #end = (pd.Timestamp.now() + pd.Timedelta(days=1))
 
 #creating dataframe by importing trade data
@@ -35,7 +35,7 @@ hour_data = bot.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, star
 
 hour_data=auto_trendline(hour_data)
 
-hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','stoch_k','stoch_d','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope','wma_10']]
+hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','prev_stochk','prev_stochd','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope','wma_10','prev_supertrend_dir','HSpan_A','HSpan_B']]
 
 hour_data.to_csv("csv/hour_data.csv",index=False)
 
@@ -43,8 +43,16 @@ data['hourly_time']=data['time'].dt.floor('h')
 
 merged_data = pd.merge(data,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
 
+four_hour_data = bot.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H4, start=start, end=end)
+four_hour_data = auto_trendline_4H(four_hour_data)
+H4_data = four_hour_data[['time4h','4H_ema_50','prev_4fixed_support_gradient','prev_4fixed_support_trendline','prev_4fixed_resistance_gradient','prev_4fixed_resistance_trendline','prev_4nadaraya_watson_trend','4H_hour_lsma','4lsma_upper_band','4lsma_lower_band']]
 
-df = m15_gold_strategy(merged_data)
+merged_data['4_hour_time']=merged_data['time2'].dt.floor('4h')
+
+
+merged_data2 = pd.merge(merged_data,H4_data, left_on='4_hour_time', right_on='time4h', suffixes=('', '_4h'))
+
+df = m15_gold_strategy(merged_data2)
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 
 

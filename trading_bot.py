@@ -402,8 +402,8 @@ class TradingBot:
                         if result.retcode == mt5.TRADE_RETCODE_DONE:
                             print(f"sl adjusted for position {row['ticket']} ")
                             # Update the DataFrame
-                            csv_positions_df.at[idx, 'be_condition'] += 20 * 0.0001
-                            csv_positions_df.at[idx, 'be'] += 18 * 0.0001
+                            csv_positions_df.at[idx, 'be_condition'] += 5 * 0.0001
+                            csv_positions_df.at[idx, 'be'] += 2 * 0.0001
                     
                     # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
                     elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
@@ -414,8 +414,8 @@ class TradingBot:
                         if result.retcode == mt5.TRADE_RETCODE_DONE:
                             print(f"sl adjusted for position {row['ticket']} ")                            
                             # Update the DataFrame
-                            csv_positions_df.at[idx, 'be_condition']  -= 20 * 0.0001
-                            csv_positions_df.at[idx, 'be'] -= 18 * 0.0001
+                            csv_positions_df.at[idx, 'be_condition']  -= 5 * 0.0001
+                            csv_positions_df.at[idx, 'be'] -= 2 * 0.0001
                 else:
                     print(f"No specific row found for ticket {row['ticket']}")
 
