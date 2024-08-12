@@ -71,22 +71,64 @@ def display_chart(df):
 
     # Add LMSA Upper Band line to the first subplot
     fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['nadaraya_upper_envelope'], 
+                            mode='lines', 
+                            name='nadaraya Up'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
                             y=df['lsma_upper_band'], 
                             mode='lines', 
-                            name='LMSA Upper Band'
+                            name='Lsma_up'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['lsma_lower_band'], 
+                            mode='lines', 
+                            name='lsma Low'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['ema_50'], 
+                            mode='lines', 
+                            name='ema_50'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['wma_50'], 
+                            mode='lines', 
+                            name='wma_50'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['ema_24'], 
+                            mode='lines', 
+                            name='ema_24'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['fixed_support_trendline'], 
+                            mode='lines', 
+                            name='support'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['fixed_resistance_trendline'], 
+                            mode='lines', 
+                            name='resistance'
                             ), row=1, col=1)
 
     # Add LMSA Lower Band line to the first subplot
     fig.add_trace(go.Scatter(x=df['time'],
-                            y=df['lsma_lower_band'], 
+                            y=df['nadaraya_lower_envelope'], 
                             mode='lines', 
-                            name='LMSA Lower Band'
+                            name='nadaraya low'
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'],
-                            y=df['ema_50'], 
+                            y=df['nadaraya_watson'], 
                             mode='lines', 
-                            name='ema_50'
+                            name='nadaraya'
                             ), row=1, col=1)
     
 
@@ -627,7 +669,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 10
+    lookback = 20
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline_15'] = np.nan
@@ -638,9 +680,8 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     data['Span_A']=np.nan
     data['Span_B']=np.nan
 
-    
 
-    lookback2 = 20
+    lookback2 = 50
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[:i]
@@ -657,6 +698,10 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         else:
             data.at[current_index, 'Span_A'] = None
             data.at[current_index, 'Span_B'] = None
+
+        
+        # Determine trend based on Nadaraya-Watson
+        
         
     #ISA_9    ISB_26
 
@@ -723,7 +768,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 2
+    lookback = 60
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -731,13 +776,13 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=150)
-    data['ema_24'] = ta.ema(data['close'], length=17)
+    data['ema_50'] = ta.ema(data['close'], length=100)
+    data['ema_24'] = ta.ema(data['close'], length=8)
     data['hour_lsma'] = ta.linreg(data['close'], length=10)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
     data['hour_lsma_slope'] = data['hour_lsma'].diff()
     data['prev_hour_lsma_slope'] = data['hour_lsma_slope'].shift(1)
-    data['wma_10'] = ta.wma(data['close'], length=17)
+    data['wma_50'] = ta.wma(data['close'], length=100)
 
     macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
     data['hour_macd_line'] = macd['MACD_8_17_9']
@@ -770,7 +815,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
     previous_value = np.nan
     
-    lookback2=30
+    lookback2=60
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
@@ -806,8 +851,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
         std_residuals = np.std(residuals)
         
         # Compute upper and lower envelopes on the log scale
-        upper_envelope_log = y_smoothed_log + 2 * std_residuals  # 3 standard deviations for example
-        lower_envelope_log = y_smoothed_log - 2 * std_residuals
+        upper_envelope_log = y_smoothed_log + 0.8 * std_residuals  # 3 standard deviations for example
+        lower_envelope_log = y_smoothed_log - 0.8 * std_residuals
 
         # Convert envelopes back to original scale
         upper_envelope = np.exp(upper_envelope_log)
@@ -850,8 +895,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
         resist_slope, resist_intercept = resist_coefs
         data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
         data.at[current_index, 'fixed_support_gradient'] = support_slope
-        support_value = support_slope * window_data['close'].iloc[-1] + support_intercept
-        resist_value = resist_slope * window_data['close'].iloc[-1] + resist_intercept
+        support_value = support_slope * window_data['low'].iloc[-1] + support_intercept
+        resist_value = resist_slope * window_data['high'].iloc[-1] + resist_intercept
         data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
         data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
 
@@ -871,11 +916,15 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_hour_macd_line'] = data['hour_macd_line'].shift(1)
     data['prev_hour_macd_signal'] = data['hour_macd_signal'].shift(1)
     data['prev_nadaraya_watson'] = data['nadaraya_watson'].shift(1)
+    data['prev_nadaraya_lower_band'] = data['nadaraya_lower_envelope'].shift(1)
+    data['prev_nadaraya_upper_band'] = data['nadaraya_upper_envelope'].shift(1)
     data['prev_nadaraya_watson_trend'] = data['nadaraya_watson_trend'].shift(1)
     data['prev_psar']=data['psar'].shift(1)
     data['prev_psar_direction']=data['psar_direction'].shift(1)
     data['prev_supertrend'] = data['supertrend'].shift(1)
     data['prev_supertrend_dir']=data['supertrend_dir'].shift(1)
+    data['prev_HSpan_A'] = data['HSpan_A'].shift(1)
+    data['prev_HSpan_B'] = data['HSpan_B'].shift(1)
     data.to_csv("csv/test.csv", index=False)
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
@@ -970,11 +1019,23 @@ def auto_trendline_4H(data: pd.DataFrame) -> pd.DataFrame:
 
     previous_value = np.nan
     
-    lookback2=100
+    lookback2=9
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
         window_data = df_log.iloc[:i]  # Use all data up to the current point
+
+        ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
+        look_ahead_spans = ichi[1]
+        
+        if look_ahead_spans is not None:
+            senkou_span_a = look_ahead_spans['ISA_9']
+            senkou_span_b = look_ahead_spans['ISB_26']
+            data.at[current_index, '4HSpan_A'] = senkou_span_a.iloc[-1]
+            data.at[current_index, '4HSpan_B'] = senkou_span_b.iloc[-1]
+        else:
+            data.at[current_index, '4HSpan_A'] = None
+            data.at[current_index, '4HSpan_B'] = None
 
         
         
