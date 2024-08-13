@@ -80,13 +80,15 @@ if not filtered_df.empty:
     loss = results['loss']
     account_balance = results['account_balance']
     running_trades = results['running_trades']
-
-
+    count_auto = (executed_trades_df['exit'] == 'auto').sum()
+    count_manual = (executed_trades_df['exit'] == 'manual').sum()
     print(f"\nanalysis from {start} to {end}\n")
     print(f"\nPROFITABILITY\n")
 
     print(f"lot size used: {lot_size}")
     print(f"Total trades: {total_trades}")
+    print(f"total auto close: {count_auto}")
+    print(f"total manual close: {count_manual}")
     print(f"Total unexecuted trades: {unexecuted_trades}")
     print(f"Total successful trades: {successful_trades}") 
     print(f"Total unsuccessful trades: {unsuccessful_trades}")

@@ -71,64 +71,22 @@ def display_chart(df):
 
     # Add LMSA Upper Band line to the first subplot
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['nadaraya_upper_envelope'], 
-                            mode='lines', 
-                            name='nadaraya Up'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
                             y=df['lsma_upper_band'], 
                             mode='lines', 
-                            name='Lsma_up'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma_lower_band'], 
-                            mode='lines', 
-                            name='lsma Low'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['ema_50'], 
-                            mode='lines', 
-                            name='ema_50'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['wma_50'], 
-                            mode='lines', 
-                            name='wma_50'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['ema_24'], 
-                            mode='lines', 
-                            name='ema_24'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_support_trendline'], 
-                            mode='lines', 
-                            name='support'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_resistance_trendline'], 
-                            mode='lines', 
-                            name='resistance'
+                            name='LMSA Upper Band'
                             ), row=1, col=1)
 
     # Add LMSA Lower Band line to the first subplot
     fig.add_trace(go.Scatter(x=df['time'],
-                            y=df['nadaraya_lower_envelope'], 
+                            y=df['lsma_lower_band'], 
                             mode='lines', 
-                            name='nadaraya low'
+                            name='LMSA Lower Band'
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'],
-                            y=df['nadaraya_watson'], 
+                            y=df['ema_50'], 
                             mode='lines', 
-                            name='nadaraya'
+                            name='ema_50'
                             ), row=1, col=1)
     
 
@@ -419,12 +377,6 @@ def analyse(filtered_df: pd.DataFrame,
             print(f"trade invalid stopouts: {row['time']}")
             continue
 
-        #check for mixed signals
-        if row['is_buy2'] and row['is_sell2']:
-            print("Trade was both buy and sell")
-            unexecuted_trades+=1
-            continue
-
         # allways add 15 min to start time because position was started at cnadle close and not open
         start_time= pd.to_datetime(row['time'] + pd.Timedelta(seconds=1))
         start_time = start_time.ceil(conversion) #add 1 second to be able to apply ceil function
@@ -441,8 +393,6 @@ def analyse(filtered_df: pd.DataFrame,
             second_chart['time'] = pd.to_datetime(second_chart['time'],unit='s')
         if len(relevant_ticks) != 0:
             relevant_ticks['time'] = pd.to_datetime(relevant_ticks['time'],unit='s')
-
-        static_ticks = relevant_ticks# for later use when check if trade was manually closed
         # Check if stop loss or take profit or trailing stop was reached 
         stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
         take_profit_reached = (relevant_ticks['bid'] >= row["tp"]) if row["is_buy2"] else (relevant_ticks['bid'] <= row["tp"])
@@ -468,7 +418,7 @@ def analyse(filtered_df: pd.DataFrame,
             
         
         sl_updated = 0
-        timestamps_list = []# to keep track of all the times stop losses were updated
+        timestamps_list = []
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
             while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail):
@@ -512,42 +462,18 @@ def analyse(filtered_df: pd.DataFrame,
         row['entry_time'] = (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
         row['entry_price'] = row['close']
 
-        row['exit_time'] = min(time_sl_hit, time_tp_hit) 
+        row['exit_time'] = min(time_sl_hit,time_tp_hit,time_to_trail)
         
-
-
 
         matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
         if not matching_row.empty:
             row['exit_price'] = matching_row.iloc[0]['bid']
         else:
             row['exit_price'] =  pd.NA
-
-        following_signals = filtered_df[
-            ((filtered_df['time'] >= row['entry_time']) & 
-            (filtered_df['time'] <= row['exit_time']) & 
-            (filtered_df['is_buy2'] != row['is_buy2']))
-        ]
-
-        if not following_signals.empty:
-            first_signal_time = (following_signals.iloc[0]['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
-            print(f"following signal: {first_signal_time}")
-            if min(first_signal_time,time_sl_hit, time_tp_hit) == first_signal_time:
-                row['exit_price'] = static_ticks[static_ticks['time'] == first_signal_time].iloc[0]['bid']
-                row['exit_time'] = first_signal_time
-                row['exit'] ="manual" 
-            else:
-                row['exit']= "auto"
-
-        else:
-            print(f"following signal: {None}")
-            first_signal_time = pd.NA
-            row['exit'] ="auto" 
-
+        
         #set exit time  to none after use
         row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
-        print(f"type: {row['exit']}")
-        print(f"ex time: {row['exit_time']}")
+
         print(f"tp time: {row['time_tp_hit']}")
         print(f"sl time: {row['time_sl_hit'] }")
         print(f"tr time: {row['time_to_trail']}")
@@ -563,9 +489,7 @@ def analyse(filtered_df: pd.DataFrame,
         executed_trades.append(row)
         row['lot_size'] = lot_size
         #set the value for the type of trade this was, weather loss, even or success
-        if row['type'] == "manual":
-            pass
-        elif stop_loss_index > -1 and take_profit_index > -1:
+        if stop_loss_index > -1 and take_profit_index > -1:
             if(min(time_sl_hit, time_tp_hit) == time_tp_hit):                
                 row['type'] = "success"
                 successful_trades+=1
@@ -595,35 +519,24 @@ def analyse(filtered_df: pd.DataFrame,
             row['type'] = "running"
             running_trades += 1
 
-        
-        
+        print(f"trade {row['type']}")
+        row['success'] = row['type'] in['success', 'even']
       #calculate its profit value
-        if row['exit'] == "manual":
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
-            row['type'] = 'success' if row['profit'] >= 0 else 'fail'
-            if row['type'] == "success":
-                successful_trades +=1
-            else:
-                unsuccessful_trades+=1
-                 
-        elif row['type'] in ["success", "even", 'fail']:  
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
-        else :
-            row['profit'] = 0
+        
+        row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) \
+        if row['type'] in ["success", "even", 'fail'] else 0
         
         account_balance  += row['profit']
         row["account_balance"] = account_balance
         
-        if row['profit'] >= 0:
+        if row['type'] in ['success', 'even']:
             gross_profit += row['profit']
         else:
             loss += row["profit"]
+
         
-        row['success'] = row['type'] in['success', 'even']
 
-        print(f"trade {row['type']}")
 
-    
     executed_trades_df = pd.DataFrame(executed_trades)
     profit_factor = calc_profit_factor(gross_profit=gross_profit,
                                         loss=loss)
@@ -650,8 +563,6 @@ def analyse(filtered_df: pd.DataFrame,
         "monthly_profit": monthly_profit,  
         "running_trades": running_trades,      
     }
-
-
 
 
 def aggregate_profit(executed_trades_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
@@ -716,7 +627,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 20
+    lookback = 10
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline_15'] = np.nan
@@ -727,8 +638,9 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     data['Span_A']=np.nan
     data['Span_B']=np.nan
 
+    
 
-    lookback2 = 50
+    lookback2 = 20
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[:i]
@@ -745,10 +657,6 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         else:
             data.at[current_index, 'Span_A'] = None
             data.at[current_index, 'Span_B'] = None
-
-        
-        # Determine trend based on Nadaraya-Watson
-        
         
     #ISA_9    ISB_26
 
@@ -815,7 +723,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 60
+    lookback = 2
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan
@@ -823,13 +731,13 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=100)
-    data['ema_24'] = ta.ema(data['close'], length=8)
+    data['ema_50'] = ta.ema(data['close'], length=150)
+    data['ema_24'] = ta.ema(data['close'], length=17)
     data['hour_lsma'] = ta.linreg(data['close'], length=10)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
     data['hour_lsma_slope'] = data['hour_lsma'].diff()
     data['prev_hour_lsma_slope'] = data['hour_lsma_slope'].shift(1)
-    data['wma_50'] = ta.wma(data['close'], length=100)
+    data['wma_10'] = ta.wma(data['close'], length=17)
 
     macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
     data['hour_macd_line'] = macd['MACD_8_17_9']
@@ -862,7 +770,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
     previous_value = np.nan
     
-    lookback2=60
+    lookback2=30
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
@@ -898,8 +806,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
         std_residuals = np.std(residuals)
         
         # Compute upper and lower envelopes on the log scale
-        upper_envelope_log = y_smoothed_log + 0.8 * std_residuals  # 3 standard deviations for example
-        lower_envelope_log = y_smoothed_log - 0.8 * std_residuals
+        upper_envelope_log = y_smoothed_log + 2 * std_residuals  # 3 standard deviations for example
+        lower_envelope_log = y_smoothed_log - 2 * std_residuals
 
         # Convert envelopes back to original scale
         upper_envelope = np.exp(upper_envelope_log)
@@ -942,8 +850,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
         resist_slope, resist_intercept = resist_coefs
         data.at[current_index, 'fixed_resistance_gradient'] = resist_slope
         data.at[current_index, 'fixed_support_gradient'] = support_slope
-        support_value = support_slope * window_data['low'].iloc[-1] + support_intercept
-        resist_value = resist_slope * window_data['high'].iloc[-1] + resist_intercept
+        support_value = support_slope * window_data['close'].iloc[-1] + support_intercept
+        resist_value = resist_slope * window_data['close'].iloc[-1] + resist_intercept
         data.at[current_index, 'fixed_support_trendline'] = np.exp(support_value)
         data.at[current_index, 'fixed_resistance_trendline'] = np.exp(resist_value)
 
@@ -963,15 +871,11 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_hour_macd_line'] = data['hour_macd_line'].shift(1)
     data['prev_hour_macd_signal'] = data['hour_macd_signal'].shift(1)
     data['prev_nadaraya_watson'] = data['nadaraya_watson'].shift(1)
-    data['prev_nadaraya_lower_band'] = data['nadaraya_lower_envelope'].shift(1)
-    data['prev_nadaraya_upper_band'] = data['nadaraya_upper_envelope'].shift(1)
     data['prev_nadaraya_watson_trend'] = data['nadaraya_watson_trend'].shift(1)
     data['prev_psar']=data['psar'].shift(1)
     data['prev_psar_direction']=data['psar_direction'].shift(1)
     data['prev_supertrend'] = data['supertrend'].shift(1)
     data['prev_supertrend_dir']=data['supertrend_dir'].shift(1)
-    data['prev_HSpan_A'] = data['HSpan_A'].shift(1)
-    data['prev_HSpan_B'] = data['HSpan_B'].shift(1)
     data.to_csv("csv/test.csv", index=False)
     # Create a candlestick chart
     fig = go.Figure(data=[go.Candlestick(
@@ -1066,23 +970,11 @@ def auto_trendline_4H(data: pd.DataFrame) -> pd.DataFrame:
 
     previous_value = np.nan
     
-    lookback2=9
+    lookback2=100
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
         window_data = df_log.iloc[:i]  # Use all data up to the current point
-
-        ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
-        look_ahead_spans = ichi[1]
-        
-        if look_ahead_spans is not None:
-            senkou_span_a = look_ahead_spans['ISA_9']
-            senkou_span_b = look_ahead_spans['ISB_26']
-            data.at[current_index, '4HSpan_A'] = senkou_span_a.iloc[-1]
-            data.at[current_index, '4HSpan_B'] = senkou_span_b.iloc[-1]
-        else:
-            data.at[current_index, '4HSpan_A'] = None
-            data.at[current_index, '4HSpan_B'] = None
 
         
         
