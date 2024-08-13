@@ -66,11 +66,76 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['stoch_k'] = stochastic['STOCHk_14_3_3']
     data['stoch_d'] = stochastic['STOCHd_14_3_3']
 
-    data['is_doji'] = talib.CDLDOJI(data['open'],data['high'],data['low'],data['close'])
-    data['is_doji_star'] = talib.CDLDOJISTAR(data['open'],data['high'],data['low'],data['close'])
-    data['3whitesoldiers'] = talib.CDL3WHITESOLDIERS(data['open'],data['high'],data['low'],data['close'])
-    data['3blackcrows'] = talib.CDL3BLACKCROWS(data['open'],data['high'],data['low'],data['close'])
-    data['engulfing'] = talib.CDLENGULFING(data['open'],data['high'],data['low'],data['close'])
+    # Calculate the candlestick patterns
+    data['is_doji'] = talib.CDLDOJI(data['open'], data['high'], data['low'], data['close'])
+    data['is_doji_star'] = talib.CDLDOJISTAR(data['open'], data['high'], data['low'], data['close'])
+    data['3whitesoldiers'] = talib.CDL3WHITESOLDIERS(data['open'], data['high'], data['low'], data['close'])
+    data['3blackcrows'] = talib.CDL3BLACKCROWS(data['open'], data['high'], data['low'], data['close'])
+    data['engulfing'] = talib.CDLENGULFING(data['open'], data['high'], data['low'], data['close'])
+    data['inverted_hammer'] = talib.CDLINVERTEDHAMMER(data['open'], data['high'], data['low'], data['close'])
+    data['two_crows'] = talib.CDL2CROWS(data['open'], data['high'], data['low'], data['close'])
+    data['three_inside'] = talib.CDL3INSIDE(data['open'], data['high'], data['low'], data['close'])
+    data['three_line_strike'] = talib.CDL3LINESTRIKE(data['open'], data['high'], data['low'], data['close'])
+    data['three_outside'] = talib.CDL3OUTSIDE(data['open'], data['high'], data['low'], data['close'])
+    data['three_stars_in_south'] = talib.CDL3STARSINSOUTH(data['open'], data['high'], data['low'], data['close'])
+    data['abandoned_baby'] = talib.CDLABANDONEDBABY(data['open'], data['high'], data['low'], data['close'])
+    data['advance_block'] = talib.CDLADVANCEBLOCK(data['open'], data['high'], data['low'], data['close'])
+    data['belt_hold'] = talib.CDLBELTHOLD(data['open'], data['high'], data['low'], data['close'])
+    data['breakaway'] = talib.CDLBREAKAWAY(data['open'], data['high'], data['low'], data['close'])
+    data['closing_marubozu'] = talib.CDLCLOSINGMARUBOZU(data['open'], data['high'], data['low'], data['close'])
+    data['conceal_baby_swallow'] = talib.CDLCONCEALBABYSWALL(data['open'], data['high'], data['low'], data['close'])
+    data['counterattack'] = talib.CDLCOUNTERATTACK(data['open'], data['high'], data['low'], data['close'])
+    data['dark_cloud_cover'] = talib.CDLDARKCLOUDCOVER(data['open'], data['high'], data['low'], data['close'])
+    data['doji'] = talib.CDLDOJI(data['open'], data['high'], data['low'], data['close'])
+    data['doji_star'] = talib.CDLDOJISTAR(data['open'], data['high'], data['low'], data['close'])
+    data['dragonfly_doji'] = talib.CDLDRAGONFLYDOJI(data['open'], data['high'], data['low'], data['close'])
+    data['engulfing'] = talib.CDLENGULFING(data['open'], data['high'], data['low'], data['close'])
+    data['evening_doji_star'] = talib.CDLEVENINGDOJISTAR(data['open'], data['high'], data['low'], data['close'])
+    data['evening_star'] = talib.CDLEVENINGSTAR(data['open'], data['high'], data['low'], data['close'])
+    data['gap_side_side_white'] = talib.CDLGAPSIDESIDEWHITE(data['open'], data['high'], data['low'], data['close'])
+    data['gravestone_doji'] = talib.CDLGRAVESTONEDOJI(data['open'], data['high'], data['low'], data['close'])
+    data['hammer'] = talib.CDLHAMMER(data['open'], data['high'], data['low'], data['close'])
+    data['hanging_man'] = talib.CDLHANGINGMAN(data['open'], data['high'], data['low'], data['close'])
+    data['harami'] = talib.CDLHARAMI(data['open'], data['high'], data['low'], data['close'])
+    data['harami_cross'] = talib.CDLHARAMICROSS(data['open'], data['high'], data['low'], data['close'])
+    data['high_wave'] = talib.CDLHIGHWAVE(data['open'], data['high'], data['low'], data['close'])
+    data['hikkake'] = talib.CDLHIKKAKE(data['open'], data['high'], data['low'], data['close'])
+    data['hikkake_mod'] = talib.CDLHIKKAKEMOD(data['open'], data['high'], data['low'], data['close'])
+    data['homing_pigeon'] = talib.CDLHOMINGPIGEON(data['open'], data['high'], data['low'], data['close'])
+    data['identical_three_crows'] = talib.CDLIDENTICAL3CROWS(data['open'], data['high'], data['low'], data['close'])
+    data['in_neck'] = talib.CDLINNECK(data['open'], data['high'], data['low'], data['close'])
+    data['inverted_hammer'] = talib.CDLINVERTEDHAMMER(data['open'], data['high'], data['low'], data['close'])
+    data['kicking'] = talib.CDLKICKING(data['open'], data['high'], data['low'], data['close'])
+    data['kicking_by_length'] = talib.CDLKICKINGBYLENGTH(data['open'], data['high'], data['low'], data['close'])
+    data['ladder_bottom'] = talib.CDLLADDERBOTTOM(data['open'], data['high'], data['low'], data['close'])
+    data['long_legged_doji'] = talib.CDLLONGLEGGEDDOJI(data['open'], data['high'], data['low'], data['close'])
+    data['long_line'] = talib.CDLLONGLINE(data['open'], data['high'], data['low'], data['close'])
+    data['matching_low'] = talib.CDLMATCHINGLOW(data['open'], data['high'], data['low'], data['close'])
+    data['mat_hold'] = talib.CDLMATHOLD(data['open'], data['high'], data['low'], data['close'])
+    data['morning_doji_star'] = talib.CDLMORNINGDOJISTAR(data['open'], data['high'], data['low'], data['close'])
+    data['morning_star'] = talib.CDLMORNINGSTAR(data['open'], data['high'], data['low'], data['close'])
+    data['on_neck'] = talib.CDLONNECK(data['open'], data['high'], data['low'], data['close'])
+    data['piercing'] = talib.CDLPIERCING(data['open'], data['high'], data['low'], data['close'])
+    data['rickshaw_man'] = talib.CDLRICKSHAWMAN(data['open'], data['high'], data['low'], data['close'])
+    data['rise_fall_3_methods'] = talib.CDLRISEFALL3METHODS(data['open'], data['high'], data['low'], data['close'])
+    data['separating_lines'] = talib.CDLSEPARATINGLINES(data['open'], data['high'], data['low'], data['close'])
+    data['shooting_star'] = talib.CDLSHOOTINGSTAR(data['open'], data['high'], data['low'], data['close'])
+    data['short_line'] = talib.CDLSHORTLINE(data['open'], data['high'], data['low'], data['close'])
+    data['spinning_top'] = talib.CDLSPINNINGTOP(data['open'], data['high'], data['low'], data['close'])
+    data['stalled_pattern'] = talib.CDLSTALLEDPATTERN(data['open'], data['high'], data['low'], data['close'])
+    data['stick_sandwich'] = talib.CDLSTICKSANDWICH(data['open'], data['high'], data['low'], data['close'])
+    data['takuri'] = talib.CDLTAKURI(data['open'], data['high'], data['low'], data['close'])
+    data['tasuki_gap'] = talib.CDLTASUKIGAP(data['open'], data['high'], data['low'], data['close'])
+    data['thrusting'] = talib.CDLTHRUSTING(data['open'], data['high'], data['low'], data['close'])
+    data['tristar'] = talib.CDLTRISTAR(data['open'], data['high'], data['low'], data['close'])
+    data['unique_3_river'] = talib.CDLUNIQUE3RIVER(data['open'], data['high'], data['low'], data['close'])
+    data['upside_gap_two_crows'] = talib.CDLUPSIDEGAP2CROWS(data['open'], data['high'], data['low'], data['close'])
+    data['xside_gap_3_methods'] = talib.CDLXSIDEGAP3METHODS(data['open'], data['high'], data['low'], data['close'])
+
+    data['shooting_star'].to_csv("csv/shooting_star",index=False)
+    data['inverted_hammer'].to_csv("csv/inverted",index=False)
+
+
 
 
 
@@ -87,10 +152,13 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     
     # Generate signals
     data['is_buy2'] = (
+          
+        #(data['three_line_strike']==-100)
+        #(data['advance_block']==-100)
+        (data['hammer']==100)
+       
         
-          (data['close']>data['prev_fixed_resistance_trendline'])&
-          (data['close'].shift(1)<data['prev_fixed_resistance_trendline'].shift(1))&
-          (data['Span_A']>data['Span_B'])
+          
           
 
          
@@ -100,9 +168,13 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     )
 
     data['is_sell2'] = (
-        (data['close']<data['prev_fixed_support_trendline'])&
-        (data['close'].shift(1)>data['prev_fixed_support_trendline'].shift(1))&
-        (data['Span_A']<data['Span_B'])
+          
+        #(data['three_line_strike']==100)
+        #(data['shooting_star']==-100)
+        #(data['long_line']==-100)
+        (data['inverted_hammer']==100)
+    
+      
           
     )
     
