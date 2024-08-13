@@ -563,7 +563,7 @@ def analyse(filtered_df: pd.DataFrame,
         executed_trades.append(row)
         row['lot_size'] = lot_size
         #set the value for the type of trade this was, weather loss, even or success
-        if row['type'] == "manual":
+        if row['exit'] == "manual":
             pass
         elif stop_loss_index > -1 and take_profit_index > -1:
             if(min(time_sl_hit, time_tp_hit) == time_tp_hit):                
@@ -605,7 +605,7 @@ def analyse(filtered_df: pd.DataFrame,
                 successful_trades +=1
             else:
                 unsuccessful_trades+=1
-                 
+
         elif row['type'] in ["success", "even", 'fail']:  
             row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
         else :
