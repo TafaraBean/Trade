@@ -516,7 +516,7 @@ def analyse(filtered_df: pd.DataFrame,
         
 
 
-
+        
         matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
         if not matching_row.empty:
             row['exit_price'] = matching_row.iloc[0]['bid']
@@ -533,7 +533,18 @@ def analyse(filtered_df: pd.DataFrame,
             first_signal_time = (following_signals.iloc[0]['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
             print(f"following signal: {first_signal_time}")
             if min(first_signal_time,time_sl_hit, time_tp_hit) == first_signal_time:
-                row['exit_price'] = static_ticks[static_ticks['time'] == first_signal_time].iloc[0]['bid']
+                # Try to find the index of the first row that matches the first_signal_time
+                matching_rows = static_ticks[static_ticks['time'] == first_signal_time]
+
+                if not matching_rows.empty:
+                    # If a match is found, use its index
+                    start_index = matching_rows.index[0]
+                else:
+                    # If no match is found, use the next available row
+                    start_index = static_ticks[static_ticks['time'] > first_signal_time].index[0]
+
+                # Fetch the row at the start_index
+                row['exit_price'] = static_ticks.iloc[start_index]['bid']
                 row['exit_time'] = first_signal_time
                 row['exit'] ="manual" 
             else:
@@ -731,7 +742,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback2 = 50
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
-        window_data = df_log.iloc[:i]
+        window_data = df_log.iloc[i-lookback:i]
         supertrend_result = ta.supertrend(window_data['high'],window_data['low'], window_data['close'], length=20, multiplier=3)
         data.at[current_index,'supertrend_dir']=supertrend_result['SUPERTd_20_3.0'].iloc[-1]
         ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
@@ -866,7 +877,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
-        window_data = df_log.iloc[:i]  # Use all data up to the current point
+        window_data = df_log.iloc[i-lookback:i]  # Use all data up to the current point
         supertrend_result = ta.supertrend(window_data['high'],window_data['low'], window_data['close'], length=2, multiplier=3)
         ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
         look_ahead_spans = ichi[1]
