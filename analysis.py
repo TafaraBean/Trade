@@ -471,7 +471,7 @@ def analyse(filtered_df: pd.DataFrame,
         timestamps_list = []# to keep track of all the times stop losses were updated
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
-            while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail):
+            while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not(time_sl_hit== pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_to_trail == pd.Timestamp.max )):
                 sl_updated+=1
                 relevant_ticks = relevant_ticks[relevant_ticks['time'] >= time_to_trail]
                 second_chart = second_chart[second_chart['time'] >= time_to_trail]
