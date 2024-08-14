@@ -483,11 +483,11 @@ def analyse(filtered_df: pd.DataFrame,
                 row['sl'] = row['be']
 
                 if row['is_buy2']:
-                    row['be'] += 8 * 0.0001 
-                    row['be_condition'] += 10* 0.0001
+                    row['be'] += 20 * 0.0001 
+                    row['be_condition'] += 30 * 0.0001
                 else:
-                    row['be'] -= 8 * 0.0001 
-                    row['be_condition'] -= 10* 0.0001
+                    row['be'] -= 20 * 0.0001 
+                    row['be_condition'] -= 30* 0.0001
 
                 stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
                 trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
@@ -523,6 +523,7 @@ def analyse(filtered_df: pd.DataFrame,
         else:
             row['exit_price'] =  pd.NA
 
+        
         following_signals = filtered_df[
             ((filtered_df['time'] >= row['entry_time']) & 
             (filtered_df['time'] <= row['exit_time']) & 
@@ -532,7 +533,9 @@ def analyse(filtered_df: pd.DataFrame,
         if not following_signals.empty:
             first_signal_time = (following_signals.iloc[0]['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
             print(f"following signal: {first_signal_time}")
+            
             if min(first_signal_time,time_sl_hit, time_tp_hit) == first_signal_time:
+                
                 # Try to find the index of the first row that matches the first_signal_time
                 matching_rows = static_ticks[static_ticks['time'] == first_signal_time]
 
@@ -543,10 +546,17 @@ def analyse(filtered_df: pd.DataFrame,
                     # If no match is found, use the next available row
                     start_index = static_ticks[static_ticks['time'] > first_signal_time].index[0]
 
-                # Fetch the row at the start_index
-                row['exit_price'] = static_ticks.iloc[start_index]['bid']
-                row['exit_time'] = first_signal_time
-                row['exit'] ="manual" 
+
+                #row['exit_price'] = static_ticks.iloc[start_index]['bid']
+                temp_exit_price= static_ticks.iloc[start_index]['bid']
+                temp_profit =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=temp_exit_price) 
+
+                if temp_profit>0:
+                    row['exit']= "auto"
+                else:
+                    row['exit_price'] = static_ticks.iloc[start_index]['bid']
+                    row['exit_time'] = first_signal_time
+                    row['exit'] ="manual" 
             else:
                 row['exit']= "auto"
 
@@ -609,6 +619,11 @@ def analyse(filtered_df: pd.DataFrame,
         
         
       #calculate its profit value
+        #if row['exit_time'] != pd.NA:
+        #    row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+        #else:
+        #    row['profit'] = 0
+
         if row['exit'] == "manual":
             row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
             row['type'] = 'success' if row['profit'] >= 0 else 'fail'
@@ -742,7 +757,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback2 = 50
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
-        window_data = df_log.iloc[i-lookback:i]
+        window_data = df_log.iloc[:i]
         supertrend_result = ta.supertrend(window_data['high'],window_data['low'], window_data['close'], length=20, multiplier=3)
         data.at[current_index,'supertrend_dir']=supertrend_result['SUPERTd_20_3.0'].iloc[-1]
         ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
@@ -834,7 +849,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=100)
+    data['ema_50'] = ta.ema(data['close'], length=80)
     data['ema_24'] = ta.ema(data['close'], length=8)
     data['hour_lsma'] = ta.linreg(data['close'], length=10)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
