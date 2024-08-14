@@ -620,7 +620,7 @@ def analyse(filtered_df: pd.DataFrame,
         
         
       #calculate its profit value
-        if row['exit_price'] != pd.NA:
+        if row['exit_time'] != pd.NA:
             row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
         else:
             row['profit'] = 0
