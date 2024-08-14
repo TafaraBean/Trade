@@ -513,11 +513,12 @@ def analyse(filtered_df: pd.DataFrame,
         row['entry_price'] = row['close']
 
         row['exit_time'] = min(time_sl_hit, time_tp_hit) 
-        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
+        
 
 
         
         matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
+        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
         if row['exit_time'] == pd.NA or not matching_row.empty:
             row['exit_price'] = matching_row.iloc[0]['bid']
         else:
