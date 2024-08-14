@@ -581,12 +581,23 @@ def analyse(filtered_df: pd.DataFrame,
             unexecuted_trades +=1
             continue
         
+              #calculate its profit value
+        if row['exit_time'] != pd.NA:
+            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+        else:
+            row['profit'] = 0
+            
         total_trades+=1
         executed_trades.append(row)
         row['lot_size'] = lot_size
+        
         #set the value for the type of trade this was, weather loss, even or success
         if row['exit'] == "manual":
-            pass
+            row['type'] = 'success' if row['profit'] >= 0 else 'fail'
+            if row['type'] == "success":
+                successful_trades +=1
+            else:
+                unsuccessful_trades+=1
         elif stop_loss_index > -1 and take_profit_index > -1:
             if(min(time_sl_hit, time_tp_hit) == time_tp_hit):                
                 row['type'] = "success"
@@ -619,18 +630,7 @@ def analyse(filtered_df: pd.DataFrame,
 
         
         
-      #calculate its profit value
-        if row['exit_time'] != pd.NA:
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
-        else:
-            row['profit'] = 0
 
-        if row['exit'] == "manual":
-            row['type'] = 'success' if row['profit'] >= 0 else 'fail'
-            if row['type'] == "success":
-                successful_trades +=1
-            else:
-                unsuccessful_trades+=1
         
         account_balance  += row['profit']
         row["account_balance"] = account_balance
