@@ -590,10 +590,10 @@ def analyse(filtered_df: pd.DataFrame,
         total_trades+=1
         executed_trades.append(row)
         row['lot_size'] = lot_size
-        
+
         #set the value for the type of trade this was, weather loss, even or success
         if row['exit'] == "manual":
-            row['type'] = 'success' if row['profit'] >= 0 else 'fail'
+            row['type'] = 'success' if row['profit'] > 0 else 'fail'
             if row['type'] == "success":
                 successful_trades +=1
             else:
