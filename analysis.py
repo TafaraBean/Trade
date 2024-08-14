@@ -513,12 +513,12 @@ def analyse(filtered_df: pd.DataFrame,
         row['entry_price'] = row['close']
 
         row['exit_time'] = min(time_sl_hit, time_tp_hit) 
-        
+        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
 
 
         
         matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
-        if not matching_row.empty:
+        if row['exit_time'] == pd.NA or not matching_row.empty:
             row['exit_price'] = matching_row.iloc[0]['bid']
         else:
             row['exit_price'] =  pd.NA
@@ -566,7 +566,7 @@ def analyse(filtered_df: pd.DataFrame,
             row['exit'] ="auto" 
 
         #set exit time  to none after use
-        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
+        
         print(f"type: {row['exit']}")
         print(f"ex time: {row['exit_time']}")
         print(f"tp time: {row['time_tp_hit']}")
@@ -619,23 +619,17 @@ def analyse(filtered_df: pd.DataFrame,
         
         
       #calculate its profit value
-        #if row['exit_time'] != pd.NA:
-        #    row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
-        #else:
-        #    row['profit'] = 0
+        if row['exit_price'] != pd.NA:
+            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+        else:
+            row['profit'] = 0
 
         if row['exit'] == "manual":
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
             row['type'] = 'success' if row['profit'] >= 0 else 'fail'
             if row['type'] == "success":
                 successful_trades +=1
             else:
                 unsuccessful_trades+=1
-
-        elif row['type'] in ["success", "even", 'fail']:  
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
-        else :
-            row['profit'] = 0
         
         account_balance  += row['profit']
         row["account_balance"] = account_balance
