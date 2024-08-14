@@ -518,8 +518,7 @@ def analyse(filtered_df: pd.DataFrame,
 
         
         matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
-        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
-        if row['exit_time'] == pd.NA or not matching_row.empty:
+        if not matching_row.empty:
             row['exit_price'] = matching_row.iloc[0]['bid']
         else:
             row['exit_price'] =  pd.NA
@@ -567,7 +566,7 @@ def analyse(filtered_df: pd.DataFrame,
             row['exit'] ="auto" 
 
         #set exit time  to none after use
-        
+        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
         print(f"type: {row['exit']}")
         print(f"ex time: {row['exit_time']}")
         print(f"tp time: {row['time_tp_hit']}")
@@ -581,23 +580,12 @@ def analyse(filtered_df: pd.DataFrame,
             unexecuted_trades +=1
             continue
         
-              #calculate its profit value
-        if row['exit_time'] != pd.NA:
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
-        else:
-            row['profit'] = 0
-            
         total_trades+=1
         executed_trades.append(row)
         row['lot_size'] = lot_size
-
         #set the value for the type of trade this was, weather loss, even or success
         if row['exit'] == "manual":
-            row['type'] = 'success' if row['profit'] > 0 else 'fail'
-            if row['type'] == "success":
-                successful_trades +=1
-            else:
-                unsuccessful_trades+=1
+            pass
         elif stop_loss_index > -1 and take_profit_index > -1:
             if(min(time_sl_hit, time_tp_hit) == time_tp_hit):                
                 row['type'] = "success"
@@ -630,7 +618,24 @@ def analyse(filtered_df: pd.DataFrame,
 
         
         
+      #calculate its profit value
+        #if row['exit_time'] != pd.NA:
+        #    row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+        #else:
+        #    row['profit'] = 0
 
+        if row['exit'] == "manual":
+            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+            row['type'] = 'success' if row['profit'] >= 0 else 'fail'
+            if row['type'] == "success":
+                successful_trades +=1
+            else:
+                unsuccessful_trades+=1
+
+        elif row['type'] in ["success", "even", 'fail']:  
+            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+        else :
+            row['profit'] = 0
         
         account_balance  += row['profit']
         row["account_balance"] = account_balance
@@ -836,7 +841,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 60
+    lookback = 40
 
     # Initialize columns for trendlines and their gradients
     data['support_trendline'] = np.nan

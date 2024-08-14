@@ -132,8 +132,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['upside_gap_two_crows'] = talib.CDLUPSIDEGAP2CROWS(data['open'], data['high'], data['low'], data['close'])
     data['xside_gap_3_methods'] = talib.CDLXSIDEGAP3METHODS(data['open'], data['high'], data['low'], data['close'])
 
-    data['shooting_star'].to_csv("csv/shooting_star",index=False)
-    data['dark_cloud_cover'].to_csv("csv/dark_cloud_cover",index=False)
+    data['hanging_man'].to_csv("csv/hanging",index=False)
+    data['inverted_hammer'].to_csv("csv/inverted_hammer",index=False)
 
 
 
@@ -153,18 +153,18 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (((
           
-        #(data['three_line_strike']==-100)
-        #(data['advance_block']==-100)
-       (data['3whitesoldiers']==100)|
-       (data['dragonfly_doji']==100)|
-        (data['engulfing']==100)
+        (data['inverted_hammer']==100)&
+        (data['fixed_support_trendline']<data['close'])&
+        (data['fixed_resistance_trendline']>data['close'])
+
         
-    )&
+    )|
     ((data['Span_A']>data['Span_B'])&
     (data['stoch_k']>50)&
-    (data['prev_fixed_support_trendline']>data['close'])))|
-    ((data['close']>data['prev_fixed_resistance_trendline'])&
-    (data['close'].shift(1)<data['prev_fixed_resistance_trendline'].shift(1)))
+    (data['fixed_support_trendline']>data['close'])&
+    (data['ema_50']>data['fixed_resistance_trendline'])))|
+    ((data['close']>data['fixed_resistance_trendline'])&
+    (data['close'].shift(1)<data['fixed_resistance_trendline'].shift(1)))
     
     )
 
@@ -174,15 +174,16 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
         #(data['shooting_star']==-100)
         #(data['long_line']==-100)
        
-       (((data['3blackcrows']== 100)|
-        (data['gravestone_doji']==100)|
-        (data['engulfing']==-100)
-        ) &
+       (((data['hanging_man']==100)&
+        (data['fixed_support_trendline']<data['close'])&
+        (data['fixed_resistance_trendline']>data['close'])
+        ) |
         ((data['Span_A']<data['Span_B'])&
          (data['stoch_k']<50)&
-         (data['prev_fixed_resistance_trendline']<data['close'])))|
-          ((data['close']<data['prev_fixed_support_trendline'])&
-         (data['close'].shift(1)>data['prev_fixed_support_trendline'].shift(1)))
+         (data['fixed_resistance_trendline']<data['close'])&
+         (data['ema_50']<data['fixed_support_trendline'])))|
+          ((data['close']<data['fixed_support_trendline'])&
+         (data['close'].shift(1)>data['fixed_support_trendline'].shift(1)))
     
       
           
