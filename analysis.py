@@ -1011,7 +1011,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     # Add support and resistance lines
     fig.add_trace(go.Scatter(
         x=data.index,
-        y=data['support_trendline'],
+        y=data['fixed_support_trendline'],
         mode='lines',
         name='Support Line',
         line=dict(color='green'),
@@ -1020,7 +1020,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
     fig.add_trace(go.Scatter(
         x=data.index,
-        y=data['resistance_trendline'],
+        y=data['fixed_resistance_trendline'],
         mode='lines',
         name='Resistance Line',
         line=dict(color='red'),
