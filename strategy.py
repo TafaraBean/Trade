@@ -145,47 +145,23 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
     # Set TP and SL in terms of pips
     tp_pips = 100 * pip_size
-    sl_pips = 90 * pip_size
+    sl_pips = 50 * pip_size
     be_pips = 5 * pip_size
     data['ticket'] = np.nan
 
-    
     # Generate signals
-    data['is_buy2'] = (((
-          
-        (data['inverted_hammer']==100)&
-        (data['fixed_support_trendline']<data['close'])&
-        (data['fixed_resistance_trendline']>data['close'])
-
-        
-    )|
-    ((data['Span_A']>data['Span_B'])&
-    (data['stoch_k']>50)&
-    (data['fixed_support_trendline']>data['close'])&
-    (data['ema_50']>data['fixed_resistance_trendline'])))|
-    ((data['close']>data['fixed_resistance_trendline'])&
-    (data['close'].shift(1)<data['fixed_resistance_trendline'].shift(1)))
+    data['is_buy2'] = (
+        (data['is_buy']==1)&
+        (data['close']>data['ema_50'])
     
     )
 
     data['is_sell2'] = (
           
-        #(data['three_line_strike']==100)
-        #(data['shooting_star']==-100)
-        #(data['long_line']==-100)
+        (data['is_sell']==1)&
+        (data['close']<data['ema_50'])
        
-       (((data['hanging_man']==100)&
-        (data['fixed_support_trendline']<data['close'])&
-        (data['fixed_resistance_trendline']>data['close'])
-        ) |
-        ((data['Span_A']<data['Span_B'])&
-         (data['stoch_k']<50)&
-         (data['fixed_resistance_trendline']<data['close'])&
-         (data['ema_50']<data['fixed_support_trendline'])))|
-          ((data['close']<data['fixed_support_trendline'])&
-         (data['close'].shift(1)>data['fixed_support_trendline'].shift(1)))
-    
-      
+       
           
     )
     
@@ -199,11 +175,13 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 3 * pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 3 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 2 * pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 2* pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
     data.loc[data['is_sell2'], 'be_condition'] = data['close'] - be_pips
 
     return data
+
+

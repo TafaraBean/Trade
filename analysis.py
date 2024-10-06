@@ -76,17 +76,22 @@ def display_chart(df):
                             name='nadaraya Up'
                             ), row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma_upper_band'], 
-                            mode='lines', 
-                            name='Lsma_up'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma_lower_band'], 
-                            mode='lines', 
-                            name='lsma Low'
-                            ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df['time'], 
+        y=df['support'], 
+        mode='markers',  # Use markers instead of lines
+        name='Support',
+        connectgaps=False  # Do not connect gaps
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df['time'], 
+        y=df['resistance'], 
+        mode='markers',  # Use markers instead of lines
+        name='Resistance',
+        connectgaps=False  # Do not connect gaps
+    ), row=1, col=1)
+
     
     fig.add_trace(go.Scatter(x=df['time'], 
                             y=df['ema_50'], 
@@ -106,17 +111,6 @@ def display_chart(df):
                             name='ema_24'
                             ), row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_support_trendline'], 
-                            mode='lines', 
-                            name='support'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_resistance_trendline'], 
-                            mode='lines', 
-                            name='resistance'
-                            ), row=1, col=1)
 
     # Add LMSA Lower Band line to the first subplot
     fig.add_trace(go.Scatter(x=df['time'],
@@ -829,6 +823,87 @@ def determine_trend(current_value, previous_value):
         return np.nan  # Not enough data to determine trend
     return 'bullish' if current_value > previous_value else 'bearish'
 
+# Function to find support and resistance
+def find_support_resistance(data, window=5, threshold=0.003):
+    recent_support = np.nan
+    recent_resistance = np.nan
+
+    for i in range(window, len(data)-window):
+        local_min = min(data['close'].iloc[i-window:i+window])
+        local_max = max(data['close'].iloc[i-window:i+window])
+
+        # If the current point is the local minimum
+        if data['close'].iloc[i] == local_min:
+            if recent_support is np.nan or abs(local_min - recent_support) > threshold:
+                recent_support = data['close'].iloc[i]
+
+        # If the current point is the local maximum
+        if data['close'].iloc[i] == local_max:
+            if recent_resistance is np.nan or abs(local_max - recent_resistance) > threshold:
+                recent_resistance = data['close'].iloc[i]
+
+    if not np.isnan(recent_support):
+        recent_support = np.exp(recent_support)
+
+    if not np.isnan(recent_resistance):
+        recent_resistance = np.exp(recent_resistance)
+
+    return recent_support, recent_resistance
+
+
+
+
+def generate_trading_signals(data):
+    # Initialize empty lists for unique support and resistance levels
+    unique_support_levels = []
+    unique_resistance_levels = []
+
+    # Iterate through the data to collect unique support and resistance levels
+    for i in range(len(data)):
+        current_support = data['support'].iloc[i]
+        current_resistance = data['resistance'].iloc[i]
+
+        # Check if the support level is unique and add it to the list
+        if not np.isnan(current_support) and current_support not in unique_support_levels:
+            unique_support_levels.append(current_support)
+
+        # Check if the resistance level is unique and add it to the list
+        if not np.isnan(current_resistance) and current_resistance not in unique_resistance_levels:
+            unique_resistance_levels.append(current_resistance)
+
+    # Sort the levels for cleaner logic (optional but recommended)
+    unique_support_levels.sort()
+    unique_resistance_levels.sort()
+
+    # Initialize columns for buy/sell signals
+    data['is_buy'] = 0
+    data['is_sell'] = 0
+
+    # Iterate through the dataset to generate buy/sell signals based on price crosses
+    for i in range(1, len(data)):
+        current_close = data['close'].iloc[i]
+        previous_close = data['close'].iloc[i - 1]
+
+        # Check if the price crosses above any resistance level (buy signal)
+        for resistance in unique_resistance_levels:
+            if previous_close < resistance and current_close > resistance:
+                data.at[data.index[i], 'is_buy'] = 1
+                break  # Stop checking further once a buy is triggered
+
+        # Check if the price crosses below any support level (sell signal)
+        for support in unique_support_levels:
+            if previous_close > support and current_close < support:
+                data.at[data.index[i], 'is_sell'] = 1
+                break  # Stop checking further once a sell is triggered
+
+    return data, unique_support_levels, unique_resistance_levels
+
+    
+
+    
+
+
+
 
 def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     print("applying auto trendline...")
@@ -874,7 +949,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['HSpan_B'] = np.nan
 
 
-
+    data['support']=np.nan
+    data['resistance']=np.nan
     data['nadaraya_watson'] = np.nan
     data['nadaraya_watson_trend'] = np.nan
     data['nadaraya_upper_envelope']=np.nan
@@ -883,19 +959,26 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['supertrend_dir'] = np.nan
     data['psar']=np.nan
     data['psar_direction']=np.nan
+    data['is_buy']=np.nan
+    data['is_sell']=np.nan
+    unique_support_levels = []
+    unique_resistance_levels = []
 
     bandwidth = 10  # Adjust as needed
 
     previous_value = np.nan
     
-    lookback2=60
+    lookback2=30
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
-        window_data = df_log.iloc[i-lookback:i]  # Use all data up to the current point
+        window_data = df_log.iloc[i-lookback2:i]  # Use all data up to the current point
         supertrend_result = ta.supertrend(window_data['high'],window_data['low'], window_data['close'], length=2, multiplier=3)
         ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
         look_ahead_spans = ichi[1]
+        support,resistance=find_support_resistance(window_data)
+
+        
         
         if look_ahead_spans is not None:
             senkou_span_a = look_ahead_spans['ISA_9']
@@ -908,6 +991,43 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
         data.at[current_index,'supertrend'] = supertrend_result['SUPERT_2_3.0'].iloc[-1]
         data.at[current_index,'supertrend_dir']=supertrend_result['SUPERTd_2_3.0'].iloc[-1]
+        data.at[current_index,'support']=support
+        data.at[current_index,'resistance']=resistance
+        
+
+        # Iterate through the data to collect unique support and resistance levels
+        
+        current_support = data['support'].iloc[i-1]
+        current_resistance = data['resistance'].iloc[i-2]
+
+        # Check if the support level is unique and add it to the list
+        if not np.isnan(current_support) and current_support not in unique_support_levels:
+            unique_support_levels.append(current_support)
+
+        # Check if the resistance level is unique and add it to the list
+        if not np.isnan(current_resistance) and current_resistance not in unique_resistance_levels:
+            unique_resistance_levels.append(current_resistance)
+
+        # Sort the levels for cleaner logic (optional but recommended)
+        unique_support_levels.sort()
+        unique_resistance_levels.sort()
+        current_close = data['close'].iloc[i-1]
+        previous_close = data['close'].iloc[i-2]
+
+        # Check if the price crosses above any resistance level (buy signal)
+        for resistance in unique_resistance_levels:
+            if previous_close < resistance and current_close > resistance:
+                data.at[current_index, 'is_buy'] = 1
+                break  # Stop checking further once a buy is triggered
+
+        # Check if the price crosses below any support level (sell signal)
+        for support in unique_support_levels:
+            if previous_close > support and current_close < support:
+                data.at[current_index, 'is_sell'] = 1
+                break  # Stop checking further once a sell is triggered
+
+
+        
 
         
         x = np.arange(len(window_data))
