@@ -14,10 +14,10 @@ server = os.environ.get("SERVER")
 
 # Initialize the trading bot
 bot = TradingBot(login=account, password=password, server=server)
-symbol = "EURUSD.Z"
-timeframe = mt5.TIMEFRAME_H1   # Change this as needed
+symbol = "US30.F"
+timeframe = mt5.TIMEFRAME_M15  # Change this as needed
 
-lot= 0.03
+lot= 0.01
 
 bot.run(symbol=symbol, timeframe=timeframe, strategy_func=m15_gold_strategy, lot=lot)
 

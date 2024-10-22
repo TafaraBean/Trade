@@ -284,6 +284,94 @@ class TradingBot:
         symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
         return symbol_info_tick_dict
     
+    def display_chart(df):
+            # Create the subplots with 2 rows
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
+                            subplot_titles=('Candlestick Chart', 'MACD Line'))
+
+        # Add candlestick chart to the first subplot
+        fig.add_trace(go.Candlestick(x=df['time'],
+                                    open=df['open'],
+                                    high=df['high'],
+                                    low=df['low'],
+                                    close=df['close'],
+                                    name='Candlestick'), row=1, col=1)
+
+        # Add buy signals (up arrows) to the first subplot
+        fig.add_trace(go.Scatter(
+            x=df[df['is_buy2'] == True]['time'],
+            y=df[df['is_buy2'] == True]['low'] * 0.999,
+            mode='markers',
+            marker=dict(symbol='arrow-up', color='green', size=10),
+            name='Buy Signal'
+        ), row=1, col=1)
+
+        # Add sell signals (down arrows) to the first subplot
+        fig.add_trace(go.Scatter(
+            x=df[df['is_sell2'] == True]['time'],
+            y=df[df['is_sell2'] == True]['high'] * 1.001,
+            mode='markers',
+            marker=dict(symbol='arrow-down', color='red', size=10),
+            name='Sell Signal'
+        ), row=1, col=1)
+
+
+
+        
+        
+    
+
+        
+
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['ema_50'], 
+                                mode='lines', 
+                                name='ema_50'
+                                ), row=1, col=1)
+        
+        
+
+
+
+        # Add LMSA Band line to the first subplot
+        fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
+                                mode='lines', name='LMSA'), row=1, col=1)
+
+        # Add MACD Line to the second subplot
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['macd_line'],
+            name='MACD Line',
+            line=dict(color='purple')
+        ), row=2, col=1)
+
+        # Add MACDs Line to the second subplot
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['macd_signal'],
+            name='MACD Signal',
+            line=dict(color='blue')
+        ), row=2, col=1)
+
+
+        # Update layout
+        fig.update_layout(title='XAUUSD',
+                        #xaxis_title='Date',
+                        #yaxis_title='Price',
+                        xaxis_rangeslider_visible=False,
+                        template="plotly_dark"
+                        )
+
+        fig.update_xaxes(
+            rangebreaks=[
+                dict(bounds=["sat", "mon"]), #hide weekends
+            ]
+        )
+        
+        fig.show()
+
+    
     def run(self, symbol: str, timeframe, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
         while True:
             start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=4)
@@ -309,13 +397,15 @@ class TradingBot:
             hour_data = self.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
             hour_data= auto_trendline(hour_data)
 
-            hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','prev_stochk','prev_stochd','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope','wma_50','prev_supertrend_dir','HSpan_A','HSpan_B','nadaraya_watson','prev_nadaraya_lower_band','prev_nadaraya_upper_band','prev_HSpan_A','prev_HSpan_B','support_trendline','resistance_trendline']]
+            hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','prev_stochk','prev_stochd','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope','wma_50','prev_supertrend_dir','HSpan_A','HSpan_B','nadaraya_watson','prev_nadaraya_lower_band','prev_nadaraya_upper_band','prev_HSpan_A','prev_HSpan_B','support_trendline','resistance_trendline','lsma']]
 
             df['hourly_time']=df['time'].dt.floor('h')
 
             merged_data = pd.merge(df,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
 
             df = strategy_func(merged_data)
+
+            display_chart(df)
             
 
             # Check for new trading signals

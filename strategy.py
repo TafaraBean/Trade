@@ -44,7 +44,7 @@ def h1_gold_strategy(data):
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['ema_short'] = ta.ema(data['close'], length=12)
     data['ema_long'] = ta.ema(data['close'], length=26)
-    data['lsma'] = ta.linreg(data['close'], length=7)
+    
     
     macd = ta.macd(data['close'], fast=12, slow=24, signal=9)
     data['macd_line'] = macd['MACD_12_24_9']
@@ -141,29 +141,25 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
 
 
-    pip_size = 0.0001
+    pip_size = 1
 
     # Set TP and SL in terms of pips
-    tp_pips = 100 * pip_size
-    sl_pips = 50 * pip_size
-    be_pips = 25 * pip_size
+    tp_pips = 500 * pip_size
+    sl_pips = 200 * pip_size
+    be_pips = 100 * pip_size
     data['ticket'] = np.nan
 
     # Generate signals
     data['is_buy2'] = (
-        (data['is_buy']==1)&
-        (data['close']>data['ema_50'])
-    
+        ((data['lsma']>data['ema_50'])&
+        (data['lsma'].shift(1)<data['ema_50'].shift(1)))
     )
 
     data['is_sell2'] = (
-          
-        (data['is_sell']==1)&
-        (data['close']<data['ema_50'])
-       
-       
-          
+       ((data['lsma']<data['ema_50'])&
+        (data['lsma'].shift(1)>data['ema_50'].shift(1)))
     )
+
     
 
     
@@ -175,8 +171,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 20 * pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 20 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 90 * pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 90 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips

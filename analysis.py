@@ -69,28 +69,11 @@ def display_chart(df):
 
 
 
-    # Add LMSA Upper Band line to the first subplot
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['nadaraya_upper_envelope'], 
-                            mode='lines', 
-                            name='nadaraya Up'
-                            ), row=1, col=1)
     
-    fig.add_trace(go.Scatter(
-        x=df['time'], 
-        y=df['support'], 
-        mode='markers',  # Use markers instead of lines
-        name='Support',
-        connectgaps=False  # Do not connect gaps
-    ), row=1, col=1)
+    
+   
 
-    fig.add_trace(go.Scatter(
-        x=df['time'], 
-        y=df['resistance'], 
-        mode='markers',  # Use markers instead of lines
-        name='Resistance',
-        connectgaps=False  # Do not connect gaps
-    ), row=1, col=1)
+    
 
     
     fig.add_trace(go.Scatter(x=df['time'], 
@@ -99,32 +82,8 @@ def display_chart(df):
                             name='ema_50'
                             ), row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['wma_50'], 
-                            mode='lines', 
-                            name='wma_50'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['ema_24'], 
-                            mode='lines', 
-                            name='ema_24'
-                            ), row=1, col=1)
     
 
-    # Add LMSA Lower Band line to the first subplot
-    fig.add_trace(go.Scatter(x=df['time'],
-                            y=df['nadaraya_lower_envelope'], 
-                            mode='lines', 
-                            name='nadaraya low'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'],
-                            y=df['nadaraya_watson'], 
-                            mode='lines', 
-                            name='nadaraya'
-                            ), row=1, col=1)
-    
 
 
     # Add LMSA Band line to the first subplot
@@ -477,11 +436,11 @@ def analyse(filtered_df: pd.DataFrame,
                 row['sl'] = row['be']
 
                 if row['is_buy2']:
-                    row['be'] += 20 * 0.0001 
-                    row['be_condition'] += 30 * 0.0001
+                    row['be'] += 200 * 1 
+                    row['be_condition'] += 300 * 1
                 else:
-                    row['be'] -= 20 * 0.0001 
-                    row['be_condition'] -= 30* 0.0001
+                    row['be'] -= 200 * 0.0001 
+                    row['be_condition'] -= 300* 1
 
                 stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
                 trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
@@ -752,29 +711,10 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[:i]
-        supertrend_result = ta.supertrend(window_data['high'],window_data['low'], window_data['close'], length=20, multiplier=3)
-        data.at[current_index,'supertrend_dir']=supertrend_result['SUPERTd_20_3.0'].iloc[-1]
-        ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
-        look_ahead_spans = ichi[1]
         
-        if look_ahead_spans is not None:
-            senkou_span_a = look_ahead_spans['ISA_9']
-            senkou_span_b = look_ahead_spans['ISB_26']
-            data.at[current_index, 'Span_A'] = senkou_span_a.iloc[-1]
-            data.at[current_index, 'Span_B'] = senkou_span_b.iloc[-1]
-        else:
-            data.at[current_index, 'Span_A'] = None
-            data.at[current_index, 'Span_B'] = None
 
         
-        # Determine trend based on Nadaraya-Watson
         
-        
-    #ISA_9    ISB_26
-
-
-
-    # Iterate over the dataset in overlapping windows of 15 candles
     for i in range(lookback, len(df_log) + 1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i - lookback:i]
@@ -924,7 +864,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=80)
+    data['ema_50'] = ta.ema(data['close'], length=10)
+    data['lsma'] = ta.linreg(data['close'], length=8)
     data['ema_24'] = ta.ema(data['close'], length=8)
     data['hour_lsma'] = ta.linreg(data['close'], length=10)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)
@@ -1119,45 +1060,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_HSpan_A'] = data['HSpan_A'].shift(1)
     data['prev_HSpan_B'] = data['HSpan_B'].shift(1)
     data.to_csv("csv/test.csv", index=False)
-    # Create a candlestick chart
-    fig = go.Figure(data=[go.Candlestick(
-        x=data.index,
-        open=data['open'],
-        high=data['high'],
-        low=data['low'],
-        close=data['close']
-    )])
-
-    # Add support and resistance lines
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['fixed_support_trendline'],
-        mode='lines',
-        name='Support Line',
-        line=dict(color='green'),
-        connectgaps=False
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['fixed_resistance_trendline'],
-        mode='lines',
-        name='Resistance Line',
-        line=dict(color='red'),
-        connectgaps=False
-    ))
-
-    # Update layout
-    fig.update_layout(
-        title='Candlestick Chart with Support and Resistance Lines',
-        xaxis_title='Date',
-        yaxis_title='Price',
-        xaxis_rangeslider_visible=False,
-        template='plotly_dark'
-    )
-
-    # Show the figure
-    fig.show()
+    
     return data
 
 
