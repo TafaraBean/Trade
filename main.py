@@ -23,5 +23,5 @@ bot = TradingBot(login=account,
                  lot = lot)
 
 if __name__ == "__main__":
-    bot.run(timeframe=timeframe, strategy_func=apply_strategy)
+    bot.run(strategy_func=apply_strategy)
 
