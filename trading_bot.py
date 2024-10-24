@@ -3,7 +3,6 @@ import time
 import pandas as pd
 import os
 from typing import Callable
-from analysis import *
 from utils import *
 class Account:
     def __init__(self):
@@ -405,8 +404,6 @@ class TradingBot:
             
             df = strategy_func(start,end)
             df.to_csv('csv/main.csv', index=False)
-            display_chart(df)
-            
 
             # Check for new trading signals
             

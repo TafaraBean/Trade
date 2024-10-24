@@ -1,6 +1,5 @@
 import  MetaTrader5 as mt5 
 import pandas as pd
-from dotenv import load_dotenv
 from strategy import *
 from analysis import *
 from main import bot

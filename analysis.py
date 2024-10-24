@@ -6,8 +6,8 @@ from plotly.subplots import make_subplots
 import numpy as np
 from scipy.stats import norm
 from typing import Tuple
+from trading_bot import TradingBot
 import calendar
-
 
 def check_invalid_stopouts(row):
     """
@@ -358,7 +358,7 @@ plt.show()
 
 def analyse(filtered_df: pd.DataFrame, 
             symbol: str, 
-            bot, 
+            bot: TradingBot, 
             account_balance: float,
             lot_size: float,
             timeframe,
@@ -379,8 +379,8 @@ def analyse(filtered_df: pd.DataFrame,
     
     for index, row in filtered_df.iterrows():
         #if trade is in valid, no further processing
-        
-        print(f"Currently Working on Trade: {row['time']}", end=" ")
+        trade_type = "sell" if row['is_sell2'] else "buy"
+        print(f"Currently Working on {trade_type} trade: {row['time']}", end=" ")
         if check_invalid_stopouts(row):
             unexecuted_trades += 1
             print(f"trade invalid stopouts: {row['time']}")
@@ -402,14 +402,16 @@ def analyse(filtered_df: pd.DataFrame,
         row['order_type'] = mt5.ORDER_TYPE_BUY if row['is_buy2'] else mt5.ORDER_TYPE_SELL
         row['lot'] = lot_size
         
-        second_chart = pd.DataFrame(mt5.copy_rates_range(symbol, timeframe, start_time, end_time))
-        relevant_ticks = pd.DataFrame(mt5.copy_ticks_range(symbol, start_time, end_time, mt5.COPY_TICKS_ALL))
+        second_chart = pd.DataFrame(mt5.copy_rates_range(symbol, timeframe, start_time, end_time)) #needed because this provides an uninterupted view of the chart (unllike the filtered trades df )so we can track sl/tp
+        relevant_ticks = pd.DataFrame(mt5.copy_ticks_range(symbol, start_time, end_time, mt5.COPY_TICKS_ALL)) #used to find exact entry/exit price of trades
+        
         if len(second_chart) != 0:
             second_chart['time'] = pd.to_datetime(second_chart['time'],unit='s')
         if len(relevant_ticks) != 0:
             relevant_ticks['time'] = pd.to_datetime(relevant_ticks['time'],unit='s')
 
         static_ticks = relevant_ticks# for later use when check if trade was manually closed
+
         # Check if stop loss or take profit or trailing stop was reached 
         stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
         take_profit_reached = (relevant_ticks['bid'] >= row["tp"]) if row["is_buy2"] else (relevant_ticks['bid'] <= row["tp"])
@@ -421,24 +423,23 @@ def analyse(filtered_df: pd.DataFrame,
         take_profit_index = np.argmax(take_profit_reached) if take_profit_reached.any() else -1
         
         #find the corresponding time to the indexes
-        time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
+        time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max #celing the time is to account for the fact that trades are adjusted at candle stick close
         time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
         time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
         
         #trail stop loss if needed, 
         #also factor in probability of trading still running and none of the levels were ever reached
         
-        if time_to_trail == pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_sl_hit == pd.Timestamp.max:
-            row['sl_updated'] = False
-        else:
-            row['sl_updated'] = min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
+        row['sl_updated'] = False if all(time == pd.Timestamp.max for time in [time_to_trail, time_tp_hit, time_sl_hit]) \
+        else\
+        min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
             
         
         sl_updated = 0
         timestamps_list = []# to keep track of all the times stop losses were updated
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
-            while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not(time_sl_hit== pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_to_trail == pd.Timestamp.max )):
+            while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not all(time == pd.Timestamp.max for time in [time_to_trail, time_tp_hit, time_sl_hit])):
                 sl_updated+=1
                 relevant_ticks = relevant_ticks[relevant_ticks['time'] >= time_to_trail]
                 second_chart = second_chart[second_chart['time'] >= time_to_trail]
@@ -476,7 +477,7 @@ def analyse(filtered_df: pd.DataFrame,
         row['time_tp_hit'] = pd.NA if time_tp_hit == pd.Timestamp.max else time_tp_hit
         row['time_sl_hit'] = pd.NA if time_sl_hit == pd.Timestamp.max else time_sl_hit
 
-        row['entry_time'] = (row['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
+        row['entry_time'] = start_time
         row['entry_price'] = row['close']
 
         row['exit_time'] = min(time_sl_hit, time_tp_hit) 
@@ -499,7 +500,7 @@ def analyse(filtered_df: pd.DataFrame,
 
         if not following_signals.empty:
             first_signal_time = (following_signals.iloc[0]['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
-            print(f"following signal: {first_signal_time}")
+            print(f"following revesal signal: {first_signal_time}")
             
             if min(first_signal_time,time_sl_hit, time_tp_hit) == first_signal_time:
                 
@@ -618,7 +619,7 @@ def analyse(filtered_df: pd.DataFrame,
         row['success'] = row['type'] in['success', 'even']
 
         print(f"trade {row['type']}")
-
+        print(f"Profit: {row["profit"]}")
     
     executed_trades_df = pd.DataFrame(executed_trades)
     profit_factor = calc_profit_factor(gross_profit=gross_profit,
