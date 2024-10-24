@@ -14,7 +14,7 @@ server = os.environ.get("SERVER")
 symbol = "XAUUSD"
 timeframe = mt5.TIMEFRAME_M15  # Change this as needed
 lot= 0.01
-# Initialize the trading bot
+# Initialize the trading bot object 
 bot = TradingBot(login=account, 
                  password=password, 
                  server=server, 

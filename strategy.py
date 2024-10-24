@@ -39,7 +39,7 @@ def h1_gold_strategy(data):
 
 
 
-def apply_strategy(start: pd.Timestamp, end: pd.Timestamp):
+def apply_strategy(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
     data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
     data=auto_trendline_15(data)
 
