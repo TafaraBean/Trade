@@ -82,20 +82,6 @@ def display_chart(df):
                             name='ema_50'
                             ), row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma_upper_band'], 
-                            mode='lines', 
-                            name='upper_band'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma_lower_band'], 
-                            mode='lines', 
-                            name='lower_band'
-                            ), row=1, col=1)
-    
-    
-    
     
 
 
@@ -290,7 +276,6 @@ def fit_trendlines_single(data: np.array):
     return (support_coefs, resist_coefs) 
 
 
-
 def fit_trendlines_high_low(high: np.array, low: np.array, close: np.array):
     x = np.arange(len(close))
     coefs = np.polyfit(x, close, 1)
@@ -303,12 +288,6 @@ def fit_trendlines_high_low(high: np.array, low: np.array, close: np.array):
     resist_coefs = optimize_slope(False, upper_pivot, coefs[0], high)
 
     return (support_coefs, resist_coefs)
-
-
-
-
-
-
 
 
 
@@ -353,7 +332,6 @@ r_seq2 = get_line_points(candles, resist_line_c)
 mpf.plot(candles, alines=dict(alines=[s_seq, r_seq, s_seq2, r_seq2], colors=['w', 'w', 'b', 'b']), type='candle', style='charles', ax=ax)
 plt.show()
 '''
-
 
 
 def analyse(filtered_df: pd.DataFrame, 
@@ -438,6 +416,7 @@ def analyse(filtered_df: pd.DataFrame,
         timestamps_list = []# to keep track of all the times stop losses were updated
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
+            #run while loop as long as TP and SL has not hit, and if the trade is not of type "running" i.e. All time stamps are max
             while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not(time_sl_hit== pd.Timestamp.max and time_tp_hit == pd.Timestamp.max and time_to_trail == pd.Timestamp.max )):
                 sl_updated+=1
                 relevant_ticks = relevant_ticks[relevant_ticks['time'] >= time_to_trail]
@@ -450,11 +429,11 @@ def analyse(filtered_df: pd.DataFrame,
                 row['sl'] = row['be']
 
                 if row['is_buy2']:
-                    row['be'] += 20 * 1 
-                    row['be_condition'] += 30 * 1
+                    row['be'] += 200 * 1 
+                    row['be_condition'] += 300 * 1
                 else:
-                    row['be'] -= 20 * 1 
-                    row['be_condition'] -= 30* 1
+                    row['be'] -= 200 * 0.0001 
+                    row['be_condition'] -= 300* 1
 
                 stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
                 trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
@@ -518,12 +497,12 @@ def analyse(filtered_df: pd.DataFrame,
                 temp_exit_price= static_ticks.iloc[start_index]['bid']
                 temp_profit =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=temp_exit_price) 
 
-                # if temp_profit>0:
-                #     row['exit']= "auto"
-                # else:
-                row['exit_price'] = static_ticks.iloc[start_index]['bid']
-                row['exit_time'] = first_signal_time
-                row['exit'] ="manual" 
+                if temp_profit>0:
+                    row['exit']= "auto"
+                else:
+                    row['exit_price'] = static_ticks.iloc[start_index]['bid']
+                    row['exit_time'] = first_signal_time
+                    row['exit'] ="manual" 
             else:
                 row['exit']= "auto"
 
@@ -712,8 +691,6 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback = 20
 
     # Initialize columns for trendlines and their gradients
-    data['ema_50'] = ta.ema(data['close'], length=10*4)
-    data['lsma'] = ta.linreg(data['close'], length=8*4)
     data['support_trendline_15'] = np.nan
     data['resistance_trendline_15'] = np.nan
     data['support_gradient_15'] = np.nan
@@ -880,7 +857,8 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    
+    data['ema_50'] = ta.ema(data['close'], length=10)
+    data['lsma'] = ta.linreg(data['close'], length=8)
     data['ema_24'] = ta.ema(data['close'], length=8)
     data['hour_lsma'] = ta.linreg(data['close'], length=10)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)

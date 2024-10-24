@@ -62,13 +62,15 @@ class TradingBot:
             quit()
         else:
            print("MetaTrader5 package version: ",mt5.__version__)
+        
         # Attempt to login to the trade account
-        if not mt5.login(self.login, password=self.password, server=self.server):
+        if not mt5.login(login=self.login, server=self.server, password=self.password):
             print(f"Failed to connect to trade account {self.login}, error code = {mt5.last_error()}")
             quit()
         else:
             print("connected to account #{}".format(self.login))
     
+
     def open_buy_position(self, symbol: str, lot: float, sl: float=0.0, tp: float=0.0) -> dict:
         """
         Open a buy order for a given symbol. by default 0,0 means no sl or tp will be set
@@ -116,6 +118,7 @@ class TradingBot:
         }
                     
         order=mt5.order_send(request)._asdict()
+        
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
             # Add the order to the positions dictionary
             self.positions[order['order']] = symbol
