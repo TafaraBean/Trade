@@ -7,13 +7,10 @@ from main import bot
 
 account_balance = 700
 inital_balance = account_balance
-lot_size = 0.01
-timeframe = mt5.TIMEFRAME_M15
 
-conversion = bot.timeframe_to_interval.get(timeframe, 3600)
+
 start = pd.Timestamp("2024-04-01")
 end = pd.Timestamp("2024-04-30")
-
 
 
 df = apply_strategy(start=start, end=end)
@@ -24,8 +21,8 @@ if not filtered_df.empty:
             symbol=bot.symbol,
             bot=bot,
             account_balance=account_balance,
-            lot_size=lot_size,
-            timeframe=timeframe)
+            lot_size=bot.lot,
+            timeframe=bot.timeframe)
 
     executed_trades_df = pd.DataFrame(results['executed_trades_df'])
     weekly_df = pd.DataFrame(results['weekly_profit'])
@@ -47,7 +44,7 @@ if not filtered_df.empty:
     print(f"\nanalysis from {start} to {end}\n")
     print(f"\nPROFITABILITY\n")
 
-    print(f"lot size used: {lot_size}")
+    print(f"lot size used: {bot.lot}")
     print(f"Total trades: {total_trades}")
     print(f"total auto close: {count_auto}")
     print(f"total manual close: {count_manual}")
@@ -66,7 +63,6 @@ if not filtered_df.empty:
 
     print(f"profit factor: {round(profit_factor, 2)}")
     print(f"\nACCOUNT DETAILS\n")
-    print(f"lot size used: {lot_size}")
     min_profit = executed_trades_df['profit'].min()
     adjusted_min_profit = min_profit if min_profit < 0 else 0
     print(f"biggest single loss: {round(adjusted_min_profit, 2)} {bot.account.currency}")

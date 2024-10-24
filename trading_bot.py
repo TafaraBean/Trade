@@ -24,7 +24,7 @@ class Account:
         raise AttributeError(f"'Account' object has no attribute '{attr}'")
     
 class TradingBot:   
-    def __init__(self, login: int, password: str, server: str, symbol: str, timeframe):
+    def __init__(self, login: int, password: str, server: str, symbol: str, timeframe, lot: float):
         self.account = Account()
         self.login = login
         self.password = password
@@ -32,6 +32,7 @@ class TradingBot:
         self.positions = {}
         self.symbol = symbol
         self.timeframe = timeframe
+        self.lot = lot
         self.initialize_bot()
 
         self.timeframe_to_interval = {
@@ -387,8 +388,7 @@ class TradingBot:
         fig.show()
 
     
-    def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]
-, lot: float) -> None:
+    def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
         while True:
             start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=7) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
             # Calculate the time to sleep until the next interval based on the timeframe
@@ -414,11 +414,11 @@ class TradingBot:
             
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
-                order = self.open_buy_position(symbol=self.symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
+                order = self.open_buy_position(symbol=self.symbol, lot=self.lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
 
 
             elif latest_signal["is_sell2"]:
-                order = self.open_sell_position(symbol=self.symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                order = self.open_sell_position(symbol=self.symbol, lot=self.lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
 
             # Track rows to keep
