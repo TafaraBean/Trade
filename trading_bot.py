@@ -431,7 +431,7 @@ class TradingBot:
                 updated_sl = row['sl']  + 4 * 0.0001  if row['type'] == mt5.ORDER_TYPE_BUY else row['sl']  - 4 * 0.0001
                 updated_be_condition = be_condition + 5 * 0.0001 if row['type'] == mt5.ORDER_TYPE_BUY else be_condition - 5 * 0.0001
                 if row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= be_condition:
-                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=symbol, sl=float(updated_sl), tp=row['tp'])
+                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=self.symbol, sl=float(updated_sl), tp=row['tp'])
                     
                     if result.retcode == mt5.TRADE_RETCODE_DONE:
                         print(f"sl adjusted for position {row['ticket']} ")
@@ -439,7 +439,7 @@ class TradingBot:
                 
                 # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
                 elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
-                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=symbol, sl=float(updated_sl),  tp=row['tp'])
+                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=self.symbol, sl=float(updated_sl),  tp=row['tp'])
                     
                     if result.retcode == mt5.TRADE_RETCODE_DONE:
                         print(f"sl adjusted for position {row['ticket']} ")                            
