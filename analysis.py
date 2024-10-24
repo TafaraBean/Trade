@@ -380,7 +380,7 @@ def analyse(filtered_df: pd.DataFrame,
     for index, row in filtered_df.iterrows():
         #if trade is in valid, no further processing
         trade_type = "sell" if row['is_sell2'] else "buy"
-        print(f"Currently Working on {trade_type} trade: {row['time']}", end=" ")
+        print(f"\n\nCurrently Working on {trade_type} trade: {row['time']}", end=" ")
         if check_invalid_stopouts(row):
             unexecuted_trades += 1
             print(f"trade invalid stopouts: {row['time']}")
