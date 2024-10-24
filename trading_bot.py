@@ -71,7 +71,13 @@ class TradingBot:
             print("connected to account #{}".format(self.login))
     
 
-    def open_buy_position(self, symbol: str, lot: float, sl: float=0.0, tp: float=0.0) -> dict:
+    def open_buy_position(self, 
+                          symbol: str, 
+                          be_condition: str,
+                          lot: float, 
+                          sl: float=0.0, 
+                          tp: float=0.0,
+                          ) -> dict:
         """
         Open a buy order for a given symbol. by default 0,0 means no sl or tp will be set
         """
@@ -85,7 +91,7 @@ class TradingBot:
             "tp": float(tp),
             "deviation": 20, #tolorance for order filling when market moves after sending order
             "magic": 234000, #each order can be uniquely identified per EA
-            "comment": "python script open",
+            "comment": be_condition,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK, # some filling modes are not supported by some brokers
         }
@@ -97,7 +103,12 @@ class TradingBot:
             self.positions[order['order']] = symbol
         return order
 
-    def open_sell_position(self, symbol: str, lot: float, sl: float=0.0, tp: float=0.0) -> dict:
+    def open_sell_position(self, 
+                           symbol: str,
+                           be_condition: str, 
+                           lot: float, 
+                           sl: float=0.0, 
+                           tp: float=0.0) -> dict:
         """
         Open a sell order for a given symbol.
         """
@@ -112,7 +123,7 @@ class TradingBot:
             "tp": float(tp),
             "deviation": 20,
             "magic": 234000,
-            "comment": "python script open",
+            "comment": be_condition,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK, # some filing modes are not supported by some brokers
         }
@@ -260,7 +271,7 @@ class TradingBot:
             ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
         return ticks
         
-    def changesltp(self, ticket: str, symbol: str, sl:float ,tp: float) -> dict:
+    def changesltp(self, be_condition: str, ticket: str, symbol: str, sl:float ,tp: float) -> dict:
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
             "position": ticket,
@@ -269,7 +280,7 @@ class TradingBot:
             "tp": float(tp),
             #"deviation": 20,
             "magic": 234000,
-            #"comment": "python script modify",
+            "comment": be_condition,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK,
             #"ENUM_ORDER_STATE": mt5.ORDER_FILLING_RETURN,
@@ -278,7 +289,7 @@ class TradingBot:
         result = mt5.order_send(request)
         
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            print("4. order_send failed, retcode={}".format(result.retcode))
+            print("4. order_send failed for adjusting SL, retcode={}".format(result.retcode))
 
         return result
 
@@ -380,7 +391,7 @@ class TradingBot:
             start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=7) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
             # Calculate the time to sleep until the next interval based on the timeframe
             # Get current time
-            conversion = self.timeframe_to_interval.get(timeframe, 3600)
+            conversion = self.timeframe_to_interval.get(timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
             current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
             end = pd.to_datetime(current_time).ceil(conversion)
             next_interval = current_time.ceil(conversion)
@@ -390,9 +401,7 @@ class TradingBot:
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
             time.sleep((next_interval - current_time).total_seconds())
 
-            # Fetch the market data and apply the trading strategy
-            
-            
+            # Fetch the market data and apply the trading strategy            
             df = self.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
             df=auto_trendline_15(df)
             
@@ -406,7 +415,7 @@ class TradingBot:
             merged_data = pd.merge(df,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
 
             df = strategy_func(merged_data)
-
+            df.to_csv('csv/main.csv', index=False)
             display_chart(df)
             
 
@@ -417,102 +426,32 @@ class TradingBot:
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
                 order = self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
-                df.at[df.index[-1], 'ticket'] = order['order']
-                df.at[df.index[-1], 'type'] = mt5.ORDER_TYPE_BUY
+
 
             elif latest_signal["is_sell2"]:
                 order = self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
-                df.at[df.index[-1], 'ticket'] = order['order']
-                df.at[df.index[-1], 'type'] = mt5.ORDER_TYPE_SELL
 
-            required_columns = ['ticket', 'sl', 'tp', 'be', 'be_condition']
-            try:
-                # Try to open the file in read mode
-                with open(self.positions_file_path, 'r') as file:
-                    headers_df = pd.DataFrame(columns=required_columns)
-                    headers_df.to_csv(self.positions_file_path, mode='a', header=not pd.read_csv(self.positions_file_path).empty, index=False)
-        
-            except FileNotFoundError:
-                # If the file does not exist, create it
-                with open(self.positions_file_path, 'w') as file:
-                    headers_df = pd.DataFrame(columns=required_columns)
-                    headers_df.to_csv(self.positions_file_path, header=True, index=False)
-
-
-
-            with open(self.positions_file_path, 'a') as f:
-                if latest_signal['is_buy2'] or latest_signal['is_sell2']:
-                # Convert Series to DataFrame before writing to CSV
-                    last_row = df.tail(1)
-                    last_row.to_csv(self.positions_file_path, header=True, index=False, columns=required_columns)
-
-
-            df.to_csv('main.csv', index=False)
-            
-            #trail any stop losses as needed
-            open_positions_df = self.get_position_all(symbol=symbol)
-            csv_positions_df = pd.read_csv('csv/positions.csv')
-
-            if 'ticket' in open_positions_df.columns:
-                valid_tickets = set(open_positions_df['ticket'])
-
-            
-        
-            
 
             # Track rows to keep
+            # get the list of all positions to see if they need to be changed"
+            running_positions=self.get_position_all(symbol=symbol)
             
+            #Note that the variable row['comment'] stores the be_condition
+            for index, row in running_positions.iterrows():
+                be_condition = row['comment']
+                updated_sl = row['sl']  + 4 * 0.0001  if row['type'] == mt5.ORDER_TYPE_BUY else row['sl']  - 4 * 0.0001
+                updated_be_condition = be_condition + 5 * 0.0001 if row['type'] == mt5.ORDER_TYPE_BUY else be_condition - 5 * 0.0001
+                if row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= be_condition:
+                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=symbol, sl=float(updated_sl), tp=row['tp'])
+                    
+                    if result.retcode == mt5.TRADE_RETCODE_DONE:
+                        print(f"sl adjusted for position {row['ticket']} ")
 
-            for index, row in open_positions_df.iterrows():
-                specific_row_index = csv_positions_df.index[csv_positions_df['ticket'] == row['ticket']]
                 
-                if specific_row_index.empty:
-                    add_missing_position(order=row,
-                                        file_path=self.positions_file_path)
-                    # Reload positions_df again to get the updated content
-                    csv_positions_df = pd.read_csv('csv/positions.csv')
+                # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
+                elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
+                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=symbol, sl=float(updated_sl),  tp=row['tp'])
                     
-                    # Find the new index of the added position
-                    specific_row_index = csv_positions_df.index[csv_positions_df['ticket'] == row['ticket']]
-    
-
-                if not specific_row_index.empty:
-
-                    # Extract the specific row index
-                    idx = specific_row_index[0]
-                    
-                    # Extract the specific values
-                    be_condition = csv_positions_df.at[idx, 'be_condition']
-                    be = csv_positions_df.at[idx, 'be']
-                    
-                    # Condition to check how far above open price a candle should close before sl is adjusted for buy orders
-                    if row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= be_condition:
-                        result = self.changesltp(ticket=int(row['ticket']), 
-                                                symbol=symbol, 
-                                                sl=float(be),  # how much should the stop loss be adjusted above entry
-                                                tp=row['tp'])
-                        if result.retcode == mt5.TRADE_RETCODE_DONE:
-                            print(f"sl adjusted for position {row['ticket']} ")
-                            # Update the DataFrame
-                            csv_positions_df.at[idx, 'be_condition'] += 5 * 0.0001
-                            csv_positions_df.at[idx, 'be'] += 4 * 0.0001
-                    
-                    # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
-                    elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
-                        result = self.changesltp(ticket=int(row['ticket']), 
-                                                symbol=symbol, 
-                                                sl=float(be),  # how much should the stop loss be adjusted below entry
-                                                tp=row['tp'])
-                        if result.retcode == mt5.TRADE_RETCODE_DONE:
-                            print(f"sl adjusted for position {row['ticket']} ")                            
-                            # Update the DataFrame
-                            csv_positions_df.at[idx, 'be_condition']  -= 5 * 0.0001
-                            csv_positions_df.at[idx, 'be'] -= 4 * 0.0001
-                else:
-                    print(f"No specific row found for ticket {row['ticket']}")
-
-            # Save the updated DataFrame back to the CSV file
-            # Save the updated DataFrame back to the CSV file
-            if 'ticket' in open_positions_df.columns:
-                rows_to_keep = csv_positions_df[csv_positions_df['ticket'].isin(valid_tickets)]
-                rows_to_keep.to_csv('csv/positions.csv', index=False)
+                    if result.retcode == mt5.TRADE_RETCODE_DONE:
+                        print(f"sl adjusted for position {row['ticket']} ")                            
+                        # Update the DataFrame

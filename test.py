@@ -1,22 +1,26 @@
-import pandas as pd
-from trading_bot import TradingBot
-from dotenv import load_dotenv
-import os
 import MetaTrader5 as mt5
-# Load environment variables
-load_dotenv()
+import pandas as pd
+import os
+
+
 account = int(os.environ.get("ACCOUNT"))
 password = os.environ.get("PASSWORD")
 server = os.environ.get("SERVER")
 
-# Initialize the trading bot
-bot = TradingBot(login=account, password=password, server=server)
 
-start = pd.Timestamp("2024-07-26")
-end = pd.Timestamp.now() + pd.Timedelta(days=1)
+if not mt5.initialize():
+    print(f"initialize() failed, error code = {mt5.last_error()}")
+    quit()
+else:
+    print("MetaTrader5 package version: ",mt5.__version__)
 
-df = bot.copy_chart_range(symbol="EURUSD.Z",end=end, start=start,timeframe=mt5.TIMEFRAME_H1)
+# Attempt to login to the trade account
+if not mt5.login(login=account, server=server, password=password):
+    print(f"Failed to connect to trade account {account}, error code = {mt5.last_error()}")
+    quit()
+else:
+    print("connected to account #{}".format(account))
+    
+ 
 
-print(df)
-print(start)
-print(end)
+print("100.1" < "900")
