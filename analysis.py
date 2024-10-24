@@ -82,6 +82,20 @@ def display_chart(df):
                             name='ema_50'
                             ), row=1, col=1)
     
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['lsma_upper_band'], 
+                            mode='lines', 
+                            name='upper_band'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['lsma_lower_band'], 
+                            mode='lines', 
+                            name='lower_band'
+                            ), row=1, col=1)
+    
+    
+    
     
 
 
@@ -436,11 +450,11 @@ def analyse(filtered_df: pd.DataFrame,
                 row['sl'] = row['be']
 
                 if row['is_buy2']:
-                    row['be'] += 200 * 1 
-                    row['be_condition'] += 300 * 1
+                    row['be'] += 20 * 1 
+                    row['be_condition'] += 30 * 1
                 else:
-                    row['be'] -= 200 * 0.0001 
-                    row['be_condition'] -= 300* 1
+                    row['be'] -= 20 * 1 
+                    row['be_condition'] -= 30* 1
 
                 stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
                 trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
@@ -504,12 +518,12 @@ def analyse(filtered_df: pd.DataFrame,
                 temp_exit_price= static_ticks.iloc[start_index]['bid']
                 temp_profit =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=temp_exit_price) 
 
-                if temp_profit>0:
-                    row['exit']= "auto"
-                else:
-                    row['exit_price'] = static_ticks.iloc[start_index]['bid']
-                    row['exit_time'] = first_signal_time
-                    row['exit'] ="manual" 
+                # if temp_profit>0:
+                #     row['exit']= "auto"
+                # else:
+                row['exit_price'] = static_ticks.iloc[start_index]['bid']
+                row['exit_time'] = first_signal_time
+                row['exit'] ="manual" 
             else:
                 row['exit']= "auto"
 
@@ -698,6 +712,8 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback = 20
 
     # Initialize columns for trendlines and their gradients
+    data['ema_50'] = ta.ema(data['close'], length=10*4)
+    data['lsma'] = ta.linreg(data['close'], length=8*4)
     data['support_trendline_15'] = np.nan
     data['resistance_trendline_15'] = np.nan
     data['support_gradient_15'] = np.nan
@@ -864,8 +880,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
 
-    data['ema_50'] = ta.ema(data['close'], length=10)
-    data['lsma'] = ta.linreg(data['close'], length=8)
+    
     data['ema_24'] = ta.ema(data['close'], length=8)
     data['hour_lsma'] = ta.linreg(data['close'], length=10)
     data['prev_hour_lsma'] = data['hour_lsma'].shift(1)

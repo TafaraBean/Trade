@@ -50,7 +50,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['macd_line'] = macd['MACD_12_24_9']
     data['macd_signal'] = macd['MACDs_12_24_9']
     
-    data['lsma_stddev'] = data['close'].rolling(window=7).std()
+    data['lsma_stddev'] = data['close'].rolling(window=8).std()
     
     # Identify the trend
     data['lsma_slope'] = data['lsma'].diff()
@@ -58,8 +58,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_lsma_slope_2'] = data['lsma_slope'].shift(2)
     
     # Adjust LSMA bands based on trend
-    data['lsma_upper_band'] = data['lsma'] + data['lsma_stddev']
-    data['lsma_lower_band'] = data['lsma'] - data['lsma_stddev']
+    data['lsma_upper_band'] = data['lsma'] + 2*data['lsma_stddev']
+    data['lsma_lower_band'] = data['lsma'] - 2*data['lsma_stddev']
 
     # Calculate stochastic oscillator
     stochastic = ta.stoch(data['high'], data['low'], data['close'], k=14, d=3)
@@ -144,9 +144,9 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     pip_size = 1
 
     # Set TP and SL in terms of pips
-    tp_pips = 500 * pip_size
-    sl_pips = 200 * pip_size
-    be_pips = 100 * pip_size
+    tp_pips = 100 * pip_size
+    sl_pips = 30 * pip_size
+    be_pips = 35 * pip_size
     data['ticket'] = np.nan
 
     # Generate signals
@@ -171,8 +171,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 90 * pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 90 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 30 * pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 30 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
