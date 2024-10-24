@@ -535,7 +535,7 @@ def analyse(filtered_df: pd.DataFrame,
 
         #set exit time  to none after use
         row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
-        print(f"type: {row['exit']}")
+        print(f"ex type: {row['exit']}")
         print(f"ex time: {row['exit_time']}")
         print(f"tp time: {row['time_tp_hit']}")
         print(f"sl time: {row['time_sl_hit'] }")
@@ -620,6 +620,8 @@ def analyse(filtered_df: pd.DataFrame,
 
         print(f"trade {row['type']}")
         print(f"Profit: {row["profit"]}")
+        print(f"entry price: {row['entry_price']}")
+        print(f"exit price : {row['exit_price']}")
     
     executed_trades_df = pd.DataFrame(executed_trades)
     profit_factor = calc_profit_factor(gross_profit=gross_profit,
