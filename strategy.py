@@ -3,7 +3,8 @@ import pandas_ta as ta
 import numpy as np
 import MetaTrader5 as mt5
 import talib
-
+from main import bot
+from analysis import auto_trendline_15, auto_trendline, auto_trendline_4H
 
 def h1_gold_strategy(data):
         data['ema_short'] = ta.ema(data['close'], length=12)
@@ -38,7 +39,32 @@ def h1_gold_strategy(data):
 
 
 
+def apply_strategy(start: pd.Timestamp, end: pd.Timestamp):
+    data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
+    data=auto_trendline_15(data)
 
+    hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
+
+    hour_data=auto_trendline(hour_data)
+
+    hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_24','prev_stochk','prev_stochd','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope','wma_50','prev_supertrend_dir','HSpan_A','HSpan_B','nadaraya_watson','prev_nadaraya_lower_band','prev_nadaraya_upper_band','prev_HSpan_A','prev_HSpan_B','support_trendline','resistance_trendline','support','resistance','is_buy','is_sell']]
+
+    hour_data.to_csv("csv/hour_data.csv",index=False)
+
+    data['hourly_time']=data['time'].dt.floor('h')
+
+    merged_data = pd.merge(data,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
+
+    four_hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H4, start=start, end=end)
+    four_hour_data = auto_trendline_4H(four_hour_data)
+    H4_data = four_hour_data[['time4h','4H_ema_50','prev_4fixed_support_gradient','prev_4fixed_support_trendline','prev_4fixed_resistance_gradient','prev_4fixed_resistance_trendline','prev_4nadaraya_watson_trend','4H_hour_lsma','4lsma_upper_band','4lsma_lower_band','4HSpan_A','4HSpan_B']]
+
+    merged_data['4_hour_time']=merged_data['time2'].dt.floor('4h')
+
+
+    merged_data2 = pd.merge(merged_data,H4_data, left_on='4_hour_time', right_on='time4h', suffixes=('', '_4h'))
+
+    return m15_gold_strategy(merged_data2)
 
 
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:

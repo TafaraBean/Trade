@@ -11,13 +11,19 @@ load_dotenv()
 account = int(os.environ.get("ACCOUNT"))
 password = os.environ.get("PASSWORD")
 server = os.environ.get("SERVER")
+symbol = "XAUUSD"
+timeframe = mt5.TIMEFRAME_M15  # Change this as needed
 
 # Initialize the trading bot
-bot = TradingBot(login=account, password=password, server=server)
-symbol = "US30.F"
-timeframe = mt5.TIMEFRAME_M15  # Change this as needed
+bot = TradingBot(login=account, 
+                 password=password, 
+                 server=server, 
+                 symbol = symbol,
+                 timeframe = timeframe)
+
+
 
 lot= 0.01
 
-bot.run(symbol=symbol, timeframe=timeframe, strategy_func=m15_gold_strategy, lot=lot)
+#bot.run(timeframe=timeframe, strategy_func=apply_strategy, lot=lot)
 

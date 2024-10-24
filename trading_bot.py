@@ -24,13 +24,14 @@ class Account:
         raise AttributeError(f"'Account' object has no attribute '{attr}'")
     
 class TradingBot:   
-    def __init__(self, login: int, password: str, server: str):
+    def __init__(self, login: int, password: str, server: str, symbol: str, timeframe):
         self.account = Account()
         self.login = login
         self.password = password
         self.server = server
         self.positions = {}
-        self.positions_file_path = 'csv/positions.csv'
+        self.symbol = symbol
+        self.timeframe = timeframe
         self.initialize_bot()
 
         self.timeframe_to_interval = {
@@ -386,12 +387,12 @@ class TradingBot:
         fig.show()
 
     
-    def run(self, symbol: str, timeframe, strategy_func: Callable[[pd.DataFrame],pd.DataFrame], lot: float) -> None:
+    def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]
+, lot: float) -> None:
         while True:
             start = pd.Timestamp.now() + pd.Timedelta(hours=1) - pd.Timedelta(days=7) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
             # Calculate the time to sleep until the next interval based on the timeframe
-            # Get current time
-            conversion = self.timeframe_to_interval.get(timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
+            conversion = self.timeframe_to_interval.get(self.timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
             current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
             end = pd.to_datetime(current_time).ceil(conversion)
             next_interval = current_time.ceil(conversion)
@@ -401,20 +402,8 @@ class TradingBot:
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
             time.sleep((next_interval - current_time).total_seconds())
 
-            # Fetch the market data and apply the trading strategy            
-            df = self.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
-            df=auto_trendline_15(df)
             
-            hour_data = self.copy_chart_range(symbol=symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
-            hour_data= auto_trendline(hour_data)
-
-            hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_50','ema_24','prev_stochk','prev_stochd','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope','wma_50','prev_supertrend_dir','HSpan_A','HSpan_B','nadaraya_watson','prev_nadaraya_lower_band','prev_nadaraya_upper_band','prev_HSpan_A','prev_HSpan_B','support_trendline','resistance_trendline','lsma']]
-
-            df['hourly_time']=df['time'].dt.floor('h')
-
-            merged_data = pd.merge(df,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
-
-            df = strategy_func(merged_data)
+            df = strategy_func(start,end)
             df.to_csv('csv/main.csv', index=False)
             display_chart(df)
             
@@ -425,16 +414,16 @@ class TradingBot:
             
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
-                order = self.open_buy_position(symbol=symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
+                order = self.open_buy_position(symbol=self.symbol, lot=lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
 
 
             elif latest_signal["is_sell2"]:
-                order = self.open_sell_position(symbol=symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                order = self.open_sell_position(symbol=self.symbol, lot=lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
 
             # Track rows to keep
             # get the list of all positions to see if they need to be changed"
-            running_positions=self.get_position_all(symbol=symbol)
+            running_positions=self.get_position_all(symbol=self.symbol)
             
             #Note that the variable row['comment'] stores the be_condition
             for index, row in running_positions.iterrows():
