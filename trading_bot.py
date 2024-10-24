@@ -182,7 +182,7 @@ class TradingBot:
         """Retrives all positions for a specified symbol"""
         positions=mt5.positions_get(symbol=symbol)
 
-        if len(positions) != 0:
+        if len(positions) != 0: 
             df=pd.DataFrame(list(positions),columns=positions[0]._asdict().keys())
             df.drop(['time_update', 'time_msc', 'time_update_msc', 'external_id'], axis=1, inplace=True)
             df['time'] = pd.to_datetime(df['time'], unit='s')
@@ -400,12 +400,12 @@ class TradingBot:
            
             print(f"current time: {current_time}")
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
-            time.sleep(1)
+            time.sleep((next_interval - current_time).total_seconds())
 
             
             df = strategy_func(start,end)
             df.to_csv('csv/main.csv', index=False)
-            #display_chart(df)
+            display_chart(df)
             
 
             # Check for new trading signals
