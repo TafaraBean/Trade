@@ -753,7 +753,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback = 20
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=20, std=1)
+    bb = ta.bbands(close=data['close'], length=20, std=2)
 
     # Rename columns for clarity
     data['bb_lower'] = bb[f'BBL_20_2.0']
