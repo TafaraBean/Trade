@@ -427,7 +427,8 @@ def analyse(filtered_df: pd.DataFrame,
         time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
         time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
         
-        row["first_time_to_trail"] = time_to_trail
+        row["first_time_to_trail"] = time_to_trail if time_to_trail != pd.Timestamp.max else pd.NA
+        row['last_time_to_trail'] = row["first_time_to_trail"]
         #trail stop loss if needed, 
         #also factor in probability of trading still running and none of the levels were ever reached
         
@@ -467,6 +468,7 @@ def analyse(filtered_df: pd.DataFrame,
                 #add timestamp before updating it
                 timestamps_list.append(time_to_trail)
                 time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
+                row['last_time_to_trail'] = time_to_trail
                 time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
 
         #save final updated times
@@ -497,7 +499,7 @@ def analyse(filtered_df: pd.DataFrame,
 
         if not following_signals.empty:
             first_signal_time = (following_signals.iloc[0]['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
-            print(f"following revesal signal: {first_signal_time}")
+            print(f"\nfollowing revesal signal: {first_signal_time}")
             
             if min(first_signal_time,time_sl_hit, time_tp_hit) == first_signal_time:
                 
@@ -526,7 +528,7 @@ def analyse(filtered_df: pd.DataFrame,
                 row['exit']= "auto"
 
         else:
-            print(f"following signal: {None}")
+            print(f"\nfollowing signal: {None}")
             first_signal_time = pd.NA
             row['exit'] ="auto" 
 
@@ -621,6 +623,7 @@ def analyse(filtered_df: pd.DataFrame,
         print(f"tp time: {row['time_tp_hit']}")
         print(f"sl time: {row['time_sl_hit'] }")
         print(f"tr time: {row['first_time_to_trail']}")
+        print(f"lr time: {row['last_time_to_trail']}")
         print(f"duration: {row['duration']}")
         print(f"trade {row['type']}")
         print(f"Profit: {row["profit"]}")
