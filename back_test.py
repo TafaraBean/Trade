@@ -8,8 +8,8 @@ account_balance = 700
 inital_balance = account_balance
 
 
-start = pd.Timestamp("2024-04-01")
-end = pd.Timestamp("2024-04-30")
+start = pd.Timestamp("2024-03-01")
+end = pd.Timestamp("2024-10-25")
 
 
 df = apply_strategy(start=start, end=end)

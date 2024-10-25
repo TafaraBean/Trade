@@ -83,15 +83,15 @@ def display_chart(df):
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma_upper_band'], 
+                            y=df['lsma3'], 
                             mode='lines', 
-                            name='upper_band'
+                            name='LSMA3'
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma_lower_band'], 
+                            y=df['lsma2'], 
                             mode='lines', 
-                            name='lower_band'
+                            name='LSMA2'
                             ), row=1, col=1)
     
     
@@ -103,6 +103,32 @@ def display_chart(df):
     # Add LMSA Band line to the first subplot
     fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
                             mode='lines', name='LMSA'), row=1, col=1)
+    
+    # Add Bollinger Bands to the first subplot
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_upper'],
+        mode='lines',
+        line=dict(color='blue', width=1),
+        name='Bollinger Upper'
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_middle'],
+        mode='lines',
+        line=dict(color='blue', width=1, dash='dash'),
+        name='Bollinger Middle'
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_lower'],
+        mode='lines',
+        line=dict(color='blue', width=1),
+        name='Bollinger Lower'
+    ), row=1, col=1)
+
 
     # Add MACD Line to the second subplot
     fig.add_trace(go.Scatter(
@@ -721,12 +747,22 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     # Take natural log of data to resolve price scaling issues
     df_log = np.log(data[['high', 'low', 'close']])
 
+
+
     # Trendline parameter
     lookback = 20
 
     # Initialize columns for trendlines and their gradients
-    data['ema_50'] = ta.ema(data['close'], length= 30 )
-    data['lsma'] = ta.linreg(data['close'], length= 25)
+    bb = ta.bbands(close=data['close'], length=20, std=1)
+
+    # Rename columns for clarity
+    data['bb_lower'] = bb[f'BBL_20_2.0']
+    data['bb_middle'] = bb[f'BBM_20_2.0']
+    data['bb_upper'] = bb[f'BBU_20_2.0']
+    data['ema_50'] = ta.ema(data['close'], length= 20 )
+    data['lsma'] = ta.linreg(data['close'], length= 20)
+    data['lsma2'] = ta.linreg(data['high'], length= 50)
+    data['lsma3'] = ta.linreg(data['low'], length= 50)
     data['support_trendline_15'] = np.nan
     data['resistance_trendline_15'] = np.nan
     data['support_gradient_15'] = np.nan
@@ -740,6 +776,17 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[:i]
+        ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
+        look_ahead_spans = ichi[1]
+
+        if look_ahead_spans is not None:
+            senkou_span_a = look_ahead_spans['ISA_9']
+            senkou_span_b = look_ahead_spans['ISB_26']
+            data.at[current_index, 'Span_A'] = senkou_span_a.iloc[-1]
+            data.at[current_index, 'Span_B'] = senkou_span_b.iloc[-1]
+        else:
+            data.at[current_index, 'Span_A'] = None
+            data.at[current_index, 'Span_B'] = None
         
 
         
@@ -748,6 +795,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i - lookback:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
+        
         
 
         
