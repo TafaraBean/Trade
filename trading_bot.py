@@ -236,7 +236,7 @@ class TradingBot:
 
     def copy_chart_range(self, symbol: str, timeframe, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         "Retrives chart data from specified start date till end date"
-        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start.to_pydatetime(), end.to_pydatetime())
+        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
         ohlc_data = pd.DataFrame(ohlc_data)
         # Convert 'date' column to datetime type
         if len(ohlc_data) != 0:

@@ -1,5 +1,4 @@
 import pandas as pd
-from dotenv import load_dotenv
 from main import bot
 import matplotlib.pyplot as plt
 
