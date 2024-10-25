@@ -540,7 +540,7 @@ def analyse(filtered_df: pd.DataFrame,
         print(f"tp time: {row['time_tp_hit']}")
         print(f"sl time: {row['time_sl_hit'] }")
         print(f"tr time: {row['time_to_trail']}")
-        
+        print(f"duration: {row['duration']}")
         
 
         if stop_loss_index == 0 or take_profit_index == 0:
