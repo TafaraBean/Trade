@@ -375,9 +375,6 @@ def analyse(filtered_df: pd.DataFrame,
     break_even = 0
     conversion = bot.timeframe_to_interval.get(timeframe, 3600)
     
-    #variables used to track sl update count
-    sl_updated = 0
-    timestamps_list = []# to keep track of all the times stop losses were updated
 
     
     for index, row in filtered_df.iterrows():
@@ -405,9 +402,15 @@ def analyse(filtered_df: pd.DataFrame,
         row['order_type'] = mt5.ORDER_TYPE_BUY if row['is_buy2'] else mt5.ORDER_TYPE_SELL
         row['lot'] = lot_size
         
-        second_chart = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start_time, end=end_time) #needed for tracking chart movement because this provides an uninterupted view of the chart candlesticks (unllike the filtered trades df )so we can track sl/tp
-        relevant_ticks = bot.get_ticks_range(symbol=bot.symbol, start=start_time, end=end_time)#used to find exact entry/exit price of trades
-        static_ticks = relevant_ticks.copy()# for later use when check if trade was manually closed
+        second_chart = pd.DataFrame(mt5.copy_rates_range(symbol, timeframe, start_time, end_time)) #needed because this provides an uninterupted view of the chart (unllike the filtered trades df )so we can track sl/tp
+        relevant_ticks = pd.DataFrame(mt5.copy_ticks_range(symbol, start_time, end_time, mt5.COPY_TICKS_ALL)) #used to find exact entry/exit price of trades
+        
+        if len(second_chart) != 0:
+            second_chart['time'] = pd.to_datetime(second_chart['time'],unit='s')
+        if len(relevant_ticks) != 0:
+            relevant_ticks['time'] = pd.to_datetime(relevant_ticks['time'],unit='s')
+
+        static_ticks = relevant_ticks# for later use when check if trade was manually closed
 
         # Check if stop loss or take profit or trailing stop was reached 
         stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
@@ -432,7 +435,8 @@ def analyse(filtered_df: pd.DataFrame,
         min(time_sl_hit, time_tp_hit, time_to_trail) == time_to_trail
             
         
-
+        sl_updated = 0
+        timestamps_list = []# to keep track of all the times stop losses were updated
         #update actual sl and refind teh indexes
         if  row['sl_updated']:
             while (min(time_sl_hit, time_to_trail, time_tp_hit)== time_to_trail and not all(time == pd.Timestamp.max for time in [time_to_trail, time_tp_hit, time_sl_hit])):
