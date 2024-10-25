@@ -3,25 +3,17 @@ from trading_bot import TradingBot
 import os
 import pandas as pd
 from dotenv import load_dotenv
+from main import bot
 import matplotlib.pyplot as plt
 
-# Load account details from environment variables
-load_dotenv()
-account = int(os.environ.get("ACCOUNT"))
-password = os.environ.get("PASSWORD")
-server = os.environ.get("SERVER")
 
-# Initialize the trading bot
-bot = TradingBot(login=account, password=password, server=server)
-symbol = "EURUSD.Z"
-timeframe = mt5.TIMEFRAME_H1  # You can change this to H4 or M15 as needed
 
 # Define the date range
 start = pd.Timestamp("2024-06-01")
 end = pd.Timestamp("2024-06-29")
 
 # Pulling the data from MT5
-data = bot.copy_chart_range(symbol=symbol, timeframe=timeframe, start=start, end=end)
+data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
 
 # Convert MT5 data to pandas DataFrame and set the time as the index
 data['time'] = pd.to_datetime(data['time'], unit='s')
@@ -87,4 +79,4 @@ def plot_support_resistance(symbol, df, window=10):
 
 # Example usage with your trading bot data
 
-plot_support_resistance(symbol, data)
+plot_support_resistance(bot.symbol, data)
