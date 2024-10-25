@@ -427,6 +427,7 @@ def analyse(filtered_df: pd.DataFrame,
         time_tp_hit = relevant_ticks.loc[take_profit_index, 'time'] if take_profit_index != -1 else pd.Timestamp.max
         time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
         
+        row["first_time_to_trail"] = time_to_trail
         #trail stop loss if needed, 
         #also factor in probability of trading still running and none of the levels were ever reached
         
@@ -467,11 +468,7 @@ def analyse(filtered_df: pd.DataFrame,
                 timestamps_list.append(time_to_trail)
                 time_sl_hit = relevant_ticks.loc[stop_loss_index, 'time'] if stop_loss_index != -1 else pd.Timestamp.max
                 time_to_trail = (second_chart.loc[trailing_stop_index, "time"] + pd.Timedelta(seconds=1)).ceil(conversion) if trailing_stop_index != -1 else pd.Timestamp.max
-                
-        print(f"sl updated {sl_updated} times at")
-        for timestamp in timestamps_list:
-            print(timestamp)
-        
+
         #save final updated times
         row['time_to_trail'] = pd.NA if time_to_trail == pd.Timestamp.max else time_to_trail
         row['time_tp_hit'] = pd.NA if time_tp_hit == pd.Timestamp.max else time_tp_hit
@@ -535,12 +532,8 @@ def analyse(filtered_df: pd.DataFrame,
 
         #set exit time  to none after use
         row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
-        print(f"ex type: {row['exit']}")
-        print(f"ex time: {row['exit_time']}")
-        print(f"tp time: {row['time_tp_hit']}")
-        print(f"sl time: {row['time_sl_hit'] }")
-        print(f"tr time: {row['time_to_trail']}")
-        print(f"duration: {row['duration']}")
+        
+
         
 
         if stop_loss_index == 0 or take_profit_index == 0:
@@ -618,6 +611,17 @@ def analyse(filtered_df: pd.DataFrame,
         
         row['success'] = row['type'] in['success', 'even']
 
+        filtered_timestamps = [ts for ts in timestamps_list if ts <= row['exit_time']]       
+        print(f"sl updated {len(filtered_timestamps)} times at")
+        for timestamp in filtered_timestamps:
+            print(timestamp)
+        
+        print(f"ex type: {row['exit']}")
+        print(f"ex time: {row['exit_time']}")
+        print(f"tp time: {row['time_tp_hit']}")
+        print(f"sl time: {row['time_sl_hit'] }")
+        print(f"tr time: {row['first_time_to_trail']}")
+        print(f"duration: {row['duration']}")
         print(f"trade {row['type']}")
         print(f"Profit: {row["profit"]}")
         print(f"entry price: {row['entry_price']}")
