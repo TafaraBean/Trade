@@ -1,6 +1,3 @@
-import MetaTrader5 as mt5
-from trading_bot import TradingBot
-import os
 import pandas as pd
 from dotenv import load_dotenv
 from main import bot
