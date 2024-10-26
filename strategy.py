@@ -168,7 +168,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
     # Set TP and SL in terms of pips
     tp_pips = 100 * pip_size
-    sl_pips = 50 * pip_size
+    sl_pips = 30 * pip_size
     be_pips = 15 * pip_size
     data['ticket'] = np.nan
 
