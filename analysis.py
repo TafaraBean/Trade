@@ -772,10 +772,10 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     data['Span_B']=np.nan
 
 
-    lookback2 = 50
+    lookback2 = 200
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
-        window_data = df_log.iloc[:i]
+        window_data = df_log.iloc[i-lookback2:i]
         ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
         look_ahead_spans = ichi[1]
 
