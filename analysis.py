@@ -502,7 +502,8 @@ def analyse(filtered_df: pd.DataFrame,
         row['exit_time'] = min(time_sl_hit, time_tp_hit) 
         row['exit'] = "auto"
 
-        matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']] #potential error could occur if there was no tick move at this exact time
+       # Try to find an exact match, otherwise get the next available row in case of exact time not existing
+        matching_row = relevant_ticks[relevant_ticks['time'] >= row['exit_time']].head(1)
        
         row['exit_price'] = matching_row.iloc[0]['bid']  if not matching_row.empty else  pd.NA
                     
