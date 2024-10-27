@@ -170,6 +170,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     tp_pips = 100 * pip_size
     sl_pips = 30 * pip_size
     be_pips = 15 * pip_size
+    data["be_increment"] = 8
+    data["be_condition_increment"] = 10
     data['ticket'] = np.nan
 
     # Generate signals

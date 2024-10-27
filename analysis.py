@@ -382,11 +382,10 @@ plt.show()
 
 
 
-def analyse(filtered_df: pd.DataFrame, 
-            symbol: str, 
+def analyse(filtered_df: pd.DataFrame,
             bot: TradingBot, 
             account_balance: float,
-            lot_size: float,
+            close_opp_trades: bool,
             timeframe,
             ):
     
@@ -426,17 +425,12 @@ def analyse(filtered_df: pd.DataFrame,
 
         
         row['order_type'] = mt5.ORDER_TYPE_BUY if row['is_buy2'] else mt5.ORDER_TYPE_SELL
-        row['lot'] = lot_size
+        row['lot'] = bot.lot
         
-        second_chart = pd.DataFrame(mt5.copy_rates_range(symbol, timeframe, start_time, end_time)) #needed because this provides an uninterupted view of the chart (unllike the filtered trades df )so we can track sl/tp
-        relevant_ticks = pd.DataFrame(mt5.copy_ticks_range(symbol, start_time, end_time, mt5.COPY_TICKS_ALL)) #used to find exact entry/exit price of trades
-        
-        if len(second_chart) != 0:
-            second_chart['time'] = pd.to_datetime(second_chart['time'],unit='s')
-        if len(relevant_ticks) != 0:
-            relevant_ticks['time'] = pd.to_datetime(relevant_ticks['time'],unit='s')
+        second_chart = bot.copy_chart_range(symbol=bot.symbol, timeframe= bot.timeframe, start=start_time, end=end_time)#needed because this provides an uninterupted view of the chart (unllike the filtered trades df )so we can track sl/tp
+        relevant_ticks = bot.get_ticks_range(symbol=bot.symbol, start=start_time, end=end_time)#used to find exact entry/exit price of trades
 
-        static_ticks = relevant_ticks# for later use when check if trade was manually closed
+        static_ticks = relevant_ticks.copy() # for later use when check if trade was manually closed
 
         # Check if stop loss or take profit or trailing stop was reached 
         stop_loss_reached = (relevant_ticks['bid'] <= row["sl"]) if row["is_buy2"] else (relevant_ticks['bid'] >= row["sl"])
@@ -479,11 +473,11 @@ def analyse(filtered_df: pd.DataFrame,
                 row['sl'] = row['be']
 
                 if row['is_buy2']:
-                    row['be'] += 8 * 1 
-                    row['be_condition'] += 10 * 1
+                    row['be'] += row["be_increment"]
+                    row['be_condition'] += row["be_condition_increment"]
                 else:
-                    row['be'] -= 8 * 1 
-                    row['be_condition'] -= 10* 1
+                    row['be'] -= row["be_increment"]
+                    row['be_condition'] -= row["be_condition_increment"]
 
                 stop_loss_reached = relevant_ticks['bid'] <= row['sl'] if row['is_buy2'] else relevant_ticks['bid'] >= row['sl']
                 trailing_stop_reached = (second_chart['close'] >= row["be_condition"]) if row["is_buy2"] else (second_chart['close'] <= row["be_condition"])
@@ -506,63 +500,51 @@ def analyse(filtered_df: pd.DataFrame,
         row['entry_price'] = row['close']
 
         row['exit_time'] = min(time_sl_hit, time_tp_hit) 
-        
+        row['exit'] = "auto"
 
+        matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']] #potential error could occur if there was no tick move at this exact time
+       
+        row['exit_price'] = matching_row.iloc[0]['bid']  if not matching_row.empty else  pd.NA
+                    
+        if close_opp_trades:
 
-        
-        matching_row = relevant_ticks[relevant_ticks['time'] == row['exit_time']]
-        if not matching_row.empty:
-            row['exit_price'] = matching_row.iloc[0]['bid']
-        else:
-            row['exit_price'] =  pd.NA
+            following_signals = filtered_df[
+                ((filtered_df['time'] >= row['entry_time']) & 
+                (filtered_df['time'] <= row['exit_time']) & 
+                (filtered_df['is_buy2'] != row['is_buy2']))
+            ]
 
-        
-        following_signals = filtered_df[
-            ((filtered_df['time'] >= row['entry_time']) & 
-            (filtered_df['time'] <= row['exit_time']) & 
-            (filtered_df['is_buy2'] != row['is_buy2']))
-        ]
-
-        if not following_signals.empty:
-            first_signal_time = (following_signals.iloc[0]['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
-            print(f"\nfollowing revesal signal: {first_signal_time}")
-            
-            if min(first_signal_time,time_sl_hit, time_tp_hit) == first_signal_time:
+            if not following_signals.empty:
+                first_signal_time = (following_signals.iloc[0]['time'] + pd.Timedelta(seconds=1)).ceil(conversion)
+                print(f"\nfollowing revesal signal: {first_signal_time}")
                 
-                # Try to find the index of the first row that matches the first_signal_time
-                matching_rows = static_ticks[static_ticks['time'] == first_signal_time]
+                if min(first_signal_time,time_sl_hit, time_tp_hit) == first_signal_time:
+                    
+                    # Try to find the index of the first row that matches the first_signal_time
+                    start_index = static_ticks[static_ticks['time'] >= first_signal_time].index[0] # we use the greater than or equal too sign because there might not have been a tick at that exact time
 
-                if not matching_rows.empty:
-                    # If a match is found, use its index
-                    start_index = matching_rows.index[0]
+                    #row['exit_price'] = static_ticks.iloc[start_index]['bid']
+                    temp_exit_price= static_ticks.iloc[start_index]['bid']
+                    temp_profit =  bot.profit_loss(symbol=bot.symbol, order_type=row['order_type'], lot=bot.lot, open_price=row["entry_price"], close_price=temp_exit_price) 
+
+                    # if temp_profit>0:
+                    #     row['exit']= "auto"
+                    # else:
+                    row['exit_price'] = static_ticks.iloc[start_index]['bid']
+                    row['exit_time'] = first_signal_time
+                    row['exit'] ="manual" 
                 else:
-                    # If no match is found, use the next available row
-                    start_index = static_ticks[static_ticks['time'] > first_signal_time].index[0]
+                    row['exit']= "auto"
 
-
-                #row['exit_price'] = static_ticks.iloc[start_index]['bid']
-                temp_exit_price= static_ticks.iloc[start_index]['bid']
-                temp_profit =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=temp_exit_price) 
-
-                # if temp_profit>0:
-                #     row['exit']= "auto"
-                # else:
-                row['exit_price'] = static_ticks.iloc[start_index]['bid']
-                row['exit_time'] = first_signal_time
-                row['exit'] ="manual" 
             else:
-                row['exit']= "auto"
+                print(f"\nfollowing signal: {None}")
+                first_signal_time = pd.NA
+                row['exit'] ="auto" 
 
-        else:
-            print(f"\nfollowing signal: {None}")
-            first_signal_time = pd.NA
-            row['exit'] ="auto" 
+            #set exit time  to none after use
+            row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
 
-        #set exit time  to none after use
-        row['exit_time'] = pd.NA if row['exit_time'] == pd.Timestamp.max else row['exit_time']
-        
-
-        
+            
 
         if stop_loss_index == 0 or take_profit_index == 0:
             print(f"take profit or stop loss reached ar zero for trade {row['time']}")
@@ -571,7 +553,7 @@ def analyse(filtered_df: pd.DataFrame,
         
         total_trades+=1
         executed_trades.append(row)
-        row['lot_size'] = lot_size
+        row['lot_size'] = bot.lot
         #set the value for the type of trade this was, weather loss, even or success
         if row['exit'] == "manual":
             pass
@@ -610,12 +592,12 @@ def analyse(filtered_df: pd.DataFrame,
         
       #calculate its profit value
         #if row['exit_time'] != pd.NA:
-        #    row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+        #    row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=bot.lot, open_price=row["entry_price"], close_price=row["exit_price"]) 
         #else:
         #    row['profit'] = 0
 
-        if row['exit'] == "manual":
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+        if row['exit'] == "manual": #now we handle the manual trades buy assigning profit values and success status
+            row['profit'] =  bot.profit_loss(symbol=bot.symbol, order_type=row['order_type'], lot=bot.lot, open_price=row["entry_price"], close_price=row["exit_price"]) 
             row['type'] = 'success' if row['profit'] >= 0 else 'fail'
             if row['type'] == "success":
                 successful_trades +=1
@@ -623,7 +605,7 @@ def analyse(filtered_df: pd.DataFrame,
                 unsuccessful_trades+=1
 
         elif row['type'] in ["success", "even", 'fail']:  
-            row['profit'] =  bot.profit_loss(symbol=symbol, order_type=row['order_type'], lot=lot_size, open_price=row["entry_price"], close_price=row["exit_price"]) 
+            row['profit'] =  bot.profit_loss(symbol=bot.symbol, order_type=row['order_type'], lot=bot.lot, open_price=row["entry_price"], close_price=row["exit_price"]) 
         else :
             row['profit'] = 0
 

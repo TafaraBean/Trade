@@ -1,5 +1,5 @@
 import pandas as pd
-from trading_bot import TradingBot
+from main import bot
 from dotenv import load_dotenv
 import os
 
@@ -10,7 +10,7 @@ password = os.environ.get("PASSWORD")
 server = os.environ.get("SERVER")
 
 # Initialize the trading bot
-bot = TradingBot(login=account, password=password, server=server)
+
 
 # Load DataFrame
 df_trades =  pd.read_csv('csv/executed_trades_df.csv')
@@ -38,12 +38,12 @@ equity_df['equity'] = 0.0
 # Function to calculate running trade profit
 def calculate_running_trade_profit(trade, current_time):
     # Get the market price at the current time
-    market_price = get_market_price("EURUSD.Z", current_time)
+    market_price = get_market_price(bot.symbol, current_time)
     
     # Placeholder for profit calculation logic
     # You need to implement how to calculate profit based on entry price and market price
     entry_price = 100  # Example placeholder
-    profit = bot.profit_loss("EURUSD.Z", trade['order_type'], trade['lot_size'],trade['close'], market_price)
+    profit = bot.profit_loss(bot.symbol, trade['order_type'], trade['lot_size'],trade['close'], market_price)
     
     if isinstance(profit,float):
         return profit
