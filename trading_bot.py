@@ -4,6 +4,41 @@ import pandas as pd
 import os
 from typing import Callable
 from utils import *
+
+
+"""
+Example account info
+account_info() as dataframe
+              property                      value
+0                login                   25115284
+1           trade_mode                          0
+2             leverage                        100
+3         limit_orders                        200
+4       margin_so_mode                          0
+5        trade_allowed                       True
+6         trade_expert                       True
+7          margin_mode                          2
+8      currency_digits                          2
+9           fifo_close                      False
+10             balance                    99588.3
+11              credit                          0
+12              profit                     -45.13
+13              equity                    99543.2
+14              margin                      54.37
+15         margin_free                    99488.8
+16        margin_level                     183085
+17      margin_so_call                         50
+18        margin_so_so                         30
+19      margin_initial                          0
+20  margin_maintenance                          0
+21              assets                          0
+22         liabilities                          0
+23  commission_blocked                          0
+24                name                James Smith
+25              server            MetaQuotes-Demo
+26            currency                        USD
+27             company  MetaQuotes Software Corp.
+"""
 class Account:
     def __init__(self):
         self._info = None
@@ -74,7 +109,7 @@ class TradingBot:
 
     def open_buy_position(self, 
                           symbol: str, 
-                          be_condition: str,
+                          conditions_arr: str,
                           lot: float, 
                           sl: float=0.0, 
                           tp: float=0.0,
@@ -92,7 +127,7 @@ class TradingBot:
             "tp": float(tp),
             "deviation": 20, #tolorance for order filling when market moves after sending order
             "magic": 234000, #each order can be uniquely identified per EA
-            "comment": be_condition,
+            "comment": conditions_arr,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK, # some filling modes are not supported by some brokers
         }
@@ -106,7 +141,7 @@ class TradingBot:
 
     def open_sell_position(self, 
                            symbol: str,
-                           be_condition: str, 
+                           conditions_arr: str, 
                            lot: float, 
                            sl: float=0.0, 
                            tp: float=0.0) -> dict:
@@ -124,7 +159,7 @@ class TradingBot:
             "tp": float(tp),
             "deviation": 20,
             "magic": 234000,
-            "comment": be_condition,
+            "comment": conditions_arr,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK, # some filing modes are not supported by some brokers
         }
@@ -272,7 +307,7 @@ class TradingBot:
             ticks['time'] = pd.to_datetime(ticks['time'],unit='s')
         return ticks
         
-    def changesltp(self, be_condition: str, ticket: str, symbol: str, sl:float ,tp: float) -> dict:
+    def changesltp(self, conditions_arr: str, ticket: str, symbol: str, sl:float ,tp: float) -> dict:
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
             "position": ticket,
@@ -281,7 +316,7 @@ class TradingBot:
             "tp": float(tp),
             #"deviation": 20,
             "magic": 234000,
-            "comment": be_condition,
+            "comment": conditions_arr,
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK,
             #"ENUM_ORDER_STATE": mt5.ORDER_FILLING_RETURN,
@@ -411,11 +446,11 @@ class TradingBot:
             
             # Open orders based on the latest signal
             if latest_signal['is_buy2']:
-                order = self.open_buy_position(symbol=self.symbol, lot=self.lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
+                order = self.open_buy_position(symbol=self.symbol, conditions_arr=latest_signal['conditions_arr'],lot=self.lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
 
 
             elif latest_signal["is_sell2"]:
-                order = self.open_sell_position(symbol=self.symbol, lot=self.lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
+                order = self.open_sell_position(symbol=self.symbol, conditions_arr=latest_signal['conditions_arr'], lot=self.lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
 
             # Track rows to keep
@@ -424,11 +459,25 @@ class TradingBot:
             
             #Note that the variable row['comment'] stores the be_condition
             for index, row in running_positions.iterrows():
-                be_condition = row['comment']
-                updated_sl = row['sl']  + 4 * 0.0001  if row['type'] == mt5.ORDER_TYPE_BUY else row['sl']  - 4 * 0.0001
-                updated_be_condition = be_condition + 5 * 0.0001 if row['type'] == mt5.ORDER_TYPE_BUY else be_condition - 5 * 0.0001
+                """
+                in the conditions array, the following is stored at these indexes
+                index 0: be_condition_increment
+                index 1: be_increment
+                index 2: be_condition
+                """
+                conditions_arr = list(map(int, row['comment'].split(','))) 
+                be_condition_inc = conditions_arr[0]
+                be_inc  = conditions_arr[1]
+                be_condition = conditions_arr[2]
+                
+                
+                updated_sl = row['sl']  + be_inc  if row['type'] == mt5.ORDER_TYPE_BUY else row['sl']  - be_inc
+                updated_be_condition = be_condition + be_condition_inc if row['type'] == mt5.ORDER_TYPE_BUY else be_condition - be_condition_inc
+                
+                updated_conditions_arr = ",".join(map(str, [be_condition_inc, be_inc, updated_be_condition ]))
+
                 if row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= be_condition:
-                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=self.symbol, sl=float(updated_sl), tp=row['tp'])
+                    result = self.changesltp(ticket=int(row['ticket']), be_condition=updated_conditions_arr, symbol=self.symbol, sl=float(updated_sl), tp=row['tp'])
                     
                     if result.retcode == mt5.TRADE_RETCODE_DONE:
                         print(f"sl adjusted for position {row['ticket']} ")
@@ -436,7 +485,7 @@ class TradingBot:
                 
                 # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
                 elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
-                    result = self.changesltp(ticket=int(row['ticket']), be_condition=str(updated_be_condition), symbol=self.symbol, sl=float(updated_sl),  tp=row['tp'])
+                    result = self.changesltp(ticket=int(row['ticket']), be_condition=updated_conditions_arr, symbol=self.symbol, sl=float(updated_sl),  tp=row['tp'])
                     
                     if result.retcode == mt5.TRADE_RETCODE_DONE:
                         print(f"sl adjusted for position {row['ticket']} ")                            

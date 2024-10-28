@@ -5,6 +5,7 @@ import MetaTrader5 as mt5
 import talib
 from main import bot
 from analysis import auto_trendline_15, auto_trendline, auto_trendline_4H
+from concurrent.futures import ThreadPoolExecutor
 
 def h1_gold_strategy(data):
     data['ema_short'] = ta.ema(data['close'], length=12)
@@ -163,7 +164,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['hanging_man'].to_csv("csv/hanging",index=False)
     data['inverted_hammer'].to_csv("csv/inverted_hammer",index=False)
 
-
+    
     pip_size = 1
 
     # Set TP and SL in terms of pips
@@ -209,6 +210,23 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
     data.loc[data['is_sell2'], 'be_condition'] = data['close'] - be_pips
 
+    #set the array of conditions
+    """
+    in the conditions array, the following is stored at these indexes
+    index 0: be_condition_increment
+    index 1: be_increment
+    index 2: be_condition
+
+    """
+    # Concatenate 'be_condition_increment', 'be_increment', 'be_condition' for rows where 'is_buy2' is True
+    data.loc[data['is_buy2'], "conditions_arr"] = data[data['is_buy2']].apply(
+        lambda row: f"{row['be_condition_increment']},{row['be_increment']},{row['be_condition']}", axis=1
+    )
+
+    # Concatenate 'be_condition_increment', 'be_increment', 'be_condition' for rows where 'is_sell2' is True
+    data.loc[data['is_sell2'], "conditions_arr"] = data[data['is_sell2']].apply(
+        lambda row: f"{row['be_condition_increment']},{row['be_increment']},{row['be_condition']}", axis=1
+)
     return data
 
 
