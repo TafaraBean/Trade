@@ -89,9 +89,21 @@ def display_chart(df):
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['lsma3_smooth'], 
+                            mode='lines', 
+                            name='LSMA3_smooth'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
                             y=df['lsma2'], 
                             mode='lines', 
                             name='LSMA2'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['lsma2_smooth'], 
+                            mode='lines', 
+                            name='LSMA2_smooth'
                             ), row=1, col=1)
     
     
@@ -736,16 +748,25 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback = 20
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=20, std=2)
+    bb = ta.bbands(close=data['close'], length=30, std=2)
 
     # Rename columns for clarity
-    data['bb_lower'] = bb[f'BBL_20_2.0']
-    data['bb_middle'] = bb[f'BBM_20_2.0']
-    data['bb_upper'] = bb[f'BBU_20_2.0']
-    data['ema_50'] = ta.ema(data['close'], length= 20 )
+    data['bb_lower'] = bb[f'BBL_30_2.0']
+    data['bb_middle'] = bb[f'BBM_30_2.0']
+    data['bb_upper'] = bb[f'BBU_30_2.0']
+    data['ema_50'] = ta.ema(data['close'], length= 400 )
     data['lsma'] = ta.linreg(data['close'], length= 20)
-    data['lsma2'] = ta.linreg(data['high'], length= 50)
-    data['lsma3'] = ta.linreg(data['low'], length= 50)
+    data['lsma_long'] = ta.linreg(data['close'], length= 60)
+    data['lsma2'] = ta.linreg(data['high'], length= 100)
+    data['lsma2_smooth'] = ta.sma(data['lsma2'],length=10)
+    data['lsma2_smooth_grad'] = data['lsma2_smooth'].diff()
+    data['lsma3'] = ta.linreg(data['low'], length= 100)
+    data['lsma3_smooth'] = ta.sma(data['lsma3'],length=10)
+    data['lsma3_smooth_grad'] = data['lsma3_smooth'].diff()
+    data['lsma_grad'] = data['lsma'].diff()
+    data['lsma_long_grad'] = data['lsma_long'].diff()
+    data['lsma2_grad'] = data['lsma2'].diff()
+    data['lsma3_grad'] = data['lsma3'].diff()
     data['support_trendline_15'] = np.nan
     data['resistance_trendline_15'] = np.nan
     data['support_gradient_15'] = np.nan
