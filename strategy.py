@@ -169,23 +169,33 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
     # Set TP and SL in terms of pips
     tp_pips = 100 * pip_size
-    sl_pips = 20 * pip_size
-    be_pips = 25 * pip_size
-    data["be_increment"] = 8
-    data["be_condition_increment"] = 10
+    sl_pips = 60 * pip_size
+    be_pips = 30 * pip_size
+    data["be_increment"] = 4
+    data["be_condition_increment"] = 5
     data['ticket'] = np.nan
+    
 
+
+    session_times = {
+        'New York': (13, 22),  # 08:00 to 17:00 EST (13:00 to 22:00 UTC)
+}
+    data['in_session'] = data['time'].apply(lambda row_time: is_within_trading_hours(row_time, session_times))
     # Generate signals
     data['is_buy2'] = (
         
-        ((data['lsma3_smooth_grad']>0)&(data['lsma3_smooth_grad'].shift(1)<0))
+        ((data['lsma3_smooth_grad']>0)&(data['lsma3_smooth_grad'].shift(1)<0)&
+         (data['Span_A']>data['Span_B'])&(data['in_session'])&(data['close']>data['fixed_support_trendline_15']))|
+         ((data['close']>data['fixed_resistance_trendline_15'])&(data['close'].shift(1)<data['fixed_resistance_trendline_15'].shift(1)))
         
     )
 
 
     data['is_sell2'] = (
         
-        ((data['lsma2_smooth_grad']<0)&(data['lsma2_smooth_grad'].shift(1)>0))
+        ((data['lsma2_smooth_grad']<0)&(data['lsma2_smooth_grad'].shift(1)>0)&
+         (data['Span_A']<data['Span_B'])&(data['in_session']&(data['close']<data['fixed_resistance_trendline_15'])))|
+         ((data['close']<data['fixed_support_trendline_15'])&(data['close'].shift(1)>data['fixed_support_trendline_15'].shift(1)))
         
     )
 
@@ -201,8 +211,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 20 * pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 20 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 25 *  pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 25 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
@@ -228,3 +238,9 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     return data
 
 
+def is_within_trading_hours(row_time, session_times):
+    hour = row_time.hour
+    for session, (start, end) in session_times.items():
+        if start <= hour <= end:
+            return True
+    return False
