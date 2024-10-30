@@ -756,7 +756,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
 
     # Trendline parameter
-    lookback = 300
+    lookback = 600
 
     # Initialize columns for trendlines and their gradients
     bb = ta.bbands(close=data['close'], length=30, std=2)

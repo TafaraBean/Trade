@@ -169,8 +169,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
     # Set TP and SL in terms of pips
     tp_pips = 100 * pip_size
-    sl_pips = 60 * pip_size
-    be_pips = 30 * pip_size
+    sl_pips = 30 * pip_size
+    be_pips =  5 * pip_size
     data["be_increment"] = 4
     data["be_condition_increment"] = 5
     data['ticket'] = np.nan
@@ -185,8 +185,7 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['is_buy2'] = (
         
         ((data['lsma3_smooth_grad']>0)&(data['lsma3_smooth_grad'].shift(1)<0)&
-         (data['Span_A']>data['Span_B'])&(data['in_session'])&(data['close']>data['fixed_support_trendline_15']))|
-         ((data['close']>data['fixed_resistance_trendline_15'])&(data['close'].shift(1)<data['fixed_resistance_trendline_15'].shift(1)))
+         (data['Span_A']>data['Span_B'])&(data['in_session'])&(data['close']>data['fixed_resistance_trendline_15']))
         
     )
 
@@ -194,8 +193,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data['is_sell2'] = (
         
         ((data['lsma2_smooth_grad']<0)&(data['lsma2_smooth_grad'].shift(1)>0)&
-         (data['Span_A']<data['Span_B'])&(data['in_session']&(data['close']<data['fixed_resistance_trendline_15'])))|
-         ((data['close']<data['fixed_support_trendline_15'])&(data['close'].shift(1)>data['fixed_support_trendline_15'].shift(1)))
+         (data['Span_A']<data['Span_B'])&(data['in_session']&(data['close']<data['fixed_support_trendline_15'])))
+        
         
     )
 
@@ -211,8 +210,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 25 *  pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 25 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 3 *  pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 3 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
