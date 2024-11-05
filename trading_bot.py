@@ -340,94 +340,7 @@ class TradingBot:
         symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
         return symbol_info_tick_dict
     
-    def display_chart(df):
-            # Create the subplots with 2 rows
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
-                            subplot_titles=('Candlestick Chart', 'MACD Line'))
 
-        # Add candlestick chart to the first subplot
-        fig.add_trace(go.Candlestick(x=df['time'],
-                                    open=df['open'],
-                                    high=df['high'],
-                                    low=df['low'],
-                                    close=df['close'],
-                                    name='Candlestick'), row=1, col=1)
-
-        # Add buy signals (up arrows) to the first subplot
-        fig.add_trace(go.Scatter(
-            x=df[df['is_buy2'] == True]['time'],
-            y=df[df['is_buy2'] == True]['low'] * 0.999,
-            mode='markers',
-            marker=dict(symbol='arrow-up', color='green', size=10),
-            name='Buy Signal'
-        ), row=1, col=1)
-
-        # Add sell signals (down arrows) to the first subplot
-        fig.add_trace(go.Scatter(
-            x=df[df['is_sell2'] == True]['time'],
-            y=df[df['is_sell2'] == True]['high'] * 1.001,
-            mode='markers',
-            marker=dict(symbol='arrow-down', color='red', size=10),
-            name='Sell Signal'
-        ), row=1, col=1)
-
-
-
-        
-        
-    
-
-        
-
-        
-        fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['ema_50'], 
-                                mode='lines', 
-                                name='ema_50'
-                                ), row=1, col=1)
-        
-        
-
-
-
-        # Add LMSA Band line to the first subplot
-        fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
-                                mode='lines', name='LMSA'), row=1, col=1)
-
-        # Add MACD Line to the second subplot
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['macd_line'],
-            name='MACD Line',
-            line=dict(color='purple')
-        ), row=2, col=1)
-
-        # Add MACDs Line to the second subplot
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['macd_signal'],
-            name='MACD Signal',
-            line=dict(color='blue')
-        ), row=2, col=1)
-
-
-        # Update layout
-        fig.update_layout(title='XAUUSD',
-                        #xaxis_title='Date',
-                        #yaxis_title='Price',
-                        xaxis_rangeslider_visible=False,
-                        template="plotly_dark"
-                        )
-
-        fig.update_xaxes(
-            rangebreaks=[
-                dict(bounds=["sat", "mon"]), #hide weekends
-            ]
-        )
-        
-        fig.show()
-
-    
     def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
         while True:
             start = pd.Timestamp.now() - pd.Timedelta(days=7) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
@@ -471,7 +384,7 @@ class TradingBot:
                 index 1: be_increment
                 index 2: be_condition
                 """
-                conditions_arr = list(map(int, row['comment'].split(','))) 
+                conditions_arr = list(map(float, row['comment'].split(','))) 
                 be_condition_inc = conditions_arr[0]
                 be_inc  = conditions_arr[1]
                 be_condition = conditions_arr[2]

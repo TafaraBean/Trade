@@ -169,8 +169,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     tp_pips = 100 * pip_size
     sl_pips = 30 * pip_size
     be_pips =  5 * pip_size
-    data["be_increment"] = 4
-    data["be_condition_increment"] = 5
+    data["be_increment"] = 4.0
+    data["be_condition_increment"] = 5.0
     data['ticket'] = np.nan
     
 
