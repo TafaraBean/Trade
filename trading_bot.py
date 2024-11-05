@@ -131,7 +131,7 @@ class TradingBot:
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK, # some filling modes are not supported by some brokers
         }
-            
+        print(f"conditions arr {conditions_arr}")
         order=mt5.order_send(request)._asdict()
 
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
@@ -353,7 +353,8 @@ class TradingBot:
            
             print(f"current time: {current_time}")
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
-            time.sleep((next_interval - current_time).total_seconds())
+            time.sleep(10)
+            #time.sleep((next_interval - current_time).total_seconds())
 
             
             df = strategy_func(start,end)

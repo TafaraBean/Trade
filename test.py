@@ -1,8 +1,8 @@
 import MetaTrader5 as mt5
 from dotenv import load_dotenv
 import os
-
-
+import json
+import pandas as pd
 
 # Load environment variables
 load_dotenv()
@@ -56,6 +56,17 @@ if not symbol_info.visible:
         quit()
  
 
-#
-print(mt5.symbol_info_tick("USDJPY"))
-print(mt5.order_send(request)._asdict())
+#order_data = mt5.order_send(request)._asdict()
+
+
+#print(json.dumps(order_data, indent=4))
+positions=mt5.positions_get(symbol=symbol)
+
+if len(positions) != 0: 
+    df=pd.DataFrame(list(positions),columns=positions[0]._asdict().keys())
+    df.drop(['time_update', 'time_msc', 'time_update_msc', 'external_id'], axis=1, inplace=True)
+    df['time'] = pd.to_datetime(df['time'], unit='s')
+else:
+    df = pd.DataFrame(positions)
+    
+print(df)
