@@ -137,6 +137,11 @@ class TradingBot:
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
             # Add the order to the positions dictionary
             self.positions[order['order']] = symbol
+            print("Long Position Successfully opened")
+        else:
+            print("Long position failed to open")
+
+        print(order)
         return order
 
     def open_sell_position(self, 
@@ -169,6 +174,7 @@ class TradingBot:
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
             # Add the order to the positions dictionary
             self.positions[order['order']] = symbol
+        print(order)
         return order
     
     def positions_total(self) -> int:

@@ -2,8 +2,7 @@ import MetaTrader5 as mt5
 from trading_bot import TradingBot
 from dotenv import load_dotenv
 import os
-import pandas as pd
-from strategy import *
+
 
 
 # Load environment variables
@@ -23,5 +22,6 @@ bot = TradingBot(login=account,
                  lot = lot)
 
 if __name__ == "__main__":
+    from strategy import *
     bot.run(strategy_func=apply_strategy)
 
