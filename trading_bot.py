@@ -4,6 +4,8 @@ import pandas as pd
 import os
 from typing import Callable
 from utils import *
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 
 """
@@ -340,6 +342,156 @@ class TradingBot:
         symbol_info_tick_dict = mt5.symbol_info_tick(symbol)._asdict()
         return symbol_info_tick_dict
     
+    def display_chart(df):
+            # Create the subplots with 2 rows
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
+                            subplot_titles=('Candlestick Chart', 'MACD Line'))
+
+        # Add candlestick chart to the first subplot
+        fig.add_trace(go.Candlestick(x=df['time'],
+                                    open=df['open'],
+                                    high=df['high'],
+                                    low=df['low'],
+                                    close=df['close'],
+                                    name='Candlestick'), row=1, col=1)
+
+        # Add buy signals (up arrows) to the first subplot
+        fig.add_trace(go.Scatter(
+            x=df[df['is_buy2'] == True]['time'],
+            y=df[df['is_buy2'] == True]['low'] * 0.999,
+            mode='markers',
+            marker=dict(symbol='arrow-up', color='green', size=10),
+            name='Buy Signal'
+        ), row=1, col=1)
+
+        # Add sell signals (down arrows) to the first subplot
+        fig.add_trace(go.Scatter(
+            x=df[df['is_sell2'] == True]['time'],
+            y=df[df['is_sell2'] == True]['high'] * 1.001,
+            mode='markers',
+            marker=dict(symbol='arrow-down', color='red', size=10),
+            name='Sell Signal'
+        ), row=1, col=1)
+
+
+
+        
+        
+    
+
+        
+
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['ema_50'], 
+                                mode='lines', 
+                                name='ema_50'
+                                ), row=1, col=1)
+        
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['lsma3_smooth'], 
+                                mode='lines', 
+                                name='LSMA3_smooth'
+                                ), row=1, col=1)
+        
+
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['lsma2_smooth'], 
+                                mode='lines', 
+                                name='LSMA2_smooth'
+                                ), row=1, col=1)
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['long_smooth'], 
+                                mode='lines', 
+                                name='long_smooth'
+                                ), row=1, col=1)
+        
+        
+        
+        
+
+
+
+        # Add LMSA Band line to the first subplot
+        fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
+                                mode='lines', name='LMSA'), row=1, col=1)
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['fixed_support_trendline_15'], 
+                                mode='lines', 
+                                name='support'
+                                ), row=1, col=1)
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['fixed_resistance_trendline_15'], 
+                                mode='lines', 
+                                name='resistance'
+                                ), row=1, col=1)
+        
+        
+        
+        #Add Bollinger Bands to the first subplot
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb_upper'],
+            mode='lines',
+            line=dict(color='blue', width=1),
+            name='Bollinger Upper'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb_middle'],
+            mode='lines',
+            line=dict(color='blue', width=1, dash='dash'),
+            name='Bollinger Middle'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb_lower'],
+            mode='lines',
+            line=dict(color='blue', width=1),
+            name='Bollinger Lower'
+        ), row=1, col=1)
+
+
+        # Add MACD Line to the second subplot
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['Span_B'],
+            name='Span_B',
+            line=dict(color='purple')
+        ), row=2, col=1)
+
+        # Add MACDs Line to the second subplot
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['Span_A'],
+            name='Span_A',
+            line=dict(color='blue')
+        ), row=2, col=1)
+
+
+        # Update layout
+        fig.update_layout(title='XAUUSD',
+                        #xaxis_title='Date',
+                        #yaxis_title='Price',
+                        xaxis_rangeslider_visible=False,
+                        template="plotly_dark"
+                        )
+
+        fig.update_xaxes(
+            rangebreaks=[
+                dict(bounds=["sat", "mon"]), #hide weekends
+            ]
+        )
+        
+        fig.show()
+    
 
     def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
         while True:
@@ -353,11 +505,12 @@ class TradingBot:
            
             print(f"current time: {current_time}")
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
-            time.sleep(10)
-            #time.sleep((next_interval - current_time).total_seconds())
+            #time.sleep(10)
+            time.sleep((next_interval - current_time).total_seconds())
 
             
             df = strategy_func(start,end)
+            TradingBot.display_chart(df)
             df.to_csv('csv/main.csv', index=False)
 
             # Check for new trading signals

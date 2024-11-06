@@ -180,10 +180,21 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 }
     data['in_session'] = data['time'].apply(lambda row_time: is_within_trading_hours(row_time, session_times))
     # Generate signals
-    data['is_buy2'] = True
+    data['is_buy2'] = (
+        
+        ((data['lsma3_smooth_grad']>0)&(data['lsma3_smooth_grad'].shift(1)<0)&
+         (data['Span_A']>data['Span_B'])&(data['in_session'])&(data['close']>data['fixed_resistance_trendline_15']))
+        
+    )
 
 
-    data['is_sell2'] = False
+    data['is_sell2'] = (
+        
+        ((data['lsma2_smooth_grad']<0)&(data['lsma2_smooth_grad'].shift(1)>0)&
+         (data['Span_A']<data['Span_B'])&(data['in_session']&(data['close']<data['fixed_support_trendline_15'])))
+        
+        
+    )
 
 
     
