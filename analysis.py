@@ -7,6 +7,7 @@ import numpy as np
 from scipy.stats import norm
 from typing import Tuple
 from trading_bot import TradingBot
+from sklearn.cluster import KMeans
 import calendar
 
 def check_invalid_stopouts(row):
@@ -759,12 +760,12 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback = 600
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=30, std=2)
+    bb = ta.bbands(close=data['close'], length=600, std=2)
 
     # Rename columns for clarity
-    data['bb_lower'] = bb[f'BBL_30_2.0']
-    data['bb_middle'] = bb[f'BBM_30_2.0']
-    data['bb_upper'] = bb[f'BBU_30_2.0']
+    data['bb_lower'] = bb[f'BBL_600_2.0']
+    data['bb_middle'] = bb[f'BBM_600_2.0']
+    data['bb_upper'] = bb[f'BBU_600_2.0']
     data['ema_50'] = ta.ema(data['close'], length= 108 )
     data['lsma'] = ta.linreg(data['close'], length= 30)
     data['lsma_long'] = ta.linreg(data['close'], length= 30)
@@ -789,6 +790,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     data['supertrend_dir']=np.nan
     data['Span_A']=np.nan
     data['Span_B']=np.nan
+    data['sr_levels'] = pd.Series([[]] * len(data), index=data.index, dtype=object)
 
 
     # lookback2 = 200
@@ -835,7 +837,14 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         window_data = df_log.iloc[i - lookback:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
         
-        
+        # K-Means for clustering price levels
+        closing_prices = np.exp(window_data['close'])
+        prices = np.array(closing_prices).reshape(-1, 1)
+        kmeans = KMeans(n_clusters=10)  # Choose cluster count based on data
+        kmeans.fit(prices)
+        sr_levels = sorted(kmeans.cluster_centers_.flatten())
+
+        data.at[current_index, 'sr_levels'] = sr_levels
 
         
         

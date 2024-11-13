@@ -178,6 +178,15 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     session_times = {
         'New York': (13, 22),  # 08:00 to 17:00 EST (13:00 to 22:00 UTC)
 }
+    data['sr_cross_signal'] = data.apply(
+    lambda row: check_sr_crossings(
+        row['close'],
+        data['close'].shift(1).loc[row.name],  # Pass previous close value
+        row['sr_levels']
+    ),
+    axis=1
+)
+
     data['in_session'] = data['time'].apply(lambda row_time: is_within_trading_hours(row_time, session_times))
     # Generate signals
     data['is_buy2'] = (
@@ -241,3 +250,14 @@ def is_within_trading_hours(row_time, session_times):
         if start <= hour <= end:
             return True
     return False
+
+
+def check_sr_crossings(current_close, previous_close, sr_levels):
+    for level in sr_levels:
+        # Check if the price has crossed above the level
+        if current_close > level and previous_close <= level:
+            return 'buy'  # Trigger a buy signal
+        # Check if the price has crossed below the level
+        elif current_close < level and previous_close >= level:
+            return 'sell'  # Trigger a sell signal
+    return None  # No signal
