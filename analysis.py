@@ -530,6 +530,15 @@ def analyse(filtered_df: pd.DataFrame,
         matching_row = relevant_ticks[relevant_ticks['time'] >= row['exit_time']].head(1)
        
         row['exit_price'] = matching_row.iloc[0]['bid']  if not matching_row.empty else  pd.NA
+        
+
+        entry_date = row['entry_time'].date()
+        exit_date = row['exit_time'].date()
+
+        if exit_date > entry_date:
+            row['exit'] = 'manual'
+            # Set exit_time to 23:59 of the same day (entry_date)
+            row['exit_time'] = pd.Timestamp(entry_date).replace(hour=23, minute=59, second=59, microsecond=0)
                     
         if close_opp_trades:
 

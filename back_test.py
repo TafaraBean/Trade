@@ -18,7 +18,7 @@ filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 if not filtered_df.empty:
     results = analyse(filtered_df=filtered_df,
             bot=bot,
-            close_opp_trades= True,
+            close_opp_trades= False,
             account_balance=account_balance,
             timeframe=bot.timeframe)
 
