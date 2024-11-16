@@ -4,6 +4,7 @@ import MetaTrader5 as mt5
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+import scipy
 from scipy.stats import norm
 from typing import Tuple
 from trading_bot import TradingBot
@@ -39,6 +40,7 @@ def check_invalid_stopouts(row):
 
 def display_chart(df):
         # Create the subplots with 2 rows
+    levels = df['sr_levels']
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
                         subplot_titles=('Candlestick Chart', 'MACD Line'))
 
@@ -125,6 +127,19 @@ def display_chart(df):
                             mode='lines', 
                             name='resistance'
                             ), row=1, col=1)
+    
+    # Plot levels as horizontal lines on the first subplot
+    for level_list in levels:  # Each item in 'levels' is a list
+        if isinstance(level_list, list):  # Ensure it's a list
+            for level in level_list:  # Loop through individual levels in the list
+                fig.add_trace(go.Scatter(
+                    x=df['time'],
+                    y=[level] * len(df),
+                    mode='lines',
+                    line=dict(color='gray', width=1, dash='dash'),
+                    name=f'Level {level:.2f}'
+                ), row=1, col=1)
+
     
     
     
@@ -751,6 +766,40 @@ def calc_percentage_profitability(successful_trades: int,
     
     return percentage_profitability
 
+def find_levels( 
+        price: np.array, atr: float, # Log closing price, and log atr 
+        first_w: float = 0.1, 
+        atr_mult: float = 3.0, 
+        prom_thresh: float = 0.1
+):
+
+    # Setup weights
+    last_w = 1.0
+    w_step = (last_w - first_w) / len(price)
+    weights = first_w + np.arange(len(price)) * w_step
+    weights[weights < 0] = 0.0
+
+    # Get kernel of price. 
+    kernal = scipy.stats.gaussian_kde(price, bw_method=atr*atr_mult, weights=weights)
+
+    # Construct market profile
+    min_v = np.min(price)
+    max_v = np.max(price)
+    step = (max_v - min_v) / 200
+    price_range = np.arange(min_v, max_v, step)
+    pdf = kernal(price_range) # Market profile
+
+    # Find significant peaks in the market profile
+    pdf_max = np.max(pdf)
+    prom_min = pdf_max * prom_thresh
+
+    peaks, props = scipy.signal.find_peaks(pdf, prominence=prom_min)
+    levels = [] 
+    for peak in peaks:
+        levels.append(np.exp(price_range[peak]))
+
+    return levels, peaks, props, price_range, pdf, weights
+
 
 def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     print("applying auto trendline...")
@@ -760,22 +809,23 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     #print(data)
     print("==========")
 
-    # Take natural log of data to resolve price scaling issues
+    # Take natural log of data to resolve price scaling issues 
     df_log = np.log(data[['high', 'low', 'close']])
 
 
 
     # Trendline parameter
-    lookback = 600
+    lookback = 60
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=600, std=2)
+    bb = ta.bbands(close=data['close'], length=60, std=2)
 
     # Rename columns for clarity
-    data['bb_lower'] = bb[f'BBL_600_2.0']
-    data['bb_middle'] = bb[f'BBM_600_2.0']
-    data['bb_upper'] = bb[f'BBU_600_2.0']
-    data['ema_50'] = ta.ema(data['close'], length= 108 )
+    data['bb_lower'] = bb[f'BBL_60_2.0']
+    data['bb_middle'] = bb[f'BBM_60_2.0']
+    data['bb_upper'] = bb[f'BBU_60_2.0']
+    data['ema_50'] = ta.ema(data['close'], length= 60 )
+    data['ema_50_grad'] = data['ema_50'].diff()
     data['lsma'] = ta.linreg(data['close'], length= 30)
     data['lsma_long'] = ta.linreg(data['close'], length= 30)
     data['long_smooth']=ta.sma(data['lsma_long'],length=3)
@@ -840,20 +890,21 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         
 
         
-        
-    for i in range(lookback, len(df_log) + 1):
+      
+    atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
+    
+    all_levels = set()
+    for i in range(lookback, len(df_log)):
         current_index = df_log.index[i-1]
-        window_data = df_log.iloc[i - lookback:i]
+        window_data = df_log.iloc[i-lookback:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-        
-        # K-Means for clustering price levels
-        closing_prices = np.exp(window_data['close'])
-        prices = np.array(closing_prices).reshape(-1, 1)
-        kmeans = KMeans(n_clusters=10)  # Choose cluster count based on data
-        kmeans.fit(prices)
-        sr_levels = sorted(kmeans.cluster_centers_.flatten())
+        vals = window_data['close'].to_numpy()
+        levels, peaks, props, price_range, pdf, weights= find_levels(vals, atr.iloc[i-lookback], 0.01, 50.0, 0.5)
 
-        data.at[current_index, 'sr_levels'] = sr_levels
+        all_levels.update(levels)  # Add new levels to the existing ones
+
+        data.at[current_index, 'sr_levels'] = list(all_levels)
+
 
         
         
