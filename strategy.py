@@ -191,14 +191,14 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (
         
-        (data['sr_cross_signal']=='buy')&(data['lsma2_smooth'] > data['long_smooth'])
+        (data['sr_cross_signal']=='buy')&(data['lsma2_smooth'] > data['long_smooth'])&(data['Span_A']>data['Span_B'])
         
     )
 
 
     data['is_sell2'] = (
         
-        (data['sr_cross_signal']=='sell')&(data['lsma2_smooth'] < data['long_smooth'])
+        (data['sr_cross_signal']=='sell')&(data['lsma2_smooth'] < data['long_smooth'])&(data['Span_A']<data['Span_B'])
         
         
     )
