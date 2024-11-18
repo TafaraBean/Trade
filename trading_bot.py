@@ -343,7 +343,8 @@ class TradingBot:
         return symbol_info_tick_dict
     
     def display_chart(df):
-            # Create the subplots with 2 rows
+        # Create the subplots with 2 rows
+        levels = df['prev_4H_sr_levels']
         fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
                             subplot_titles=('Candlestick Chart', 'MACD Line'))
 
@@ -382,11 +383,11 @@ class TradingBot:
         
 
         
-        fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['ema_50'], 
-                                mode='lines', 
-                                name='ema_50'
-                                ), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], 
+        #                         y=df['ema_50'], 
+        #                         mode='lines', 
+        #                         name='ema_50'
+        #                         ), row=1, col=1)
         
         
         fig.add_trace(go.Scatter(x=df['time'], 
@@ -416,53 +417,66 @@ class TradingBot:
 
 
         # Add LMSA Band line to the first subplot
-        fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
-                                mode='lines', name='LMSA'), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
+        #                         mode='lines', name='LMSA'), row=1, col=1)
         
-        fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['fixed_support_trendline_15'], 
-                                mode='lines', 
-                                name='support'
-                                ), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], 
+        #                         y=df['fixed_support_trendline_15'], 
+        #                         mode='lines', 
+        #                         name='support'
+        #                         ), row=1, col=1)
         
-        fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['fixed_resistance_trendline_15'], 
-                                mode='lines', 
-                                name='resistance'
-                                ), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], 
+        #                         y=df['fixed_resistance_trendline_15'], 
+        #                         mode='lines', 
+        #                         name='resistance'
+        #                         ), row=1, col=1)
+        
+        # Plot levels as horizontal lines on the first subplot
+        for level_list in levels:  # Each item in 'levels' is a list
+            if isinstance(level_list, list):  # Ensure it's a list
+                for level in level_list:  # Loop through individual levels in the list
+                    fig.add_trace(go.Scatter(
+                        x=df['time'],
+                        y=[level] * len(df),
+                        mode='lines',
+                        line=dict(color='gray', width=1, dash='dash'),
+                        name=f'Level {level:.2f}'
+                    ), row=1, col=1)
+
         
         
         
         #Add Bollinger Bands to the first subplot
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['bb_upper'],
-            mode='lines',
-            line=dict(color='blue', width=1),
-            name='Bollinger Upper'
-        ), row=1, col=1)
+        # fig.add_trace(go.Scatter(
+        #     x=df['time'],
+        #     y=df['bb_upper'],
+        #     mode='lines',
+        #     line=dict(color='blue', width=1),
+        #     name='Bollinger Upper'
+        # ), row=1, col=1)
 
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['bb_middle'],
-            mode='lines',
-            line=dict(color='blue', width=1, dash='dash'),
-            name='Bollinger Middle'
-        ), row=1, col=1)
+        # fig.add_trace(go.Scatter(
+        #     x=df['time'],
+        #     y=df['bb_middle'],
+        #     mode='lines',
+        #     line=dict(color='blue', width=1, dash='dash'),
+        #     name='Bollinger Middle'
+        # ), row=1, col=1)
 
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['bb_lower'],
-            mode='lines',
-            line=dict(color='blue', width=1),
-            name='Bollinger Lower'
-        ), row=1, col=1)
+        # fig.add_trace(go.Scatter(
+        #     x=df['time'],
+        #     y=df['bb_lower'],
+        #     mode='lines',
+        #     line=dict(color='blue', width=1),
+        #     name='Bollinger Lower'
+        # ), row=1, col=1)
 
 
         # Add MACD Line to the second subplot
         fig.add_trace(go.Scatter(
             x=df['time'],
-            y=df['Span_B'],
+            y=df['prev_4HSpan_B'],
             name='Span_B',
             line=dict(color='purple')
         ), row=2, col=1)
@@ -470,7 +484,7 @@ class TradingBot:
         # Add MACDs Line to the second subplot
         fig.add_trace(go.Scatter(
             x=df['time'],
-            y=df['Span_A'],
+            y=df['prev_4HSpan_A'],
             name='Span_A',
             line=dict(color='blue')
         ), row=2, col=1)
@@ -495,7 +509,7 @@ class TradingBot:
 
     def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
         while True:
-            start = pd.Timestamp.now() - pd.Timedelta(days=7) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
+            start = pd.Timestamp.now() - pd.Timedelta(days=30) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
             # Calculate the time to sleep until the next interval based on the timeframe
             conversion = self.timeframe_to_interval.get(self.timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
             current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
@@ -505,8 +519,8 @@ class TradingBot:
            
             print(f"current time: {current_time}")
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
-            #time.sleep(10)
-            time.sleep((next_interval - current_time).total_seconds())
+            time.sleep(10)
+            #time.sleep((next_interval - current_time).total_seconds())
 
             
             df = strategy_func(start,end)

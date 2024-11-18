@@ -40,7 +40,7 @@ def check_invalid_stopouts(row):
 
 def display_chart(df):
         # Create the subplots with 2 rows
-    levels = df['sr_levels']
+    levels = df['prev_4H_sr_levels']
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
                         subplot_titles=('Candlestick Chart', 'MACD Line'))
 
@@ -172,7 +172,7 @@ def display_chart(df):
     # Add MACD Line to the second subplot
     fig.add_trace(go.Scatter(
         x=df['time'],
-        y=df['Span_B'],
+        y=df['prev_4HSpan_B'],
         name='Span_B',
         line=dict(color='purple')
     ), row=2, col=1)
@@ -180,7 +180,7 @@ def display_chart(df):
     # Add MACDs Line to the second subplot
     fig.add_trace(go.Scatter(
         x=df['time'],
-        y=df['Span_A'],
+        y=df['prev_4HSpan_A'],
         name='Span_A',
         line=dict(color='blue')
     ), row=2, col=1)
@@ -815,7 +815,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
 
     # Trendline parameter
-    lookback = 60
+    lookback = 120
 
     # Initialize columns for trendlines and their gradients
     bb = ta.bbands(close=data['close'], length=60, std=2)
@@ -891,19 +891,14 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
         
       
-    atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
+    
     
     all_levels = set()
     for i in range(lookback, len(df_log)):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i-lookback:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-        vals = window_data['close'].to_numpy()
-        levels, peaks, props, price_range, pdf, weights= find_levels(vals, atr.iloc[i-lookback], 0.01, 50.0, 0.5)
-
-        all_levels.update(levels)  # Add new levels to the existing ones
-
-        data.at[current_index, 'sr_levels'] = list(all_levels)
+        
 
 
         
@@ -1262,51 +1257,22 @@ def auto_trendline_4H(data: pd.DataFrame) -> pd.DataFrame:
     df_log = np.log(data[['high', 'low', 'close']])
 
     # Trendline parameter
-    lookback = 10
-
-    # Initialize columns for trendlines and their gradients
-    data['support_trendline'] = np.nan
-    data['resistance_trendline'] = np.nan
-    data['support_gradient'] = np.nan
-    data['resistance_gradient'] = np.nan
-
-    data['4H_ema_50'] = ta.ema(data['close'], length=5)
-    data['4H_ema_24'] = ta.ema(data['close'], length=17)
-    data['4H_hour_lsma'] = ta.linreg(data['close'], length=8)
-    data['4lsma_stddev'] = data['close'].rolling(window=10).std()
-    data['4lsma_upper_band'] = data['4H_hour_lsma'] + 1.5*data['4lsma_stddev']
-    data['4lsma_lower_band'] = data['4H_hour_lsma'] - 1.5* data['4lsma_stddev']
-    data['4H_prev_hour_lsma'] = data['4H_hour_lsma'].shift(1)
-    data['4H_hour_lsma_slope'] = data['4H_hour_lsma'].diff()
-    data['4H_prev_hour_lsma_slope'] = data['4H_hour_lsma_slope'].shift(1)
-    data['4H_wma_10'] = ta.wma(data['close'], length=17)
-
-    macd = ta.macd(data['close'], fast=8, slow=17, signal=9)
-    data['4hour_macd_line'] = macd['MACD_8_17_9']
-    data['4hour_macd_signal'] = macd['MACDs_8_17_9']
-
-    data['4stoch_k'] = np.nan
-    data['4stoch_d'] = np.nan
-
-    data['4nadaraya_watson'] = np.nan
-    data['4nadaraya_watson_trend'] = np.nan
-    data['4nadaraya_upper_envelope']=np.nan
-    data['4nadaraya_lower_envelope']=np.nan
-    data['4psar']=np.nan
-    data['4psar_direction']=np.nan
-    data['4HH']=np.nan
-    data['4LL']=np.nan
+    lookback = 30
 
 
-    bandwidth = 10  # Adjust as needed
+    data['4HSpan_A']=np.nan
+    data['4HSpan_B']=np.nan
+    data['4H_sr_levels'] = pd.Series([[]] * len(data), index=data.index, dtype=object)
 
-    previous_value = np.nan
     
-    lookback2=9
+
+    
+    
+    lookback2=10
     
     for i in range(lookback2, len(df_log) + 1):
         current_index = df_log.index[i - 1]
-        window_data = df_log.iloc[:i]  # Use all data up to the current point
+        window_data = df_log.iloc[i-lookback:i]  # Use all data up to the current point
 
         ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
         look_ahead_spans = ichi[1]
@@ -1321,129 +1287,25 @@ def auto_trendline_4H(data: pd.DataFrame) -> pd.DataFrame:
             data.at[current_index, '4HSpan_B'] = None
 
         
-        
-        x = np.arange(len(window_data))
-        y = window_data['close'].values
-        y_smoothed_log = nadaraya_watson_smoother(x, y, bandwidth)
-        current_value_log = y_smoothed_log[-1]
-        
-        # Convert back to original scale
-        y_smoothed = np.exp(y_smoothed_log)
-        current_value = np.exp(current_value_log)
-        
-        # Calculate residuals
-        residuals = window_data['close'] - y_smoothed_log
-        std_residuals = np.std(residuals)
-        
-        # Compute upper and lower envelopes on the log scale
-        upper_envelope_log = y_smoothed_log + 2 * std_residuals  # 3 standard deviations for example
-        lower_envelope_log = y_smoothed_log - 2 * std_residuals
+    atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
+    all_levels = set()
 
-        # Convert envelopes back to original scale
-        upper_envelope = np.exp(upper_envelope_log)
-        lower_envelope = np.exp(lower_envelope_log)
-
-        data.at[current_index, '4nadaraya_watson'] = current_value
-        data.at[current_index, '4nadaraya_upper_envelope'] = upper_envelope[-1]
-        data.at[current_index, '4nadaraya_lower_envelope'] = lower_envelope[-1]
-        
-        # Determine trend based on Nadaraya-Watson
-        data.at[current_index, '4nadaraya_watson_trend'] = determine_trend(current_value, previous_value)
-        previous_value = current_value
-        
-        psar_series = ta.psar(np.exp(window_data['high']), np.exp(window_data['low']), np.exp(window_data['close']), af=0.02, max_af=0.2)['PSARl_0.02_0.2']
-        data.at[current_index, '4psar'] = psar_series.iloc[-1]
-        
-        # Determine PSAR trend direction
-        if window_data['close'].iloc[-1] > psar_series.iloc[-1]:
-            psar_direction = 1  # Bullish
-        else:
-            psar_direction = -1  # Bearish
-
-        data.at[current_index, '4psar_direction'] = psar_direction
-        
-        
-
-    for i in range(lookback, len(df_log) + 1):
+    for i in range(lookback, len(df_log)):
         current_index = df_log.index[i - 1]
         window_data = df_log.iloc[i - lookback:i]
+        vals = window_data['close'].to_numpy()
+        levels, peaks, props, price_range, pdf, weights= find_levels(vals, atr.iloc[i-lookback], 0.01, 50.0, 0.10)
 
-        # Calculate Nadaraya-Watson estimator using only past data
-        
+        all_levels.update(levels)  # Add new levels to the existing ones
 
-        
+        data.at[current_index, '4H_sr_levels'] = list(all_levels)
 
-        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
 
-        # Extract slope and intercept
-        support_slope, support_intercept = support_coefs
-        resist_slope, resist_intercept = resist_coefs
-        data.at[current_index, '4fixed_resistance_gradient'] = resist_slope
-        data.at[current_index, '4fixed_support_gradient'] = support_slope
-        support_value = support_slope * window_data['close'].iloc[-1] + support_intercept
-        resist_value = resist_slope * window_data['close'].iloc[-1] + resist_intercept
-        data.at[current_index, '4fixed_support_trendline'] = np.exp(support_value)
-        data.at[current_index, '4fixed_resistance_trendline'] = np.exp(resist_value)
-
-        for j in range(lookback):
-            idx = i - lookback + j
-            support_value = support_slope * j + support_intercept
-            resist_value = resist_slope * j + resist_intercept
-            data.at[data.index[idx], 'support_trendline'] = np.exp(support_value)
-            data.at[data.index[idx], 'resistance_trendline'] = np.exp(resist_value)
-            data.at[data.index[idx], 'support_gradient'] = support_slope
-            data.at[data.index[idx], 'resistance_gradient'] = resist_slope
-
-    data['prev_4fixed_support_trendline'] = data['4fixed_support_trendline'].shift(1)
-    data['prev_4fixed_resistance_trendline'] = data['4fixed_resistance_trendline'].shift(1)
-    data['prev_4fixed_support_gradient'] = (data['4fixed_support_gradient'].shift(1))
-    data['prev_4fixed_resistance_gradient'] = (data['4fixed_resistance_gradient'].shift(1))
-    data['prev_4hour_macd_line'] = data['4hour_macd_line'].shift(1)
-    data['prev_4hour_macd_signal'] = data['4hour_macd_signal'].shift(1)
-    data['prev_4nadaraya_watson'] = data['4nadaraya_watson'].shift(1)
-    data['prev_4nadaraya_watson_trend'] = data['4nadaraya_watson_trend'].shift(1)
-    data['prev_4psar']=data['4psar'].shift(1)
-    data['prev_4psar_direction']=data['4psar_direction'].shift(1)
+    
     data.to_csv("csv/4test.csv", index=False)
-    # Create a candlestick chart
-    fig = go.Figure(data=[go.Candlestick(
-        x=data.index,
-        open=data['open'],
-        high=data['high'],
-        low=data['low'],
-        close=data['close']
-    )])
-
-    # Add support and resistance lines
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['support_trendline'],
-        mode='lines',
-        name='Support Line',
-        line=dict(color='green'),
-        connectgaps=False
-    ))
-
-    fig.add_trace(go.Scatter(
-        x=data.index,
-        y=data['resistance_trendline'],
-        mode='lines',
-        name='Resistance Line',
-        line=dict(color='red'),
-        connectgaps=False
-    ))
-
-    # Update layout
-    fig.update_layout(
-        title='Candlestick Chart with Support and Resistance Lines',
-        xaxis_title='Date',
-        yaxis_title='Price',
-        xaxis_rangeslider_visible=False,
-        template='plotly_dark'
-    )
-
-    # Show the figure
-    fig.show()
+    data['prev_4H_sr_levels']=data['4H_sr_levels'].shift(1)
+    data['prev_4HSpan_A']=data['4HSpan_A'].shift(1)
+    data['prev_4HSpan_B']=data['4HSpan_B'].shift(1)
     return data
 
 
