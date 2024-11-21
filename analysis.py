@@ -40,7 +40,17 @@ def check_invalid_stopouts(row):
 
 def display_chart(df):
         # Create the subplots with 2 rows
-    levels = df['prev_4H_sr_levels']
+    levels = df['sr_levels']
+    unique_levels_set = set()
+
+    # Iterate through each row's sr_levels column
+    for levels in levels:
+        if levels:  # Ensure levels is not None
+            unique_levels_set.update(levels)  # Add levels to the set
+
+    # Convert the set to a sorted list for easier reading/processing
+    unique_levels_list = sorted(unique_levels_set)
+
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0, row_heights=[0.8, 0.2],
                         subplot_titles=('Candlestick Chart', 'MACD Line'))
 
@@ -113,66 +123,67 @@ def display_chart(df):
 
 
     # Add LMSA Band line to the first subplot
-    # fig.add_trace(go.Scatter(x=df['time'], y=df['lsma'], 
-    #                         mode='lines', name='LMSA'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_high'], 
+                            mode='lines', name='LSMA_high'), row=1, col=1)
     
-    # fig.add_trace(go.Scatter(x=df['time'], 
-    #                         y=df['fixed_support_trendline_15'], 
-    #                         mode='lines', 
-    #                         name='support'
-    #                         ), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_low'], 
+                            mode='lines', name='LSMA_low'), row=1, col=1)
     
-    # fig.add_trace(go.Scatter(x=df['time'], 
-    #                         y=df['fixed_resistance_trendline_15'], 
-    #                         mode='lines', 
-    #                         name='resistance'
-    #                         ), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['fixed_support_trendline_15'], 
+                            mode='lines', 
+                            name='support'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['fixed_resistance_trendline_15'], 
+                            mode='lines', 
+                            name='resistance'
+                            ), row=1, col=1)
     
     # Plot levels as horizontal lines on the first subplot
-    for level_list in levels:  # Each item in 'levels' is a list
-        if isinstance(level_list, list):  # Ensure it's a list
-            for level in level_list:  # Loop through individual levels in the list
-                fig.add_trace(go.Scatter(
-                    x=df['time'],
-                    y=[level] * len(df),
-                    mode='lines',
-                    line=dict(color='gray', width=1, dash='dash'),
-                    name=f'Level {level:.2f}'
-                ), row=1, col=1)
+    for level in unique_levels_list:  # Iterate through each unique level
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=[level] * len(df),  # Create a horizontal line at the level
+            mode='lines',
+            line=dict(color='gray', width=1, dash='dash'),
+            name=f'Level {level:.2f}'
+        ), row=1, col=1)
 
     
     
     
     #Add Bollinger Bands to the first subplot
-    # fig.add_trace(go.Scatter(
-    #     x=df['time'],
-    #     y=df['bb_upper'],
-    #     mode='lines',
-    #     line=dict(color='blue', width=1),
-    #     name='Bollinger Upper'
-    # ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_upper'],
+        mode='lines',
+        line=dict(color='blue', width=1),
+        name='Bollinger Upper'
+    ), row=1, col=1)
 
-    # fig.add_trace(go.Scatter(
-    #     x=df['time'],
-    #     y=df['bb_middle'],
-    #     mode='lines',
-    #     line=dict(color='blue', width=1, dash='dash'),
-    #     name='Bollinger Middle'
-    # ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_middle'],
+        mode='lines',
+        line=dict(color='blue', width=1, dash='dash'),
+        name='Bollinger Middle'
+    ), row=1, col=1)
 
-    # fig.add_trace(go.Scatter(
-    #     x=df['time'],
-    #     y=df['bb_lower'],
-    #     mode='lines',
-    #     line=dict(color='blue', width=1),
-    #     name='Bollinger Lower'
-    # ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_lower'],
+        mode='lines',
+        line=dict(color='blue', width=1),
+        name='Bollinger Lower'
+    ), row=1, col=1)
 
 
     # Add MACD Line to the second subplot
     fig.add_trace(go.Scatter(
         x=df['time'],
-        y=df['prev_4HSpan_B'],
+        y=df['Span_B'],
         name='Span_B',
         line=dict(color='purple')
     ), row=2, col=1)
@@ -180,7 +191,7 @@ def display_chart(df):
     # Add MACDs Line to the second subplot
     fig.add_trace(go.Scatter(
         x=df['time'],
-        y=df['prev_4HSpan_A'],
+        y=df['Span_A'],
         name='Span_A',
         line=dict(color='blue')
     ), row=2, col=1)
@@ -815,18 +826,21 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
 
     # Trendline parameter
-    lookback = 120
+    lookback = 400
+    lookback3 = 60
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=60, std=2)
+    bb = ta.bbands(close=data['close'], length=400, std=2)
 
     # Rename columns for clarity
-    data['bb_lower'] = bb[f'BBL_60_2.0']
-    data['bb_middle'] = bb[f'BBM_60_2.0']
-    data['bb_upper'] = bb[f'BBU_60_2.0']
+    data['bb_lower'] = bb[f'BBL_400_2.0']
+    data['bb_middle'] = bb[f'BBM_400_2.0']
+    data['bb_upper'] = bb[f'BBU_400_2.0']
     data['ema_50'] = ta.ema(data['close'], length= 60 )
     data['ema_50_grad'] = data['ema_50'].diff()
     data['lsma'] = ta.linreg(data['close'], length= 30)
+    data['lsma_high'] = ta.linreg(data['high'], length= 30)
+    data['lsma_low'] = ta.linreg(data['low'], length= 30)
     data['lsma_long'] = ta.linreg(data['close'], length= 30)
     data['long_smooth']=ta.sma(data['lsma_long'],length=3)
     data['long_smooth_grad']=data['long_smooth'].diff()
@@ -868,7 +882,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     #         data.at[current_index, 'Span_A'] = None
     #         data.at[current_index, 'Span_B'] = None
 
-    lookback2 = 51
+    lookback2 = 400
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i-lookback2:i]
@@ -890,20 +904,10 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         
 
         
-      
-    
-    
-    all_levels = set()
-    for i in range(lookback, len(df_log)):
+    for i in range(lookback3,len(df_log)):
         current_index = df_log.index[i-1]
-        window_data = df_log.iloc[i-lookback:i]
+        window_data = df_log.iloc[i-lookback3:i]
         support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-        
-
-
-        
-        
-        # Extract slope and intercept
         support_slope, support_intercept = support_coefs
         resist_slope, resist_intercept = resist_coefs
         data.at[current_index, 'fixed_resistance_gradient_15'] = resist_slope
@@ -912,20 +916,33 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         resist_value = resist_slope * window_data.at[current_index,'close'] + resist_intercept
         data.at[current_index, 'fixed_support_trendline_15'] = np.exp(support_value)
         data.at[current_index, 'fixed_resistance_trendline_15'] = np.exp(resist_value)
+    
+    atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
+    all_levels = set()
+    for i in range(lookback, len(df_log)):
+        current_index = df_log.index[i-1]
+        window_data = df_log.iloc[:i]
+        
+
+        vals = window_data['close'].to_numpy()
+        levels, peaks, props, price_range, pdf, weights= find_levels(vals, atr.iloc[i-lookback], 0.01, 70.0, 0.70)
+
+        all_levels.update(levels)  # Add new levels to the existing ones
+
+        data.at[current_index, 'sr_levels'] = list(all_levels)
+        
+
+
+        
+        
+        # Extract slope and intercept
+        
         # Apply the calculated gradients to each candle in the window
         
         
-        for j in range(lookback):
-            idx = i - lookback + j
-            support_value = support_slope * j + support_intercept
-            resist_value = resist_slope * j + resist_intercept
-            data.at[data.index[idx], 'support_trendline_15'] = np.exp(support_value)
-            data.at[data.index[idx], 'resistance_trendline_15'] = np.exp(resist_value)
-            data.at[data.index[idx], 'support_gradient_15'] = support_slope
-            data.at[data.index[idx], 'resistance_gradient_15'] = resist_slope
+        
 
-    data['fixed_support_grad'] = data['fixed_support_trendline_15'].diff()
-    data['fixed_resistance_grad'] = data['fixed_resistance_trendline_15'].diff()
+    
     return data
 
 def nadaraya_watson_smoother(x, y, bandwidth):
@@ -1242,6 +1259,7 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
     data['prev_HSpan_A'] = data['HSpan_A'].shift(1)
     data['prev_HSpan_B'] = data['HSpan_B'].shift(1)
     data.to_csv("csv/test.csv", index=False)
+    
     
     return data
 

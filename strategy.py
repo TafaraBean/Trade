@@ -54,16 +54,16 @@ def apply_strategy(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
 
     #merged_data = pd.merge(data,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
 
-    four_hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H4, start=start, end=end)
-    four_hour_data = auto_trendline_4H(four_hour_data)
-    H4_data = four_hour_data[['time4h','prev_4HSpan_A','prev_4HSpan_B','prev_4H_sr_levels']]
+    # four_hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H4, start=start, end=end)
+    # four_hour_data = auto_trendline_4H(four_hour_data)
+    # H4_data = four_hour_data[['time4h','prev_4HSpan_A','prev_4HSpan_B','prev_4H_sr_levels']]
 
-    data['4_hour_time']=data['time'].dt.floor('4h')
+    # data['4_hour_time']=data['time'].dt.floor('4h')
 
 
-    merged_data2 = pd.merge(data,H4_data, left_on='4_hour_time', right_on='time4h', suffixes=('', '_4h'))
+    # merged_data2 = pd.merge(data,H4_data, left_on='4_hour_time', right_on='time4h', suffixes=('', '_4h'))
 
-    return m15_gold_strategy(merged_data2)
+    return m15_gold_strategy(data)
 
 
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
@@ -167,8 +167,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
     # Set TP and SL in terms of pips
     tp_pips = 100 * pip_size
-    sl_pips = 20 * pip_size
-    be_pips =  35 * pip_size
+    sl_pips = 10 * pip_size
+    be_pips =  13 * pip_size
     data["be_increment"] = 4.0
     data["be_condition_increment"] = 5.0
     data['ticket'] = np.nan
@@ -176,22 +176,22 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
 
     session_times = {
-        'New York': (13, 22),  # 08:00 to 17:00 EST (13:00 to 22:00 UTC)
+        'New York': (1, 10),  # 08:00 to 17:00 EST (13:00 to 22:00 UTC)
 }
     data['sr_cross_signal_sell'] = data.apply(
     lambda row: check_sr_crossings_sell(
-        row['lsma2_smooth'],
-        data['lsma2_smooth'].shift(1).loc[row.name],  # Pass previous close value
-        row['prev_4H_sr_levels']
+        row['close'],
+        data['close'].shift(1).loc[row.name],  # Pass previous close value
+        row['sr_levels']
     ),
     axis=1
 )
     
     data['sr_cross_signal_buy'] = data.apply(
     lambda row: check_sr_crossings_buy(
-        row['lsma3_smooth'],
-        data['lsma3_smooth'].shift(1).loc[row.name],  # Pass previous close value
-        row['prev_4H_sr_levels']
+        row['close'],
+        data['close'].shift(1).loc[row.name],  # Pass previous close value
+        row['sr_levels']
     ),
     axis=1
 )
@@ -200,14 +200,15 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (
         
-        (data['sr_cross_signal_buy']=='buy')
+        ((data['close'] > data['fixed_resistance_trendline_15'])&(data['close'].shift(1) < data['fixed_resistance_trendline_15'].shift(1)))
+
         
     )
 
 
     data['is_sell2'] = (
         
-        (data['sr_cross_signal_sell']=='sell')
+        ((data['close'] < data['fixed_resistance_trendline_15'])&(data['close'].shift(1) > data['fixed_resistance_trendline_15'].shift(1)))
         
         
     )
@@ -224,8 +225,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 30 *  pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 30 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 10 *  pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 10 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
