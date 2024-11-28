@@ -89,11 +89,11 @@ def display_chart(df):
     
 
     
-    # fig.add_trace(go.Scatter(x=df['time'], 
-    #                         y=df['ema_50'], 
-    #                         mode='lines', 
-    #                         name='ema_50'
-    #                         ), row=1, col=1)
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['ema_50'], 
+                            mode='lines', 
+                            name='ema_50'
+                            ), row=1, col=1)
     
     
     fig.add_trace(go.Scatter(x=df['time'], 
@@ -154,30 +154,30 @@ def display_chart(df):
     
     
     
-    #Add Bollinger Bands to the first subplot
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb_upper'],
-        mode='lines',
-        line=dict(color='blue', width=1),
-        name='Bollinger Upper'
-    ), row=1, col=1)
+    # #Add Bollinger Bands to the first subplot
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb_upper'],
+    #     mode='lines',
+    #     line=dict(color='blue', width=1),
+    #     name='Bollinger Upper'
+    # ), row=1, col=1)
 
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb_middle'],
-        mode='lines',
-        line=dict(color='blue', width=1, dash='dash'),
-        name='Bollinger Middle'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb_middle'],
+    #     mode='lines',
+    #     line=dict(color='blue', width=1, dash='dash'),
+    #     name='Bollinger Middle'
+    # ), row=1, col=1)
 
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb_lower'],
-        mode='lines',
-        line=dict(color='blue', width=1),
-        name='Bollinger Lower'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb_lower'],
+    #     mode='lines',
+    #     line=dict(color='blue', width=1),
+    #     name='Bollinger Lower'
+    # ), row=1, col=1)
 
 
     # Add MACD Line to the second subplot
@@ -827,35 +827,34 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
     # Trendline parameter
     lookback = 400
-    lookback3 = 60
+    lookback3 = 20
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=400, std=2)
+    # bb = ta.bbands(close=data['close'], length=400, std=2)
 
-    # Rename columns for clarity
-    data['bb_lower'] = bb[f'BBL_400_2.0']
-    data['bb_middle'] = bb[f'BBM_400_2.0']
-    data['bb_upper'] = bb[f'BBU_400_2.0']
-    data['ema_50'] = ta.ema(data['close'], length= 60 )
+    # # Rename columns for clarity
+    # data['bb_lower'] = bb[f'BBL_400_2.0']
+    # data['bb_middle'] = bb[f'BBM_400_2.0']
+    # data['bb_upper'] = bb[f'BBU_400_2.0']
+    data['ema_50'] = ta.ema(data['close'], length= 50 )
     data['ema_50_grad'] = data['ema_50'].diff()
     data['lsma'] = ta.linreg(data['close'], length= 30)
-    data['lsma_high'] = ta.linreg(data['high'], length= 30)
-    data['lsma_low'] = ta.linreg(data['low'], length= 30)
+    data['lsma_high'] = ta.linreg(data['high'], length= 15)
+    data['lsma_high_grad']= data['lsma_high'].diff()
+    data['lsma_low'] = ta.linreg(data['low'], length= 15)
     data['lsma_long'] = ta.linreg(data['close'], length= 30)
-    data['long_smooth']=ta.sma(data['lsma_long'],length=3)
+    data['long_smooth']=ta.sma(data['lsma_long'],length=40)
     data['long_smooth_grad']=data['long_smooth'].diff()
-    data['lsma2'] = ta.linreg(data['high'], length= 12)
+    data['lsma2'] = ta.linreg(data['high'], length= 30)
     data['lsma2_grad'] = data['lsma2'].diff()
-    data['lsma2_smooth'] = ta.sma(data['lsma2'],length=3)
+    data['lsma2_smooth'] = ta.sma(data['lsma2'],length=2)
     data['lsma2_smooth_grad'] = data['lsma2_smooth'].diff()
-    data['lsma3'] = ta.linreg(data['low'], length= 12)
+    data['lsma3'] = ta.linreg(data['low'], length= 30)
     data['lsma3_grad'] = data['lsma3'].diff()
-    data['lsma3_smooth'] = ta.sma(data['lsma3'],length=3)
+    data['lsma3_smooth'] = ta.sma(data['lsma3'],length=2)
     data['lsma3_smooth_grad'] = data['lsma3_smooth'].diff()
-    data['lsma_grad'] = data['lsma'].diff()
+    data['lsma_grad'] = data['lsma'].diff().diff()
     data['lsma_long_grad'] = data['lsma_long'].diff()
-    data['lsma2_grad'] = data['lsma2'].diff()
-    data['lsma3_grad'] = data['lsma3'].diff()
     data['support_trendline_15'] = np.nan
     data['resistance_trendline_15'] = np.nan
     data['support_gradient_15'] = np.nan
@@ -882,7 +881,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     #         data.at[current_index, 'Span_A'] = None
     #         data.at[current_index, 'Span_B'] = None
 
-    lookback2 = 400
+    lookback2 = 200
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i-lookback2:i]
@@ -919,12 +918,13 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     
     atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
     all_levels = set()
+    df_log['resistance']=np.log(data['fixed_resistance_trendline_15'])
     for i in range(lookback, len(df_log)):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[:i]
         
 
-        vals = window_data['close'].to_numpy()
+        vals = window_data['resistance'].dropna().to_numpy()
         levels, peaks, props, price_range, pdf, weights= find_levels(vals, atr.iloc[i-lookback], 0.01, 70.0, 0.70)
 
         all_levels.update(levels)  # Add new levels to the existing ones

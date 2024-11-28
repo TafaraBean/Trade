@@ -388,16 +388,16 @@ class TradingBot:
 
         
         
-
-
-        
+    
 
         
-        # fig.add_trace(go.Scatter(x=df['time'], 
-        #                         y=df['ema_50'], 
-        #                         mode='lines', 
-        #                         name='ema_50'
-        #                         ), row=1, col=1)
+
+        
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['ema_50'], 
+                                mode='lines', 
+                                name='ema_50'
+                                ), row=1, col=1)
         
         
         fig.add_trace(go.Scatter(x=df['time'], 
@@ -433,17 +433,17 @@ class TradingBot:
         fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_low'], 
                                 mode='lines', name='LSMA_low'), row=1, col=1)
         
-        # fig.add_trace(go.Scatter(x=df['time'], 
-        #                         y=df['fixed_support_trendline_15'], 
-        #                         mode='lines', 
-        #                         name='support'
-        #                         ), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['fixed_support_trendline_15'], 
+                                mode='lines', 
+                                name='support'
+                                ), row=1, col=1)
         
-        # fig.add_trace(go.Scatter(x=df['time'], 
-        #                         y=df['fixed_resistance_trendline_15'], 
-        #                         mode='lines', 
-        #                         name='resistance'
-        #                         ), row=1, col=1)
+        fig.add_trace(go.Scatter(x=df['time'], 
+                                y=df['fixed_resistance_trendline_15'], 
+                                mode='lines', 
+                                name='resistance'
+                                ), row=1, col=1)
         
         # Plot levels as horizontal lines on the first subplot
         for level in unique_levels_list:  # Iterate through each unique level
@@ -459,29 +459,29 @@ class TradingBot:
         
         
         #Add Bollinger Bands to the first subplot
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['bb_upper'],
-            mode='lines',
-            line=dict(color='blue', width=1),
-            name='Bollinger Upper'
-        ), row=1, col=1)
+        # fig.add_trace(go.Scatter(
+        #     x=df['time'],
+        #     y=df['bb_upper'],
+        #     mode='lines',
+        #     line=dict(color='blue', width=1),
+        #     name='Bollinger Upper'
+        # ), row=1, col=1)
 
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['bb_middle'],
-            mode='lines',
-            line=dict(color='blue', width=1, dash='dash'),
-            name='Bollinger Middle'
-        ), row=1, col=1)
+        # fig.add_trace(go.Scatter(
+        #     x=df['time'],
+        #     y=df['bb_middle'],
+        #     mode='lines',
+        #     line=dict(color='blue', width=1, dash='dash'),
+        #     name='Bollinger Middle'
+        # ), row=1, col=1)
 
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=df['bb_lower'],
-            mode='lines',
-            line=dict(color='blue', width=1),
-            name='Bollinger Lower'
-        ), row=1, col=1)
+        # fig.add_trace(go.Scatter(
+        #     x=df['time'],
+        #     y=df['bb_lower'],
+        #     mode='lines',
+        #     line=dict(color='blue', width=1),
+        #     name='Bollinger Lower'
+        # ), row=1, col=1)
 
 
         # Add MACD Line to the second subplot

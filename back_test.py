@@ -9,7 +9,7 @@ inital_balance = account_balance
 
 
 #start = pd.Timestamp("2024-11-01 00:00:01")
-end = pd.Timestamp("2024-10-28 21:00:00 ")
+end = pd.Timestamp('2024-10-30')
 start = end - pd.Timedelta(days=1)
 
 df = apply_strategy(start=start, end=end)
