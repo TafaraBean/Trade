@@ -459,29 +459,29 @@ class TradingBot:
         
         
         #Add Bollinger Bands to the first subplot
-        # fig.add_trace(go.Scatter(
-        #     x=df['time'],
-        #     y=df['bb_upper'],
-        #     mode='lines',
-        #     line=dict(color='blue', width=1),
-        #     name='Bollinger Upper'
-        # ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb_upper'],
+            mode='lines',
+            line=dict(color='blue', width=1),
+            name='Bollinger Upper'
+        ), row=1, col=1)
 
-        # fig.add_trace(go.Scatter(
-        #     x=df['time'],
-        #     y=df['bb_middle'],
-        #     mode='lines',
-        #     line=dict(color='blue', width=1, dash='dash'),
-        #     name='Bollinger Middle'
-        # ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb_middle'],
+            mode='lines',
+            line=dict(color='blue', width=1, dash='dash'),
+            name='Bollinger Middle'
+        ), row=1, col=1)
 
-        # fig.add_trace(go.Scatter(
-        #     x=df['time'],
-        #     y=df['bb_lower'],
-        #     mode='lines',
-        #     line=dict(color='blue', width=1),
-        #     name='Bollinger Lower'
-        # ), row=1, col=1)
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb_lower'],
+            mode='lines',
+            line=dict(color='blue', width=1),
+            name='Bollinger Lower'
+        ), row=1, col=1)
 
 
         # Add MACD Line to the second subplot
@@ -520,7 +520,7 @@ class TradingBot:
 
     def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
         while True:
-            start = pd.Timestamp.now() - pd.Timedelta(days=1) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
+            start = pd.Timestamp.now() - pd.Timedelta(days=3) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
             # Calculate the time to sleep until the next interval based on the timeframe
             conversion = self.timeframe_to_interval.get(self.timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
             current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)

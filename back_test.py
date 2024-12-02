@@ -9,7 +9,7 @@ inital_balance = account_balance
 
 
 #start = pd.Timestamp("2024-11-01 00:00:01")
-end = pd.Timestamp('2024-10-30')
+end = pd.Timestamp.now()
 start = end - pd.Timedelta(days=1)
 
 df = apply_strategy(start=start, end=end)
@@ -23,6 +23,7 @@ if not filtered_df.empty:
             timeframe=bot.timeframe)
 
     executed_trades_df = pd.DataFrame(results['executed_trades_df'])
+    summary_df = executed_trades_df[['time','open','high','low','close','profit','entry_price','exit_price','type','account_balance','win_streak','losing_streak']]
     weekly_df = pd.DataFrame(results['weekly_profit'])
     monthly_df = pd.DataFrame(results['monthly_profit'])
 
@@ -67,6 +68,7 @@ if not filtered_df.empty:
 
     executed_trades_df.to_excel('filtered_excel_df.xlsx')
     executed_trades_df.to_csv('csv/executed_trades_df.csv', index=False)
+    summary_df.to_csv('csv/summary.csv', index=False)
 else:
     print("No Buy or Sell signals were generated using this strategy")
 

@@ -155,29 +155,29 @@ def display_chart(df):
     
     
     # #Add Bollinger Bands to the first subplot
-    # fig.add_trace(go.Scatter(
-    #     x=df['time'],
-    #     y=df['bb_upper'],
-    #     mode='lines',
-    #     line=dict(color='blue', width=1),
-    #     name='Bollinger Upper'
-    # ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_upper'],
+        mode='lines',
+        line=dict(color='blue', width=1),
+        name='Bollinger Upper'
+    ), row=1, col=1)
 
-    # fig.add_trace(go.Scatter(
-    #     x=df['time'],
-    #     y=df['bb_middle'],
-    #     mode='lines',
-    #     line=dict(color='blue', width=1, dash='dash'),
-    #     name='Bollinger Middle'
-    # ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_middle'],
+        mode='lines',
+        line=dict(color='blue', width=1, dash='dash'),
+        name='Bollinger Middle'
+    ), row=1, col=1)
 
-    # fig.add_trace(go.Scatter(
-    #     x=df['time'],
-    #     y=df['bb_lower'],
-    #     mode='lines',
-    #     line=dict(color='blue', width=1),
-    #     name='Bollinger Lower'
-    # ), row=1, col=1)
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb_lower'],
+        mode='lines',
+        line=dict(color='blue', width=1),
+        name='Bollinger Lower'
+    ), row=1, col=1)
 
 
     # Add MACD Line to the second subplot
@@ -830,18 +830,18 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback3 = 20
 
     # Initialize columns for trendlines and their gradients
-    # bb = ta.bbands(close=data['close'], length=400, std=2)
+    bb = ta.bbands(close=data['close'], length=20, std=2)
 
     # # Rename columns for clarity
-    # data['bb_lower'] = bb[f'BBL_400_2.0']
-    # data['bb_middle'] = bb[f'BBM_400_2.0']
-    # data['bb_upper'] = bb[f'BBU_400_2.0']
+    data['bb_lower'] = bb[f'BBL_20_2.0']
+    data['bb_middle'] = bb[f'BBM_20_2.0']
+    data['bb_upper'] = bb[f'BBU_20_2.0']
     data['ema_50'] = ta.ema(data['close'], length= 50 )
     data['ema_50_grad'] = data['ema_50'].diff()
     data['lsma'] = ta.linreg(data['close'], length= 30)
-    data['lsma_high'] = ta.linreg(data['high'], length= 15)
+    data['lsma_high'] = ta.linreg(data['high'], length= 5)
     data['lsma_high_grad']= data['lsma_high'].diff()
-    data['lsma_low'] = ta.linreg(data['low'], length= 15)
+    data['lsma_low'] = ta.linreg(data['low'], length= 5)
     data['lsma_long'] = ta.linreg(data['close'], length= 30)
     data['long_smooth']=ta.sma(data['lsma_long'],length=40)
     data['long_smooth_grad']=data['long_smooth'].diff()
@@ -881,20 +881,20 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     #         data.at[current_index, 'Span_A'] = None
     #         data.at[current_index, 'Span_B'] = None
 
-    lookback2 = 200
+    lookback2 = 80
     for i in range(lookback2, len(df_log)+1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i-lookback2:i]
         
         # Adjusted parameters
         ichi = ta.ichimoku(window_data['high'], window_data['low'], window_data['close'],
-                        tenkan=10, kijun=40, senkou=40)
+                        tenkan=10, kijun=70, senkou=70)
         
         look_ahead_spans = ichi[1]
 
         if look_ahead_spans is not None:
             senkou_span_a = look_ahead_spans['ISA_10']
-            senkou_span_b = look_ahead_spans['ISB_40']
+            senkou_span_b = look_ahead_spans['ISB_70']
             data.at[current_index, 'Span_A'] = senkou_span_a.iloc[-1]
             data.at[current_index, 'Span_B'] = senkou_span_b.iloc[-1]
         else:

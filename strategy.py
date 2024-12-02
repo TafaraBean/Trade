@@ -99,8 +99,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     pip_size = 1
 
     # Set TP and SL in terms of pips
-    tp_pips = 1 * pip_size
-    sl_pips = 8 * pip_size
+    tp_pips = 2 * pip_size
+    sl_pips = 1 * pip_size
     be_pips =  30 * pip_size
     data["be_increment"] = 2.0
     data["be_condition_increment"] = 3.0
