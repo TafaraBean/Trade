@@ -830,12 +830,12 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback3 = 20
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=20, std=2)
+    bb = ta.bbands(close=data['close'], length=200, std=2)
 
     # # Rename columns for clarity
-    data['bb_lower'] = bb[f'BBL_20_2.0']
-    data['bb_middle'] = bb[f'BBM_20_2.0']
-    data['bb_upper'] = bb[f'BBU_20_2.0']
+    data['bb_lower'] = bb[f'BBL_200_2.0']
+    data['bb_middle'] = bb[f'BBM_200_2.0']
+    data['bb_upper'] = bb[f'BBU_200_2.0']
     data['ema_50'] = ta.ema(data['close'], length= 50 )
     data['ema_50_grad'] = data['ema_50'].diff()
     data['lsma'] = ta.linreg(data['close'], length= 30)

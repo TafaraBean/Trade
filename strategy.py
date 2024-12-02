@@ -99,11 +99,11 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     pip_size = 1
 
     # Set TP and SL in terms of pips
-    tp_pips = 2 * pip_size
-    sl_pips = 1 * pip_size
-    be_pips =  30 * pip_size
-    data["be_increment"] = 2.0
-    data["be_condition_increment"] = 3.0
+    tp_pips = 12 * pip_size
+    sl_pips = 4 * pip_size
+    be_pips =   2 * pip_size
+    data["be_increment"] = 3.0
+    data["be_condition_increment"] = 8.0
     data['ticket'] = np.nan
     
 
@@ -153,18 +153,17 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (
 
-        (data['close'].shift(1)>data['fixed_support_trendline_15'].shift(1))&
-        (data['close'].shift(2)<data['fixed_support_trendline_15'].shift(1))&
+        (data['close'].shift(1)>data['bb_lower'].shift(1))&
+        (data['close'].shift(2)<data['bb_lower'].shift(2))&
         (data['ema_50'].shift(1)>data['fixed_support_trendline_15'].shift(1))
-
       
     )
 
 
     data['is_sell2'] = (
         
-        (data['close'].shift(1)<data['fixed_resistance_trendline_15'].shift(1))&
-        (data['close'].shift(2)>data['fixed_resistance_trendline_15'].shift(1))&
+        (data['close'].shift(1)<data['bb_upper'].shift(1))&
+        (data['close'].shift(2)>data['bb_upper'].shift(2))&
         (data['ema_50'].shift(1)<data['fixed_resistance_trendline_15'].shift(1))
         
         )
@@ -183,8 +182,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 2 *  pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 2 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 1 *  pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 1 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
