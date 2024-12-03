@@ -1,17 +1,14 @@
-from mt5linux import MetaTrader5 as mt5
-from dotenv import load_dotenv
-import os
-import json
-import pandas as pd
-
-# Load environment variables
-load_dotenv()
-account = int(os.environ.get("ACCOUNT"))
-password = os.environ.get("PASSWORD")
-server = os.environ.get("SERVER")
-
-if not mt5.initialize():
-    print(f"initialize() failed, error code = {mt5.last_error()}")
-    quit()
-else:
-    print("MetaTrader5 package version: ",mt5.__version__)
+# import the package
+from mt5linux import MetaTrader5
+# connecto to the server
+mt5 = MetaTrader5(
+    # host = 'localhost' (default)
+    # port = 18812       (default)
+) 
+# use as you learned from: https://www.mql5.com/en/docs/integration/python_metatrader5/
+mt5.initialize()
+mt5.terminal_info()
+mt5.copy_rates_from_pos('VALE3',mt5.TIMEFRAME_M1,0,1000)
+# ...
+# don't forget to shutdown
+mt5.shutdown()
