@@ -2,8 +2,8 @@
 from mt5linux import MetaTrader5
 # connecto to the server
 mt5 = MetaTrader5(
-    # host = 'localhost' (default)
-    # port = 18812       (default)
+    host = 'localhost',
+     port = 18812
 ) 
 # use as you learned from: https://www.mql5.com/en/docs/integration/python_metatrader5/
 mt5.initialize()
