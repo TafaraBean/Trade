@@ -1,4 +1,4 @@
-import MetaTrader5 as mt5
+from mt5linux import MetaTrader5 as mt5
 from dotenv import load_dotenv
 import os
 import json
