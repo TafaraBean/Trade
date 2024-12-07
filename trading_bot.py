@@ -400,25 +400,25 @@ class TradingBot:
                                 ), row=1, col=1)
         
         
-        fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['lsma3_smooth'], 
-                                mode='lines', 
-                                name='LSMA3_smooth'
-                                ), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], 
+        #                         y=df['lsma3_smooth'], 
+        #                         mode='lines', 
+        #                         name='LSMA3_smooth'
+        #                         ), row=1, col=1)
         
 
         
-        fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['lsma2_smooth'], 
-                                mode='lines', 
-                                name='LSMA2_smooth'
-                                ), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], 
+        #                         y=df['lsma2_smooth'], 
+        #                         mode='lines', 
+        #                         name='LSMA2_smooth'
+        #                         ), row=1, col=1)
         
-        fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['long_smooth'], 
-                                mode='lines', 
-                                name='long_smooth'
-                                ), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], 
+        #                         y=df['long_smooth'], 
+        #                         mode='lines', 
+        #                         name='long_smooth'
+        #                         ), row=1, col=1)
         
         
         
@@ -426,21 +426,21 @@ class TradingBot:
 
 
 
-        # Add LMSA Band line to the first subplot
-        fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_high'], 
-                                mode='lines', name='LSMA_high'), row=1, col=1)
+        # # Add LMSA Band line to the first subplot
+        # fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_high'], 
+        #                         mode='lines', name='LSMA_high'), row=1, col=1)
         
-        fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_low'], 
-                                mode='lines', name='LSMA_low'), row=1, col=1)
+        # fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_low'], 
+        #                         mode='lines', name='LSMA_low'), row=1, col=1)
         
         fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['fixed_support_trendline_15'], 
+                                y=df['support_trendline'], 
                                 mode='lines', 
                                 name='support'
                                 ), row=1, col=1)
         
         fig.add_trace(go.Scatter(x=df['time'], 
-                                y=df['fixed_resistance_trendline_15'], 
+                                y=df['resistance_trendline'], 
                                 mode='lines', 
                                 name='resistance'
                                 ), row=1, col=1)
@@ -458,7 +458,7 @@ class TradingBot:
         
         
         
-        #Add Bollinger Bands to the first subplot
+        # #Add Bollinger Bands to the first subplot
         fig.add_trace(go.Scatter(
             x=df['time'],
             y=df['bb_upper'],
@@ -481,6 +481,30 @@ class TradingBot:
             mode='lines',
             line=dict(color='blue', width=1),
             name='Bollinger Lower'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb2_upper'],
+            mode='lines',
+            line=dict(color='green', width=1),
+            name='Bollinger2 Upper'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb2_middle'],
+            mode='lines',
+            line=dict(color='green', width=1, dash='dash'),
+            name='Bollinger2 Middle'
+        ), row=1, col=1)
+
+        fig.add_trace(go.Scatter(
+            x=df['time'],
+            y=df['bb2_lower'],
+            mode='lines',
+            line=dict(color='green', width=1),
+            name='Bollinger2 Lower'
         ), row=1, col=1)
 
 
@@ -520,7 +544,7 @@ class TradingBot:
 
     def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
         while True:
-            start = pd.Timestamp.now() - pd.Timedelta(days=3) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
+            start = pd.Timestamp.now() - pd.Timedelta(days=1) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
             # Calculate the time to sleep until the next interval based on the timeframe
             conversion = self.timeframe_to_interval.get(self.timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
             current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
@@ -575,7 +599,7 @@ class TradingBot:
                 updated_conditions_arr = ",".join(map(str, [be_condition_inc, be_inc, updated_be_condition ]))
 
                 if row['type'] == mt5.ORDER_TYPE_BUY and row['price_current'] >= be_condition:
-                    result = self.changesltp(ticket=int(row['ticket']), be_condition=updated_conditions_arr, symbol=self.symbol, sl=float(updated_sl), tp=row['tp'])
+                    result = self.changesltp(ticket=int(row['ticket']), conditions_arr=updated_conditions_arr, symbol=self.symbol, sl=float(updated_sl), tp=row['tp'])
                     
                     if result.retcode == mt5.TRADE_RETCODE_DONE:
                         print(f"sl adjusted for position {row['ticket']} ")
@@ -583,7 +607,7 @@ class TradingBot:
                 
                 # Condition to check how far below open price a candle should close before sl is adjusted for sell orders
                 elif row['type'] == mt5.ORDER_TYPE_SELL and row['price_current'] <= be_condition:
-                    result = self.changesltp(ticket=int(row['ticket']), be_condition=updated_conditions_arr, symbol=self.symbol, sl=float(updated_sl),  tp=row['tp'])
+                    result = self.changesltp(ticket=int(row['ticket']), conditions_arr=updated_conditions_arr, symbol=self.symbol, sl=float(updated_sl),  tp=row['tp'])
                     
                     if result.retcode == mt5.TRADE_RETCODE_DONE:
                         print(f"sl adjusted for position {row['ticket']} ")                            
