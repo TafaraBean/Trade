@@ -101,9 +101,9 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Set TP and SL in terms of pips
     tp_pips = 12 * pip_size
     sl_pips = 4 * pip_size
-    be_pips =   2 * pip_size
+    be_pips =   5 * pip_size
     data["be_increment"] = 3.0
-    data["be_condition_increment"] = 8.0
+    data["be_condition_increment"] = 5.0
     data['ticket'] = np.nan
     
 
@@ -153,18 +153,23 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (
 
-        (data['close'].shift(1)>data['bb_lower'].shift(1))&
-        (data['close'].shift(2)<data['bb_lower'].shift(2))&
-        (data['ema_50'].shift(1)>data['fixed_support_trendline_15'].shift(1))
+        # ((data['low'].shift(1)>data['bb2_lower'].shift(1))&
+        # (data['low'].shift(2)<data['bb2_lower'].shift(2))&
+        # (data['close'].shift(1)<data['bb_lower'].shift(1))&
+        # (data['bb2_lower']<data['bb_lower']))
       
+        (data['support_gradient']>0)&(data['resistance_gradient']>0)&(data['sr_cross_signal_buy'])
     )
 
 
     data['is_sell2'] = (
         
-        (data['close'].shift(1)<data['bb_upper'].shift(1))&
-        (data['close'].shift(2)>data['bb_upper'].shift(2))&
-        (data['ema_50'].shift(1)<data['fixed_resistance_trendline_15'].shift(1))
+        # (data['high'].shift(1)<data['bb2_upper'].shift(1))&
+        # (data['high'].shift(2)>data['bb2_upper'].shift(2))&
+        # (data['close'].shift(1)>data['bb_upper'].shift(1))&
+        # (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))
+
+        (data['support_gradient']<0)&(data['resistance_gradient']<0)&(data['sr_cross_signal_sell'])
         
         )
         
@@ -182,8 +187,8 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 1 *  pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 1 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 4 *  pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 4 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
@@ -241,7 +246,7 @@ def check_sr_crossings_buy(current_close, previous_close, sr_levels):
     return None  # No signal
 
 
-def check_retest(current_close, sr_level, previous_close, breakout_direction, tolerance=0.1):
+def check_retest(current_close, sr_level, previous_close, breakout_direction, tolerance=0.8):
     """
     Check if the price is retesting a support or resistance level.
 

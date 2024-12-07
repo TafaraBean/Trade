@@ -9,6 +9,7 @@ from scipy.stats import norm
 from typing import Tuple
 from trading_bot import TradingBot
 from sklearn.cluster import KMeans
+from sklearn.linear_model import LinearRegression
 import calendar
 
 def check_invalid_stopouts(row):
@@ -96,25 +97,25 @@ def display_chart(df):
                             ), row=1, col=1)
     
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma3_smooth'], 
-                            mode='lines', 
-                            name='LSMA3_smooth'
-                            ), row=1, col=1)
+    # fig.add_trace(go.Scatter(x=df['time'], 
+    #                         y=df['lsma3_smooth'], 
+    #                         mode='lines', 
+    #                         name='LSMA3_smooth'
+    #                         ), row=1, col=1)
     
 
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lsma2_smooth'], 
-                            mode='lines', 
-                            name='LSMA2_smooth'
-                            ), row=1, col=1)
+    # fig.add_trace(go.Scatter(x=df['time'], 
+    #                         y=df['lsma2_smooth'], 
+    #                         mode='lines', 
+    #                         name='LSMA2_smooth'
+    #                         ), row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['long_smooth'], 
-                            mode='lines', 
-                            name='long_smooth'
-                            ), row=1, col=1)
+    # fig.add_trace(go.Scatter(x=df['time'], 
+    #                         y=df['long_smooth'], 
+    #                         mode='lines', 
+    #                         name='long_smooth'
+    #                         ), row=1, col=1)
     
     
     
@@ -122,21 +123,21 @@ def display_chart(df):
 
 
 
-    # Add LMSA Band line to the first subplot
-    fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_high'], 
-                            mode='lines', name='LSMA_high'), row=1, col=1)
+    # # Add LMSA Band line to the first subplot
+    # fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_high'], 
+    #                         mode='lines', name='LSMA_high'), row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_low'], 
-                            mode='lines', name='LSMA_low'), row=1, col=1)
+    # fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_low'], 
+    #                         mode='lines', name='LSMA_low'), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_support_trendline_15'], 
+                            y=df['lower_channel'], 
                             mode='lines', 
                             name='support'
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_resistance_trendline_15'], 
+                            y=df['upper_channel'], 
                             mode='lines', 
                             name='resistance'
                             ), row=1, col=1)
@@ -177,6 +178,30 @@ def display_chart(df):
         mode='lines',
         line=dict(color='blue', width=1),
         name='Bollinger Lower'
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb2_upper'],
+        mode='lines',
+        line=dict(color='green', width=1),
+        name='Bollinger2 Upper'
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb2_middle'],
+        mode='lines',
+        line=dict(color='green', width=1, dash='dash'),
+        name='Bollinger2 Middle'
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df['time'],
+        y=df['bb2_lower'],
+        mode='lines',
+        line=dict(color='green', width=1),
+        name='Bollinger2 Lower'
     ), row=1, col=1)
 
 
@@ -607,7 +632,7 @@ def analyse(filtered_df: pd.DataFrame,
             
 
         if stop_loss_index == 0 or take_profit_index == 0:
-            print(f"take profit or stop loss reached ar zero for trade {row['time']}")
+            print(f"\ntake profit or stop loss reached at zero for trade {row['time']}")
             unexecuted_trades +=1
             continue
         
@@ -831,11 +856,16 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
     # Initialize columns for trendlines and their gradients
     bb = ta.bbands(close=data['close'], length=200, std=2)
+    bb2 = ta.bbands(close=data['close'], length=20, std=2)
+
 
     # # Rename columns for clarity
     data['bb_lower'] = bb[f'BBL_200_2.0']
     data['bb_middle'] = bb[f'BBM_200_2.0']
     data['bb_upper'] = bb[f'BBU_200_2.0']
+    data['bb2_lower'] = bb2[f'BBL_20_2.0']
+    data['bb2_middle'] = bb2[f'BBM_20_2.0']
+    data['bb2_upper'] = bb2[f'BBU_20_2.0']
     data['ema_50'] = ta.ema(data['close'], length= 50 )
     data['ema_50_grad'] = data['ema_50'].diff()
     data['lsma'] = ta.linreg(data['close'], length= 30)
@@ -855,10 +885,10 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     data['lsma3_smooth_grad'] = data['lsma3_smooth'].diff()
     data['lsma_grad'] = data['lsma'].diff().diff()
     data['lsma_long_grad'] = data['lsma_long'].diff()
-    data['support_trendline_15'] = np.nan
-    data['resistance_trendline_15'] = np.nan
-    data['support_gradient_15'] = np.nan
-    data['resistance_gradient_15'] = np.nan
+    data['support_trendline'] = np.nan
+    data['resistance_trendline'] = np.nan
+    data['support_gradient'] = np.nan
+    data['resistance_gradient'] = np.nan
     data['supertrend_dir']=np.nan
     data['Span_A']=np.nan
     data['Span_B']=np.nan
@@ -903,31 +933,72 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         
 
         
-    for i in range(lookback3,len(df_log)):
-        current_index = df_log.index[i-1]
-        window_data = df_log.iloc[i-lookback3:i]
-        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
-        support_slope, support_intercept = support_coefs
-        resist_slope, resist_intercept = resist_coefs
-        data.at[current_index, 'fixed_resistance_gradient_15'] = resist_slope
-        data.at[current_index, 'fixed_support_gradient_15'] = support_slope
-        support_value = support_slope * window_data.at[current_index,'close'] + support_intercept
-        resist_value = resist_slope * window_data.at[current_index,'close'] + resist_intercept
-        data.at[current_index, 'fixed_support_trendline_15'] = np.exp(support_value)
-        data.at[current_index, 'fixed_resistance_trendline_15'] = np.exp(resist_value)
     
+    for i in range(lookback3, len(df_log) + 1):
+        current_index = df_log.index[i - 1]
+        window_data = df_log.iloc[i - lookback3:i]
+
+        # Fit linear regression to the 'close' prices
+        X = np.arange(len(window_data)).reshape(-1, 1)  # Time indices for regression
+        y = window_data['close'].values.reshape(-1, 1)  # Close prices
+        model = LinearRegression().fit(X, y)
+
+        # Extract slope and intercept
+        slope = model.coef_[0][0]
+        intercept = model.intercept_[0]
+
+        # Calculate regression line and standard deviation of residuals
+        regression_line = model.predict(X).flatten()
+        residuals = window_data['close'] - regression_line
+        std_dev = residuals.std()
+
+        # Calculate upper and lower channel values
+        upper_channel = regression_line + std_dev*2
+        lower_channel = regression_line - std_dev*2
+
+        # Save slope, intercept, and regression channel for the current index
+        data.at[current_index, 'regression_channel_slope'] = slope
+        data.at[current_index, 'regression_channel_intercept'] = intercept
+    
+    
+
+
+        # For the last lookback3 observations, calculate and save channel values
+        if i == len(df_log):
+            for j in range(lookback3):
+                idx = i - lookback3 + j
+                x_val = j  # Corresponding time index within the lookback window
+                reg_value = slope * x_val + intercept
+                upper_value = reg_value + std_dev*2
+                lower_value = reg_value - std_dev*2
+
+                # Save the channel values
+                data.at[data.index[idx], 'regression_line'] = np.exp(reg_value)
+                data.at[data.index[idx], 'upper_channel'] = np.exp(upper_value)
+                data.at[data.index[idx], 'lower_channel'] = np.exp(lower_value)
+                data.at[data.index[idx], 'channel_slope'] = slope
+    
+    print(data['regression_channel_slope'])
+    print(data['channel_slope'])
+        
     atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
     all_levels = set()
-    df_log['resistance']=np.log(data['fixed_resistance_trendline_15'])
+    df_log['resistance']=np.log(data['bb_upper'])
+    df_log['support']=np.log(data['bb_lower'])
     for i in range(lookback, len(df_log)):
         current_index = df_log.index[i-1]
-        window_data = df_log.iloc[:i]
+        window_data = df_log.iloc[i-lookback:i]
         
 
         vals = window_data['resistance'].dropna().to_numpy()
-        levels, peaks, props, price_range, pdf, weights= find_levels(vals, atr.iloc[i-lookback], 0.01, 70.0, 0.70)
+        levels, peaks, props, price_range, pdf, weights= find_levels(vals, atr.iloc[i-lookback], 0.01, 70.0, 0.90)
 
         all_levels.update(levels)  # Add new levels to the existing ones
+
+        vals_sup = window_data['support'].dropna().to_numpy()
+        levels_sup, peaks, props, price_range, pdf, weights= find_levels(vals_sup, atr.iloc[i-lookback], 0.01, 70.0, 0.90)
+
+        all_levels.update(levels_sup)
 
         data.at[current_index, 'sr_levels'] = list(all_levels)
         
@@ -939,7 +1010,8 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         
         # Apply the calculated gradients to each candle in the window
         
-        
+    
+
         
 
     
