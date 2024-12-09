@@ -8,7 +8,7 @@ import scipy
 from scipy.stats import norm
 from typing import Tuple
 from trading_bot import TradingBot
-from sklearn.cluster import KMeans
+import time
 from sklearn.linear_model import LinearRegression
 import calendar
 
@@ -425,53 +425,6 @@ def fit_trendlines_high_low(high: np.array, low: np.array, close: np.array):
 
 
 
-
-
-
-
-
-'''
-# Plot Trendlines on candles 
-# Library for plotting candles
-# pip install mplfinance
-import mplfinance as mpf 
-
-
-
-candles = data.iloc[-30:] # Last 30 candles in data
-support_coefs_c, resist_coefs_c = fit_trendlines_single(candles['close'])
-support_coefs, resist_coefs = fit_trendlines_high_low(candles['high'], candles['low'], candles['close'])
-
-support_line_c = support_coefs_c[0] * np.arange(len(candles)) + support_coefs_c[1]
-resist_line_c = resist_coefs_c[0] * np.arange(len(candles)) + resist_coefs_c[1]
-
-support_line = support_coefs[0] * np.arange(len(candles)) + support_coefs[1]
-resist_line = resist_coefs[0] * np.arange(len(candles)) + resist_coefs[1]
-
-plt.style.use('dark_background')
-ax = plt.gca()
-
-def get_line_points(candles, line_points):
-    # Place line points in tuples for matplotlib finance
-    # https://github.com/matplotlib/mplfinance/blob/master/examples/using_lines.ipynb
-    idx = candles.index
-    line_i = len(candles) - len(line_points)
-    assert(line_i >= 0)
-    points = []
-    for i in range(line_i, len(candles)):
-        points.append((idx[i], line_points[i - line_i]))
-    return points
-
-s_seq = get_line_points(candles, support_line)
-r_seq = get_line_points(candles, resist_line)
-s_seq2 = get_line_points(candles, support_line_c)
-r_seq2 = get_line_points(candles, resist_line_c)
-mpf.plot(candles, alines=dict(alines=[s_seq, r_seq, s_seq2, r_seq2], colors=['w', 'w', 'b', 'b']), type='candle', style='charles', ax=ax)
-plt.show()
-'''
-
-
-
 def analyse(filtered_df: pd.DataFrame,
             bot: TradingBot, 
             account_balance: float,
@@ -854,105 +807,66 @@ def find_levels(
 
 def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     print("applying auto trendline...")
-    data['time1'] = data['time'].astype('datetime64[s]')
-    data = data.set_index('time1', drop=True)
-    print("15-min data:")
-    #print(data)
-    print("==========")
+    data = data.set_index(data['time'].astype('datetime64[s]'))
+
 
     # Take natural log of data to resolve price scaling issues 
     df_log = np.log(data[['high', 'low', 'close']])
 
-
-
     # Trendline parameter
+    
+
+    """Set All variables"""
+    #Bolinger banfs
+    bb_length = 200
+    bb_std = float(2)
+    
+    bb2_length = 20
+    bb2_std = float(2)
+    
+    #ADX
+    adx_length=100
+
+    #lookbacks
     lookback = 400
+    lookback2 = 80
     lookback3 = 100
+    lookback4 = 30
 
     # Initialize columns for trendlines and their gradients
-    bb = ta.bbands(close=data['close'], length=200, std=2)
-    bb2 = ta.bbands(close=data['close'], length=20, std=2)
+    bb = ta.bbands(close=data['close'], length=bb_length, std=bb_std)
+    bb2 = ta.bbands(close=data['close'], length=bb2_length, std=bb2_std)
 
 
     # # Rename columns for clarity
-    adx = ta.adx(data['high'], data['low'], data['close'], length=100)
-    data['+DI']=adx['DMP_100']
-    data['-DI']=adx['DMN_100']
-    data['ADX'] = adx['ADX_100']
-    data['bb_lower'] = bb[f'BBL_200_2.0']
-    data['bb_middle'] = bb[f'BBM_200_2.0']
-    data['bb_upper'] = bb[f'BBU_200_2.0']
-    data['bb2_lower'] = bb2[f'BBL_20_2.0']
-    data['bb2_middle'] = bb2[f'BBM_20_2.0']
-    data['bb2_upper'] = bb2[f'BBU_20_2.0']
-    data['ema_50'] = ta.ema(data['close'], length= 50 )
-    data['ema_50_grad'] = data['ema_50'].diff()
-    data['lsma'] = ta.linreg(data['close'], length= 30)
-    data['lsma_high'] = ta.linreg(data['high'], length= 5)
-    data['lsma_high_grad']= data['lsma_high'].diff()
-    data['lsma_low'] = ta.linreg(data['low'], length= 5)
-    data['lsma_long'] = ta.linreg(data['close'], length= 30)
-    data['long_smooth']=ta.sma(data['lsma_long'],length=40)
-    data['long_smooth_grad']=data['long_smooth'].diff()
-    data['lsma2'] = ta.linreg(data['high'], length= 30)
-    data['lsma2_grad'] = data['lsma2'].diff()
-    data['lsma2_smooth'] = ta.sma(data['lsma2'],length=2)
-    data['lsma2_smooth_grad'] = data['lsma2_smooth'].diff()
-    data['lsma3'] = ta.linreg(data['low'], length= 30)
-    data['lsma3_grad'] = data['lsma3'].diff()
-    data['lsma3_smooth'] = ta.sma(data['lsma3'],length=2)
-    data['lsma3_smooth_grad'] = data['lsma3_smooth'].diff()
-    data['lsma_grad'] = data['lsma'].diff().diff()
-    data['lsma_long_grad'] = data['lsma_long'].diff()
+    #set adx
+    adx = ta.adx(data['high'], data['low'], data['close'], length=adx_length)
+    data['+DI']=adx[f'DMP_{adx_length}']
+    data['-DI']=adx[f'DMN_{adx_length}']
+    data['ADX'] = adx[f'ADX_{adx_length}']
+    
+
+    data['bb_lower'] = bb[f'BBL_{bb_length}_{bb_std}']
+    data['bb_middle'] = bb[f'BBM_{bb_length}_{bb_std}']
+    data['bb_upper'] = bb[f'BBU_{bb_length}_{bb_std}']
+    data['bb2_lower'] = bb2[f'BBL_{bb2_length}_{bb2_std}']
+    data['bb2_middle'] = bb2[f'BBM_{bb2_length}_{bb2_std}']
+    data['bb2_upper'] = bb2[f'BBU_{bb2_length}_{bb2_std}']
+
+
     data['support_trendline'] = np.nan
     data['resistance_trendline'] = np.nan
     data['support_gradient'] = np.nan
     data['resistance_gradient'] = np.nan
-    data['supertrend_dir']=np.nan
-    data['Span_A']=np.nan
-    data['Span_B']=np.nan
     data['sr_levels'] = pd.Series([[]] * len(data), index=data.index, dtype=object)
-
-
-    # lookback2 = 200
-    # for i in range(lookback2, len(df_log)+1):
-    #     current_index = df_log.index[i-1]
-    #     window_data = df_log.iloc[i-lookback2:i]
-    #     ichi = ta.ichimoku(window_data['high'],window_data['low'],window_data['close'])
-    #     look_ahead_spans = ichi[1]
-
-    #     if look_ahead_spans is not None:
-    #         senkou_span_a = look_ahead_spans['ISA_9']
-    #         senkou_span_b = look_ahead_spans['ISB_26']
-    #         data.at[current_index, 'Span_A'] = senkou_span_a.iloc[-1]
-    #         data.at[current_index, 'Span_B'] = senkou_span_b.iloc[-1]
-    #     else:
-    #         data.at[current_index, 'Span_A'] = None
-    #         data.at[current_index, 'Span_B'] = None
-
-    lookback2 = 80
-    for i in range(lookback2, len(df_log)+1):
-        current_index = df_log.index[i-1]
-        window_data = df_log.iloc[i-lookback2:i]
-        
-        # Adjusted parameters
-        ichi = ta.ichimoku(window_data['high'], window_data['low'], window_data['close'],
-                        tenkan=10, kijun=70, senkou=70)
-        
-        look_ahead_spans = ichi[1]
-
-        if look_ahead_spans is not None:
-            senkou_span_a = look_ahead_spans['ISA_10']
-            senkou_span_b = look_ahead_spans['ISB_70']
-            data.at[current_index, 'Span_A'] = senkou_span_a.iloc[-1]
-            data.at[current_index, 'Span_B'] = senkou_span_b.iloc[-1]
-        else:
-            data.at[current_index, 'Span_A'] = None
-            data.at[current_index, 'Span_B'] = None
-        
+       
 
         
-    
+    start_total = time.perf_counter()
+
+    # First portion of the script
+    start_part1 = time.perf_counter()
+
     for i in range(lookback3, len(df_log) + 1):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i - lookback3:i]
@@ -978,7 +892,10 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
             data.at[data.index[idx], 'support_gradient_15'] = support_slope
             data.at[data.index[idx], 'resistance_gradient_15'] = resist_slope
 
-    lookback4 = 30
+    end_part1 = time.perf_counter()
+    
+    # Second portion of the script
+    start_part2 = time.perf_counter()
     for i in range(lookback4, len(df_log) + 1):
         current_index = df_log.index[i - 1]
         window_data = df_log.iloc[i - lookback4:i]
@@ -1024,13 +941,17 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
                 data.at[data.index[idx], 'lower_channel4'] = np.exp(lower_value)
                 data.at[data.index[idx], 'channel_slope4'] = slope
 
-    
+    end_part2 = time.perf_counter()
 
         
     atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
     all_levels = set()
+    
     df_log['resistance']=np.log(data['bb_upper'])
     df_log['support']=np.log(data['bb_lower'])
+   
+    start_part3 = time.perf_counter()
+    
     for i in range(lookback, len(df_log)):
         current_index = df_log.index[i-1]
         window_data = df_log.iloc[i-lookback:i]
@@ -1047,20 +968,11 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         all_levels.update(levels_sup)
 
         data.at[current_index, 'sr_levels'] = list(all_levels)
-        
+    end_part3 = time.perf_counter()
 
-
-        
-        
-        # Extract slope and intercept
-        
-        # Apply the calculated gradients to each candle in the window
-        
-    
-
-        
-
-    
+    # Total time
+    end_total = time.perf_counter()
+    print(f"Total time: {end_total - start_total:.4f} seconds")
     return data
 
 def nadaraya_watson_smoother(x, y, bandwidth):

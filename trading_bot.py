@@ -232,6 +232,8 @@ class TradingBot:
             df = pd.DataFrame(positions)
         
         return df
+    
+  
 
     def profit_loss(self, 
                     symbol: str, 
@@ -240,42 +242,32 @@ class TradingBot:
                     open_price: float, 
                     close_price:float) -> float:
 
-        #fetch symbol data        
+        if order_type not in [mt5.ORDER_TYPE_BUY, mt5.ORDER_TYPE_SELL]:
+            raise ValueError("order type must be Buy or Sell to calculate profit")
+        
         symbol_info=mt5.symbol_info(symbol)
         if symbol_info is None:
-            print(symbol,"not found, skipped")
+            print(symbol," not found")
             return 0
+        
         if not symbol_info.visible:
-            print(symbol, "is not visible, trying to switch on")
+            print(symbol, " is not visible, trying to switch on")
             if not mt5.symbol_select(symbol,True):
-                print("symbol_select({}}) failed, skipped",symbol)
+                print("symbol_select({}}) failed ",symbol)
                 return 0
 
-        
-        if order_type == mt5.ORDER_TYPE_BUY:
-            return mt5.order_calc_profit(mt5.ORDER_TYPE_BUY,
-                                         symbol,
-                                         lot,
-                                         open_price,
-                                         close_price)
+        time.sleep(1)
+        profit = mt5.order_calc_profit(order_type,
+                                    symbol,
+                                    lot,
+                                    open_price,
+                                    close_price)
+        return profit
      
 
-            #    print("order_calc_profit(ORDER_TYPE_BUY) failed, error code =",mt5.last_error())
-             #   raise ValueError("Profit value not a number")
+
         
-        elif order_type == mt5.ORDER_TYPE_SELL:
-            return mt5.order_calc_profit(mt5.ORDER_TYPE_SELL,
-                                              symbol,
-                                              lot,
-                                              open_price, 
-                                              close_price)
             
-                 
-        
-                #print("order_calc_profit(ORDER_TYPE_SELL) failed, error code =",mt5.last_error())
-                #raise ValueError("Profit value not a number")
-        else:
-            raise ValueError("Invalid order type")
 
     def copy_chart_range(self, symbol: str, timeframe, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         "Retrives chart data from specified start date till end date"
@@ -286,9 +278,27 @@ class TradingBot:
             ohlc_data['time'] = pd.to_datetime(ohlc_data['time'],unit='s')
         return ohlc_data
 
-    def copy_chart_count(self, symbol: str, timeframe, start: pd.Timestamp, count: int) -> pd.DataFrame:
+    def copy_chart_count_pos(self, 
+                             symbol: str, 
+                            timeframe, 
+                            start_index: int, 
+                            count: int) -> int:
+
+        rates = mt5.copy_rates_from_pos(symbol, timeframe, start_index, count) 
+        rates_frame = pd.DataFrame(rates)
+        # convert time in seconds into the datetime format
+        rates_frame['time']=pd.to_datetime(rates_frame['time'], unit='s')
+        
+       
+        return(rates_frame) 
+        
+    def copy_chart_count(self, symbol: str, 
+                         timeframe, 
+                         start: pd.Timestamp, 
+                         count: int) -> pd.DataFrame:
+        
         "Retrives chart data from specified start date till end date"
-        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start.to_pydatetime(), count)
+        ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, count)
         ohlc_data = pd.DataFrame(ohlc_data)
         # Convert 'date' column to datetime type
         if len(ohlc_data) != 0:
@@ -544,7 +554,7 @@ class TradingBot:
 
     def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
         while True:
-            start = pd.Timestamp.now() - pd.Timedelta(days=3) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
+            start = pd.Timestamp.now() - pd.Timedelta(days=4) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
             # Calculate the time to sleep until the next interval based on the timeframe
             conversion = self.timeframe_to_interval.get(self.timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
             current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
@@ -554,8 +564,7 @@ class TradingBot:
            
             print(f"current time: {current_time}")
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
-            #time.sleep(10)
-            time.sleep((next_interval - current_time).total_seconds())
+            #time.sleep((next_interval - current_time).total_seconds())
 
             
             df = strategy_func(start,end)

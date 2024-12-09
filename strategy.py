@@ -4,7 +4,7 @@ import numpy as np
 import MetaTrader5 as mt5
 import talib
 from main import bot
-from analysis import auto_trendline_15, auto_trendline, auto_trendline_4H
+from analysis import auto_trendline_15
 from concurrent.futures import ThreadPoolExecutor
 
 def h1_gold_strategy(data):
@@ -39,7 +39,8 @@ def h1_gold_strategy(data):
 
 
 def apply_strategy(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
-    data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
+    #data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
+    data = bot.copy_chart_count(bot.symbol, bot.timeframe, pd.Timestamp("2024-12-02"), 401)
     data=auto_trendline_15(data)
 
     #hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)

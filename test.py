@@ -1,14 +1,14 @@
-# import the package
-from mt5linux import MetaTrader5
-# connecto to the server
-mt5 = MetaTrader5(
-    host = 'localhost',
-     port = 18812
-) 
-# use as you learned from: https://www.mql5.com/en/docs/integration/python_metatrader5/
-mt5.initialize()
-mt5.terminal_info()
-mt5.copy_rates_from_pos('VALE3',mt5.TIMEFRAME_M1,0,1000)
-# ...
-# don't forget to shutdown
-mt5.shutdown()
+from main import bot
+import pandas as pd
+from analysis import auto_trendline_15
+import time
+
+df = (bot.copy_chart_count_pos(bot.symbol, bot.timeframe,0, 401))
+
+start_time = time.time()
+print(auto_trendline_15(df))
+
+end_time = time.time()
+# Calculate the duration
+execution_time = end_time - start_time
+print(f"Execution time: {execution_time:.5f} seconds")
