@@ -67,40 +67,18 @@ def apply_strategy(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
 
 
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
-    data['ema_short'] = ta.ema(data['close'], length=12)
-    data['ema_long'] = ta.ema(data['close'], length=26)
     
-    
-    macd = ta.macd(data['close'], fast=12, slow=24, signal=9)
-    data['macd_line'] = macd['MACD_12_24_9']
-    data['macd_signal'] = macd['MACDs_12_24_9']
-    
-    data['lsma_stddev'] = data['close'].rolling(window=8).std()
-    
-    # Identify the trend
-    data['lsma_slope'] = data['lsma'].diff()
-    data['prev_lsma_slope_1'] = data['lsma_slope'].shift(1)
-    data['prev_lsma_slope_2'] = data['lsma_slope'].shift(2)
-    
-    # Adjust LSMA bands based on trend
-    data['lsma_upper_band'] = data['lsma'] + 2*data['lsma_stddev']
-    data['lsma_lower_band'] = data['lsma'] - 2*data['lsma_stddev']
-
-    # Calculate stochastic oscillator
-    stochastic = ta.stoch(data['high'], data['low'], data['close'], k=14, d=3)
-    data['stoch_k'] = stochastic['STOCHk_14_3_3']
-    data['stoch_d'] = stochastic['STOCHd_14_3_3']
+    adx = ta.adx(data['high'], data['low'], data['close'], timeperiod=400)
+    data['ADX'] = adx['ADX_14']
 
     
-
     
-
     
     pip_size = 1
 
     # Set TP and SL in terms of pips
     tp_pips = 12 * pip_size
-    sl_pips = 4 * pip_size
+    sl_pips = 4* pip_size
     be_pips =   5 * pip_size
     data["be_increment"] = 3.0
     data["be_condition_increment"] = 5.0
@@ -153,23 +131,45 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (
 
-        # ((data['low'].shift(1)>data['bb2_lower'].shift(1))&
-        # (data['low'].shift(2)<data['bb2_lower'].shift(2))&
-        # (data['close'].shift(1)<data['bb_lower'].shift(1))&
-        # (data['bb2_lower']<data['bb_lower']))
+        (data['close'].shift(1)>data['bb2_lower'].shift(1))&
+        (data['low'].shift(2)<data['bb2_lower'].shift(2))&
+        (data['bb2_lower'].shift(1)<data['bb_lower'].shift(1))&
+        (data['ADX']<27)
+
+        # (data['close'].shift(1)>data['fixed_resistance_trendline_15'].shift(1))&
+        # (data['close'].shift(2)<data['fixed_resistance_trendline_15'].shift(2))&
+        # (data['ADX']>25)
+
+        # (data['close'].shift(1)>data['bb2_lower'].shift(1))&
+        # (data['close'].shift(2)<data['bb2_lower'].shift(2))&
+        # (data['+DI'].shift(1)>data['-DI'].shift(1))
+
+        # (data['+DI'].shift(1)>data['-DI'].shift(1))&(data['+DI'].shift(2)<data['-DI'].shift(2))
+
       
-        (data['support_gradient']>0)&(data['resistance_gradient']>0)&(data['sr_cross_signal_buy'])
+        #(data['support_gradient']>0)&(data['resistance_gradient']>0)&(data['sr_cross_signal_buy'])
     )
 
 
     data['is_sell2'] = (
         
-        # (data['high'].shift(1)<data['bb2_upper'].shift(1))&
-        # (data['high'].shift(2)>data['bb2_upper'].shift(2))&
-        # (data['close'].shift(1)>data['bb_upper'].shift(1))&
-        # (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))
+        (data['close'].shift(1)<data['bb2_upper'].shift(1))&
+        (data['high'].shift(2)>data['bb2_upper'].shift(2))&
+        (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))&
+        (data['ADX']<27)
 
-        (data['support_gradient']<0)&(data['resistance_gradient']<0)&(data['sr_cross_signal_sell'])
+        # (data['close'].shift(1)<data['fixed_support_trendline_15'].shift(1))&
+        # (data['close'].shift(2)>data['fixed_support_trendline_15'].shift(2))&
+        # (data['ADX']>25)
+
+        # (data['close'].shift(1)<data['bb2_upper'].shift(1))&
+        # (data['close'].shift(2)>data['bb2_upper'].shift(2))&
+        # (data['+DI'].shift(1)<data['-DI'].shift(1))
+
+        #(data['+DI'].shift(1)<data['-DI'].shift(1))&(data['+DI'].shift(2)>data['-DI'].shift(2))
+
+
+        #(data['support_gradient']<0)&(data['resistance_gradient']<0)&(data['sr_cross_signal_sell'])
         
         )
         

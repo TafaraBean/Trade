@@ -90,11 +90,11 @@ def display_chart(df):
     
 
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['ema_50'], 
-                            mode='lines', 
-                            name='ema_50'
-                            ), row=1, col=1)
+    # fig.add_trace(go.Scatter(x=df['time'], 
+    #                         y=df['ema_50'], 
+    #                         mode='lines', 
+    #                         name='ema_50'
+    #                         ), row=1, col=1)
     
     
     # fig.add_trace(go.Scatter(x=df['time'], 
@@ -131,26 +131,41 @@ def display_chart(df):
     #                         mode='lines', name='LSMA_low'), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['lower_channel'], 
+                            y=df['fixed_support_trendline_15'], 
                             mode='lines', 
                             name='support'
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['upper_channel'], 
+                            y=df['fixed_resistance_trendline_15'], 
                             mode='lines', 
                             name='resistance'
                             ), row=1, col=1)
     
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['fixed_lower_channel_200'], 
+                            mode='lines', 
+                            name='support4'
+                            ), row=1, col=1)
+    
+    fig.add_trace(go.Scatter(x=df['time'], 
+                            y=df['fixed_upper_channel_200'], 
+                            mode='lines', 
+                            name='resistance4'
+                            ), row=1, col=1)
+    
+    
+    
+    
     # Plot levels as horizontal lines on the first subplot
-    for level in unique_levels_list:  # Iterate through each unique level
-        fig.add_trace(go.Scatter(
-            x=df['time'],
-            y=[level] * len(df),  # Create a horizontal line at the level
-            mode='lines',
-            line=dict(color='gray', width=1, dash='dash'),
-            name=f'Level {level:.2f}'
-        ), row=1, col=1)
+    # for level in unique_levels_list:  # Iterate through each unique level
+    #     fig.add_trace(go.Scatter(
+    #         x=df['time'],
+    #         y=[level] * len(df),  # Create a horizontal line at the level
+    #         mode='lines',
+    #         line=dict(color='gray', width=1, dash='dash'),
+    #         name=f'Level {level:.2f}'
+    #     ), row=1, col=1)
 
     
     
@@ -208,18 +223,18 @@ def display_chart(df):
     # Add MACD Line to the second subplot
     fig.add_trace(go.Scatter(
         x=df['time'],
-        y=df['Span_B'],
-        name='Span_B',
+        y=df['ADX'],
+        name='adx',
         line=dict(color='purple')
     ), row=2, col=1)
 
     # Add MACDs Line to the second subplot
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['Span_A'],
-        name='Span_A',
-        line=dict(color='blue')
-    ), row=2, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['Span_A'],
+    #     name='Span_A',
+    #     line=dict(color='blue')
+    # ), row=2, col=1)
 
 
     # Update layout
@@ -852,7 +867,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
     # Trendline parameter
     lookback = 400
-    lookback3 = 20
+    lookback3 = 100
 
     # Initialize columns for trendlines and their gradients
     bb = ta.bbands(close=data['close'], length=200, std=2)
@@ -860,6 +875,10 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
 
 
     # # Rename columns for clarity
+    adx = ta.adx(data['high'], data['low'], data['close'], length=100)
+    data['+DI']=adx['DMP_100']
+    data['-DI']=adx['DMN_100']
+    data['ADX'] = adx['ADX_100']
     data['bb_lower'] = bb[f'BBL_200_2.0']
     data['bb_middle'] = bb[f'BBM_200_2.0']
     data['bb_upper'] = bb[f'BBU_200_2.0']
@@ -935,8 +954,34 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         
     
     for i in range(lookback3, len(df_log) + 1):
-        current_index = df_log.index[i - 1]
+        current_index = df_log.index[i-1]
         window_data = df_log.iloc[i - lookback3:i]
+        support_coefs, resist_coefs = fit_trendlines_high_low(window_data['high'], window_data['low'], window_data['close'])
+
+        # Extract slope and intercept
+        support_slope, support_intercept = support_coefs
+        resist_slope, resist_intercept = resist_coefs
+        data.at[current_index, 'fixed_resistance_gradient_15'] = resist_slope
+        data.at[current_index, 'fixed_support_gradient_15'] = support_slope
+        support_value = support_slope * window_data.at[current_index,'close'] + support_intercept
+        resist_value = resist_slope * window_data.at[current_index,'close'] + resist_intercept
+        data.at[current_index, 'fixed_support_trendline_15'] = np.exp(support_value)
+        data.at[current_index, 'fixed_resistance_trendline_15'] = np.exp(resist_value)
+        # Apply the calculated gradients to each candle in the window
+
+        for j in range(lookback3):
+            idx = i - lookback3 + j
+            support_value = support_slope * j + support_intercept
+            resist_value = resist_slope * j + resist_intercept
+            data.at[data.index[idx], 'support_trendline_15'] = np.exp(support_value)
+            data.at[data.index[idx], 'resistance_trendline_15'] = np.exp(resist_value)
+            data.at[data.index[idx], 'support_gradient_15'] = support_slope
+            data.at[data.index[idx], 'resistance_gradient_15'] = resist_slope
+
+    lookback4 = 30
+    for i in range(lookback4, len(df_log) + 1):
+        current_index = df_log.index[i - 1]
+        window_data = df_log.iloc[i - lookback4:i]
 
         # Fit linear regression to the 'close' prices
         X = np.arange(len(window_data)).reshape(-1, 1)  # Time indices for regression
@@ -957,29 +1002,30 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         lower_channel = regression_line - std_dev*2
 
         # Save slope, intercept, and regression channel for the current index
-        data.at[current_index, 'regression_channel_slope'] = slope
-        data.at[current_index, 'regression_channel_intercept'] = intercept
-    
+        data.at[current_index, 'regression_channel_slope4'] = slope
+        data.at[current_index, 'regression_channel_intercept4'] = intercept
+        data.at[current_index, 'fixed_upper_channel_200'] = np.exp(upper_channel[-1])
+        data.at[current_index, 'fixed_lower_channel_200'] = np.exp(lower_channel[-1])
     
 
 
         # For the last lookback3 observations, calculate and save channel values
         if i == len(df_log):
-            for j in range(lookback3):
-                idx = i - lookback3 + j
+            for j in range(lookback4):
+                idx = i - lookback4 + j
                 x_val = j  # Corresponding time index within the lookback window
                 reg_value = slope * x_val + intercept
                 upper_value = reg_value + std_dev*2
                 lower_value = reg_value - std_dev*2
 
                 # Save the channel values
-                data.at[data.index[idx], 'regression_line'] = np.exp(reg_value)
-                data.at[data.index[idx], 'upper_channel'] = np.exp(upper_value)
-                data.at[data.index[idx], 'lower_channel'] = np.exp(lower_value)
-                data.at[data.index[idx], 'channel_slope'] = slope
+                data.at[data.index[idx], 'regression_line4'] = np.exp(reg_value)
+                data.at[data.index[idx], 'upper_channel4'] = np.exp(upper_value)
+                data.at[data.index[idx], 'lower_channel4'] = np.exp(lower_value)
+                data.at[data.index[idx], 'channel_slope4'] = slope
+
     
-    print(data['regression_channel_slope'])
-    print(data['channel_slope'])
+
         
     atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
     all_levels = set()

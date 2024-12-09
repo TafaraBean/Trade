@@ -11,8 +11,8 @@ account = int(os.environ.get("ACCOUNT"))
 password = os.environ.get("PASSWORD")
 server = os.environ.get("SERVER")
 symbol = "XAUUSDm"
-timeframe = mt5.TIMEFRAME_M1 # Change this as needed
-lot= 0.02
+timeframe = mt5.TIMEFRAME_M15 # Change this as needed
+lot= 0.01
 # Initialize the trading bot object 
 bot = TradingBot(login=account, 
                  password=password, 
