@@ -819,7 +819,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     """Set All variables"""
     #Bolinger banfs
     bb_length = 200
-    bb_std = float(2)
+    bb_std = float(1)
     
     bb2_length = 20
     bb2_std = float(2)

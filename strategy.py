@@ -39,8 +39,8 @@ def h1_gold_strategy(data):
 
 
 def apply_strategy(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
-    #data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
-    data = bot.copy_chart_count(bot.symbol, bot.timeframe, pd.Timestamp("2024-12-02"), 401)
+    data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
+    #data = bot.copy_chart_range(bot.symbol, bot.timeframe, pd.Timestamp("2024-12-02"), 401)
     data=auto_trendline_15(data)
 
     #hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
@@ -68,12 +68,6 @@ def apply_strategy(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
 
 
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
-    
-    adx = ta.adx(data['high'], data['low'], data['close'], timeperiod=400)
-    data['ADX'] = adx['ADX_14']
-
-    
-    
     
     pip_size = 1
 
@@ -132,10 +126,13 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     # Generate signals
     data['is_buy2'] = (
 
-        (data['close'].shift(1)>data['bb2_lower'].shift(1))&
-        (data['low'].shift(2)<data['bb2_lower'].shift(2))&
-        (data['bb2_lower'].shift(1)<data['bb_lower'].shift(1))&
-        (data['ADX']<27)
+        (data['close']<data['bb_lower'])&(data['regression_channel_slope4']>0)&
+        (data['close']<data['bb2_lower'])
+
+        # (data['close'].shift(1)>data['bb2_lower'].shift(1))&
+        # (data['low'].shift(2)<data['bb2_lower'].shift(2))&
+        # (data['bb2_lower'].shift(1)<data['bb_lower'].shift(1))&
+        # (data['ADX']<27)
 
         # (data['close'].shift(1)>data['fixed_resistance_trendline_15'].shift(1))&
         # (data['close'].shift(2)<data['fixed_resistance_trendline_15'].shift(2))&
@@ -153,11 +150,14 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
 
     data['is_sell2'] = (
+
+        (data['close']>data['bb_upper'])&(data['regression_channel_slope4']<0)&
+        (data['close']>data['bb2_upper'])
         
-        (data['close'].shift(1)<data['bb2_upper'].shift(1))&
-        (data['high'].shift(2)>data['bb2_upper'].shift(2))&
-        (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))&
-        (data['ADX']<27)
+        # (data['close'].shift(1)<data['bb2_upper'].shift(1))&
+        # (data['high'].shift(2)>data['bb2_upper'].shift(2))&
+        # (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))&
+        # (data['ADX']<27)
 
         # (data['close'].shift(1)<data['fixed_support_trendline_15'].shift(1))&
         # (data['close'].shift(2)>data['fixed_support_trendline_15'].shift(2))&
