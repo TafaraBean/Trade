@@ -9,7 +9,7 @@ inital_balance = account_balance
 
 
 #start = pd.Timestamp("2024-12-05 00:00:01")
-end = pd.Timestamp('2024-12-06')
+end = pd.Timestamp('2024-12-05')
 start = end - pd.Timedelta(days=1)
 
 df = apply_strategy(start=start, end=end)
@@ -18,7 +18,7 @@ filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 if not filtered_df.empty:
     results = analyse(filtered_df=filtered_df,
             bot=bot,
-            close_opp_trades= False,
+            close_opp_trades= True,
             account_balance=account_balance,
             timeframe=bot.timeframe)
 

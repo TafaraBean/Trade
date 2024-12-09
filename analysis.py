@@ -130,26 +130,26 @@ def display_chart(df):
     # fig.add_trace(go.Scatter(x=df['time'], y=df['lsma_low'], 
     #                         mode='lines', name='LSMA_low'), row=1, col=1)
     
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_support_trendline_15'], 
-                            mode='lines', 
-                            name='support'
-                            ), row=1, col=1)
+    # fig.add_trace(go.Scatter(x=df['time'], 
+    #                         y=df['fixed_support_trendline_15'], 
+    #                         mode='lines', 
+    #                         name='support'
+    #                         ), row=1, col=1)
+    
+    # fig.add_trace(go.Scatter(x=df['time'], 
+    #                         y=df['fixed_resistance_trendline_15'], 
+    #                         mode='lines', 
+    #                         name='resistance'
+    #                         ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_resistance_trendline_15'], 
-                            mode='lines', 
-                            name='resistance'
-                            ), row=1, col=1)
-    
-    fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_lower_channel_200'], 
+                            y=df['lower_channel4'], 
                             mode='lines', 
                             name='support4'
                             ), row=1, col=1)
     
     fig.add_trace(go.Scatter(x=df['time'], 
-                            y=df['fixed_upper_channel_200'], 
+                            y=df['upper_channel4'], 
                             mode='lines', 
                             name='resistance4'
                             ), row=1, col=1)
@@ -171,53 +171,53 @@ def display_chart(df):
     
     
     # #Add Bollinger Bands to the first subplot
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb_upper'],
-        mode='lines',
-        line=dict(color='blue', width=1),
-        name='Bollinger Upper'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb_upper'],
+    #     mode='lines',
+    #     line=dict(color='blue', width=1),
+    #     name='Bollinger Upper'
+    # ), row=1, col=1)
 
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb_middle'],
-        mode='lines',
-        line=dict(color='blue', width=1, dash='dash'),
-        name='Bollinger Middle'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb_middle'],
+    #     mode='lines',
+    #     line=dict(color='blue', width=1, dash='dash'),
+    #     name='Bollinger Middle'
+    # ), row=1, col=1)
 
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb_lower'],
-        mode='lines',
-        line=dict(color='blue', width=1),
-        name='Bollinger Lower'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb_lower'],
+    #     mode='lines',
+    #     line=dict(color='blue', width=1),
+    #     name='Bollinger Lower'
+    # ), row=1, col=1)
 
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb2_upper'],
-        mode='lines',
-        line=dict(color='green', width=1),
-        name='Bollinger2 Upper'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb2_upper'],
+    #     mode='lines',
+    #     line=dict(color='green', width=1),
+    #     name='Bollinger2 Upper'
+    # ), row=1, col=1)
 
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb2_middle'],
-        mode='lines',
-        line=dict(color='green', width=1, dash='dash'),
-        name='Bollinger2 Middle'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb2_middle'],
+    #     mode='lines',
+    #     line=dict(color='green', width=1, dash='dash'),
+    #     name='Bollinger2 Middle'
+    # ), row=1, col=1)
 
-    fig.add_trace(go.Scatter(
-        x=df['time'],
-        y=df['bb2_lower'],
-        mode='lines',
-        line=dict(color='green', width=1),
-        name='Bollinger2 Lower'
-    ), row=1, col=1)
+    # fig.add_trace(go.Scatter(
+    #     x=df['time'],
+    #     y=df['bb2_lower'],
+    #     mode='lines',
+    #     line=dict(color='green', width=1),
+    #     name='Bollinger2 Lower'
+    # ), row=1, col=1)
 
 
     # Add MACD Line to the second subplot
@@ -819,19 +819,20 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     """Set All variables"""
     #Bolinger banfs
     bb_length = 200
-    bb_std = float(1)
+    bb_std = float(2)
     
     bb2_length = 20
     bb2_std = float(2)
     
     #ADX
-    adx_length=100
+    adx_length=40
 
     #lookbacks
     lookback = 400
     lookback2 = 80
     lookback3 = 100
-    lookback4 = 30
+    lookback4 = 15    #for linear regression channels
+    lookback5 = 30
 
     # Initialize columns for trendlines and their gradients
     bb = ta.bbands(close=data['close'], length=bb_length, std=bb_std)
@@ -940,6 +941,51 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
                 data.at[data.index[idx], 'upper_channel4'] = np.exp(upper_value)
                 data.at[data.index[idx], 'lower_channel4'] = np.exp(lower_value)
                 data.at[data.index[idx], 'channel_slope4'] = slope
+
+    for i in range(lookback5, len(df_log) + 1):
+        current_index = df_log.index[i - 1]
+        window_data = df_log.iloc[i - lookback5:i]
+
+        # Fit linear regression to the 'close' prices
+        X = np.arange(len(window_data)).reshape(-1, 1)  # Time indices for regression
+        y = window_data['close'].values.reshape(-1, 1)  # Close prices
+        model = LinearRegression().fit(X, y)
+
+        # Extract slope and intercept
+        slope = model.coef_[0][0]
+        intercept = model.intercept_[0]
+
+        # Calculate regression line and standard deviation of residuals
+        regression_line = model.predict(X).flatten()
+        residuals = window_data['close'] - regression_line
+        std_dev = residuals.std()
+
+        # Calculate upper and lower channel values
+        upper_channel = regression_line + std_dev*2
+        lower_channel = regression_line - std_dev*2
+
+        # Save slope, intercept, and regression channel for the current index
+        data.at[current_index, 'regression_channel_slope5'] = slope
+        data.at[current_index, 'regression_channel_intercept5'] = intercept
+        data.at[current_index, 'fixed_upper_channel_5'] = np.exp(upper_channel[-1])
+        data.at[current_index, 'fixed_lower_channel_5'] = np.exp(lower_channel[-1])
+    
+
+
+        # For the last lookback3 observations, calculate and save channel values
+        if i == len(df_log):
+            for j in range(lookback5):
+                idx = i - lookback5 + j
+                x_val = j  # Corresponding time index within the lookback window
+                reg_value = slope * x_val + intercept
+                upper_value = reg_value + std_dev*2
+                lower_value = reg_value - std_dev*2
+
+                # Save the channel values
+                data.at[data.index[idx], 'regression_line5'] = np.exp(reg_value)
+                data.at[data.index[idx], 'upper_channel5'] = np.exp(upper_value)
+                data.at[data.index[idx], 'lower_channel5'] = np.exp(lower_value)
+                data.at[data.index[idx], 'channel_slope5'] = slope
 
     end_part2 = time.perf_counter()
 
