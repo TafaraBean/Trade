@@ -2,7 +2,7 @@ import MetaTrader5 as mt5
 from trading_bot import TradingBot
 from dotenv import load_dotenv
 import os
-from strategy import *
+from strategy import apply_strategy
 
 
 # Load environment variables

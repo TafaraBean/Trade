@@ -602,7 +602,10 @@ class TradingBot:
             for index, row in running_positions.iterrows():
                 if(close_opposing_trades and order):
                     if row['type'] != latest_signal['signal']:                        
-                        result = self.close_position(position_id=row['ticket'],lot=self.lot,symbol=self.symbol,position_type=latest_signal['signal'])                        
+                        result = self.close_position(position_id = row['ticket'],
+                                                     lot = self.lot,
+                                                     symbol = self.symbol,
+                                                     position_type = latest_signal['signal'])                        
                         continue
                 
                 

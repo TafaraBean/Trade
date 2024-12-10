@@ -3,7 +3,6 @@ import pandas_ta as ta
 import numpy as np
 import MetaTrader5 as mt5
 import talib
-from main import bot
 from analysis import auto_trendline_15
 from concurrent.futures import ThreadPoolExecutor
 
