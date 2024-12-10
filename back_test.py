@@ -14,8 +14,9 @@ start = end - pd.Timedelta(days=3)
 # start = end - pd.Timedelta(days=4)
 
 data = bot.copy_chart_range(symbol=bot.symbol,
-                          start=start,
-                          end=end)
+                            timeframe=bot.timeframe,
+                            start=start,
+                            end=end)
 
 df = apply_strategy(df=data)
 
