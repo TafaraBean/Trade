@@ -567,10 +567,11 @@ class TradingBot:
             data = self.copy_chart_count_pos(symbol=self.symbol, 
                                              timeframe=self.timeframe, 
                                              start_index=1, 
-                                             count=400)
+                                             count=401)
             
             if data.empty:
                 print("Dataframe is empty, cannot analyse market at this time")
+                continue
             df = strategy_func(data)
 
             #TradingBot.display_chart(df)
@@ -579,7 +580,7 @@ class TradingBot:
             # Check for new trading signals
             
             latest_signal = df.iloc[-1]
-            
+            order = None
             # Open orders based on the latest signal
             if latest_signal['is_buy2'] and latest_signal["is_sell2"]:
                 print(f"Signal {latest_signal['time']} generated both buy and sell siganl simultaniously which is illegal")
@@ -596,7 +597,7 @@ class TradingBot:
 
 
             running_positions=self.get_position_all(symbol=self.symbol)
-            print(running_positions)
+            #print(running_positions)
             
             #Note that the variable row['comment'] stores the be_condition
             for index, row in running_positions.iterrows():
