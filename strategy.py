@@ -7,76 +7,31 @@ from main import bot
 from analysis import auto_trendline_15
 from concurrent.futures import ThreadPoolExecutor
 
-def h1_gold_strategy(data):
-    data['ema_short'] = ta.ema(data['close'], length=12)
-    data['ema_long'] = ta.ema(data['close'], length=26)
-    data['lsma'] = ta.linreg(data['close'], length=100)
-    macd = ta.macd(data['close'], fast=15, slow=20, signal=4)
-    data['macd_line'] = macd['MACD_15_20_4']
-    data['lsma_stddev'] = data['close'].rolling(window=25).std()
-    data['lsma_upper_band'] = data['lsma'] + (data['lsma_stddev'] * 1.6)
-    data['lsma_lower_band'] = data['lsma'] - (data['lsma_stddev'] * 1.6)
-
-    data['is_buy2'] = False
-    data['is_sell2'] = True
 
 
 
-    data.loc[data['is_buy2'], 'tp'] = data['close'] + 9
-    data.loc[data['is_buy2'], 'sl'] = data['low'] - 3
-    data.loc[data['is_sell2'], 'tp'] = data['close'] - 9
-    data.loc[data['is_sell2'], 'sl'] = data['high'] + 3
-
-    #set trailling stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 3
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 3
-
-    #condition for setting new trailing stop
-    data.loc[data['is_buy2'], 'be_condition'] = data['close'] + 4
-    data.loc[data['is_sell2'], 'be_condition'] = data['close'] - 4
-    return data
-
-
-
-def apply_strategy(start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
-    data = bot.copy_chart_range(symbol=bot.symbol, timeframe=bot.timeframe, start=start, end=end)
-    #data = bot.copy_chart_range(bot.symbol, bot.timeframe, pd.Timestamp("2024-12-02"), 401)
-    data=auto_trendline_15(data)
-
-    #hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H1, start=start, end=end)
-
-    #hour_data=auto_trendline(hour_data)
-
-    #hourly_data = hour_data[['time2','prev_hour_lsma_slope','prev_hour_macd_line','hour_lsma','fixed_support_gradient','fixed_resistance_gradient','prev_hour_lsma','fixed_support_trendline','fixed_resistance_trendline','prev_fixed_support_trendline','prev_fixed_resistance_trendline','prev_fixed_resistance_gradient','prev_fixed_support_gradient','ema_24','prev_stochk','prev_stochd','prev_hour_macd_signal','prev_psar','prev_psar_direction','prev_nadaraya_watson','prev_nadaraya_watson_trend','nadaraya_upper_envelope','nadaraya_lower_envelope','wma_50','prev_supertrend_dir','HSpan_A','HSpan_B','nadaraya_watson','prev_nadaraya_lower_band','prev_nadaraya_upper_band','prev_HSpan_A','prev_HSpan_B','support_trendline','resistance_trendline','support','resistance','is_buy','is_sell']]
-
-    #hour_data.to_csv("csv/hour_data.csv",index=False)
-
-    #data['hourly_time']=data['time'].dt.floor('h')
-
-    #merged_data = pd.merge(data,hourly_data, left_on='hourly_time', right_on='time2', suffixes=('_15m', '_hourly'))
-
-    # four_hour_data = bot.copy_chart_range(symbol=bot.symbol, timeframe=mt5.TIMEFRAME_H4, start=start, end=end)
-    # four_hour_data = auto_trendline_4H(four_hour_data)
-    # H4_data = four_hour_data[['time4h','prev_4HSpan_A','prev_4HSpan_B','prev_4H_sr_levels']]
-
-    # data['4_hour_time']=data['time'].dt.floor('4h')
-
-
-    # merged_data2 = pd.merge(data,H4_data, left_on='4_hour_time', right_on='time4h', suffixes=('', '_4h'))
-
+def apply_strategy(df: pd.DataFrame) -> pd.DataFrame:
+    print("Analysing market")
+    data=auto_trendline_15(df)
     return m15_gold_strategy(data)
 
 
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     
+    adx = ta.adx(data['high'], data['low'], data['close'], timeperiod=400)
+    data['ADX'] = adx['ADX_14']
+
+    
+    
+    
     pip_size = 1
 
     # Set TP and SL in terms of pips
-    tp_pips = 2 * pip_size
-    sl_pips = 2* pip_size
-    be_pips =   10 * pip_size
+    tp_pips = 12 * pip_size
+    sl_pips = 4* pip_size
+    be_pips =   5 * pip_size
     data["be_increment"] = 3.0
-    data["be_condition_increment"] = 6.0
+    data["be_condition_increment"] = 5.0
     data['ticket'] = np.nan
     
 
@@ -124,16 +79,12 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Generate signals
-    data['is_buy2'] = (
+    #data['is_buy2'] = (
 
-        (data['regression_channel_slope4']>0)&(data['regression_channel_slope4'].shift(1)<0)&(data['+DI']>data['-DI'])
-        
-        
-
-        # (data['close'].shift(1)>data['bb2_lower'].shift(1))&
-        # (data['low'].shift(2)<data['bb2_lower'].shift(2))&
-        # (data['bb2_lower'].shift(1)<data['bb_lower'].shift(1))&
-        # (data['ADX']<27)
+    #    (data['close'].shift(1)>data['bb2_lower'].shift(1))&
+     #   (data['low'].shift(2)<data['bb2_lower'].shift(2))&
+     #   (data['bb2_lower'].shift(1)<data['bb_lower'].shift(1))&
+     #   (data['ADX']<27)
 
         # (data['close'].shift(1)>data['fixed_resistance_trendline_15'].shift(1))&
         # (data['close'].shift(2)<data['fixed_resistance_trendline_15'].shift(2))&
@@ -147,18 +98,15 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
       
         #(data['support_gradient']>0)&(data['resistance_gradient']>0)&(data['sr_cross_signal_buy'])
-    )
+    #)
 
 
-    data['is_sell2'] = (
-        (data['regression_channel_slope4']<0)&(data['regression_channel_slope4'].shift(1)>0)&(data['+DI']<data['-DI'])
+    #data['is_sell2'] = (
         
-        #(data['close']>data['bb_upper'])&(data['regression_channel_slope4']<0)
-        
-        # (data['close'].shift(1)<data['bb2_upper'].shift(1))&
-        # (data['high'].shift(2)>data['bb2_upper'].shift(2))&
-        # (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))&
-        # (data['ADX']<27)
+    #    (data['close'].shift(1)<data['bb2_upper'].shift(1))&
+    #    (data['high'].shift(2)>data['bb2_upper'].shift(2))&
+    #    (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))&
+    #    (data['ADX']<27)
 
         # (data['close'].shift(1)<data['fixed_support_trendline_15'].shift(1))&
         # (data['close'].shift(2)>data['fixed_support_trendline_15'].shift(2))&
@@ -173,14 +121,14 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
 
         #(data['support_gradient']<0)&(data['resistance_gradient']<0)&(data['sr_cross_signal_sell'])
         
-        )
+        #)
         
     
 
 
-    
+    data['is_sell2'] = False
+    data['is_buy2'] = True
 
-    
     data.loc[data['is_buy2'], 'signal'] = mt5.ORDER_TYPE_BUY
     data.loc[data['is_sell2'], 'signal'] = mt5.ORDER_TYPE_SELL 
     data.loc[data['is_buy2'], 'tp'] = data['close'] + tp_pips
@@ -189,13 +137,14 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     data.loc[data['is_sell2'], 'sl'] = data['close'] + sl_pips
 
     # Set new trailing stop loss
-    data.loc[data['is_buy2'], 'be'] = data['close'] + 2 *  pip_size 
-    data.loc[data['is_sell2'], 'be'] = data['close'] - 2 * pip_size
+    data.loc[data['is_buy2'], 'be'] = data['close'] + 4 *  pip_size 
+    data.loc[data['is_sell2'], 'be'] = data['close'] - 4 * pip_size
 
     # Condition for setting new trailing stop
     data.loc[data['is_buy2'], 'be_condition'] = data['close'] + be_pips
     data.loc[data['is_sell2'], 'be_condition'] = data['close'] - be_pips
 
+    
     #set the array of conditions
     """
     in the conditions array, the following is stored at these indexes
@@ -204,17 +153,17 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     index 2: be_condition
 
     """
-    # Concatenate 'be_condition_increment', 'be_increment', 'be_condition' for rows where 'is_buy2' is True
-    data.loc[data['is_buy2'], "conditions_arr"] = data[data['is_buy2']].apply(
-        lambda row: f"{row['be_condition_increment']},{row['be_increment']},{row['be_condition']}", axis=1
-    )
+        # Set the 'conditions_arr' for rows where 'is_buy2' is True
+    data.loc[data['is_buy2'], "conditions_arr"] = data[data['is_buy2']].apply(concatenate_conditions, axis=1)
 
-    # Concatenate 'be_condition_increment', 'be_increment', 'be_condition' for rows where 'is_sell2' is True
-    data.loc[data['is_sell2'], "conditions_arr"] = data[data['is_sell2']].apply(
-        lambda row: f"{row['be_condition_increment']},{row['be_increment']},{row['be_condition']}", axis=1
-)
+    # Set the 'conditions_arr' for rows where 'is_sell2' is True
+    data.loc[data['is_sell2'], "conditions_arr"] = data[data['is_sell2']].apply(concatenate_conditions, axis=1)
+
     return data
 
+
+def concatenate_conditions(row):
+    return f"{row['be_condition_increment']},{row['be_increment']},{row['be_condition']}"
 
 def is_within_trading_hours(row_time, session_times):
     hour = row_time.hour

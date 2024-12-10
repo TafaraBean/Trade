@@ -1,8 +1,7 @@
 import MetaTrader5 as mt5
 import time
+import json
 import pandas as pd
-import os
-from typing import Callable
 from utils import *
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
@@ -92,6 +91,7 @@ class TradingBot:
             mt5.TIMEFRAME_H12: "12h",
             mt5.TIMEFRAME_D1: "d",
         }
+        self.conversion = self.timeframe_to_interval.get(self.timeframe, 3600)
 
     def initialize_bot(self) -> None:
         # Initialize the MetaTrader 5 connection
@@ -107,8 +107,14 @@ class TradingBot:
             quit()
         else:
             print("connected to account #{}".format(self.login))
-    
 
+        selected=mt5.symbol_select(self.symbol,True)
+        if not selected:
+            print(f"Failed to select {self.symbol}, double check if your broker offers this symbol to be traded")
+            quit()
+
+
+    
     def open_buy_position(self, 
                           symbol: str, 
                           conditions_arr: str,
@@ -133,17 +139,15 @@ class TradingBot:
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK, # some filling modes are not supported by some brokers
         }
-        print(f"conditions arr {conditions_arr}")
+        
         order=mt5.order_send(request)._asdict()
 
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
-            # Add the order to the positions dictionary
-            self.positions[order['order']] = symbol
             print("Long Position Successfully opened")
         else:
             print("Long position failed to open")
 
-        print(order)
+        
         return order
 
     def open_sell_position(self, 
@@ -174,9 +178,10 @@ class TradingBot:
         order=mt5.order_send(request)._asdict()
 
         if order['retcode'] == mt5.TRADE_RETCODE_DONE:
-            # Add the order to the positions dictionary
-            self.positions[order['order']] = symbol
-        print(order)
+            print("Short Position Successfully opened")
+        else:
+            print("Short position failed to open")
+
         return order
     
     def positions_total(self) -> int:
@@ -189,8 +194,11 @@ class TradingBot:
         total=mt5.orders_total()
         return total
     
-    #this close position function needs to be refined
-    def close_position(self, position_id: int, lot: float, symbol: str) -> dict:
+    def close_position(self, 
+                       position_id, 
+                       lot: float, 
+                       symbol: str,
+                       position_type: int) -> dict:
         """
         Close the position for a given symbol.
         """
@@ -198,13 +206,13 @@ class TradingBot:
         request={
             "action": mt5.TRADE_ACTION_DEAL,
             "symbol": symbol,
-            "volume": lot,
-            "type": mt5.ORDER_TYPE_SELL,
-            "position": position_id,
+            "volume": float(lot),
+            "type": int(position_type),
+            "position": int(position_id),
             "price": mt5.symbol_info_tick(symbol).ask,
             "deviation": 20,
             "magic": 234000,
-            "comment": "python script close",
+            "comment": "python script close trade",
             "type_time": mt5.ORDER_TIME_GTC,
             "type_filling": mt5.ORDER_FILLING_FOK,
         }
@@ -218,7 +226,7 @@ class TradingBot:
         """
         order=mt5.positions_get(ticket=ticket)
         trade_position =order[0]
-        return trade_position._asdict()
+        return trade_position
     
     def get_position_all(self,symbol: str) -> pd.DataFrame:
         """Retrives all positions for a specified symbol"""
@@ -233,8 +241,6 @@ class TradingBot:
         
         return df
     
-  
-
     def profit_loss(self, 
                     symbol: str, 
                     order_type:int , 
@@ -264,11 +270,6 @@ class TradingBot:
                                     close_price)
         return profit
      
-
-
-        
-            
-
     def copy_chart_range(self, symbol: str, timeframe, start: pd.Timestamp, end: pd.Timestamp) -> pd.DataFrame:
         "Retrives chart data from specified start date till end date"
         ohlc_data = mt5.copy_rates_range(symbol, timeframe, start, end)
@@ -278,16 +279,17 @@ class TradingBot:
             ohlc_data['time'] = pd.to_datetime(ohlc_data['time'],unit='s')
         return ohlc_data
 
-    def copy_chart_count_pos(self, 
+    def copy_chart_count_pos(self,
                              symbol: str, 
-                            timeframe, 
-                            start_index: int, 
-                            count: int) -> int:
+                             timeframe, 
+                             start_index: int, 
+                             count: int) -> pd.DataFrame:
 
         rates = mt5.copy_rates_from_pos(symbol, timeframe, start_index, count) 
         rates_frame = pd.DataFrame(rates)
         # convert time in seconds into the datetime format
-        rates_frame['time']=pd.to_datetime(rates_frame['time'], unit='s')
+        if len(rates_frame) != 0:
+            rates_frame['time']=pd.to_datetime(rates_frame['time'], unit='s')
         
        
         return(rates_frame) 
@@ -394,13 +396,6 @@ class TradingBot:
             name='Sell Signal'
         ), row=1, col=1)
 
-
-
-        
-        
-    
-
-        
 
         
         fig.add_trace(go.Scatter(x=df['time'], 
@@ -551,23 +546,33 @@ class TradingBot:
         
         fig.show()
     
+    #def get_server_time():
 
-    def run(self, strategy_func: Callable[[pd.Timestamp, pd.Timestamp], pd.DataFrame]) -> None:
-        while True:
-            start = pd.Timestamp.now() - pd.Timedelta(days=4) #always use 1 week worth of data to ensure there is enough candle sticks for the  dataframe
-            # Calculate the time to sleep until the next interval based on the timeframe
-            conversion = self.timeframe_to_interval.get(self.timeframe, 3600) #conversion is used to keep a consistant timeframe thorugh all trade executions
-            current_time = pd.Timestamp.now() + pd.Timedelta(hours=1)
-            end =  pd.Timestamp.now() + pd.Timedelta(days=1)
-            next_interval = current_time.ceil(conversion)
+
+    def run(self, 
+            strategy_func, 
+            close_opposing_trades):
+        
+        while True:   
+        #for x in range(1):
+            current_time = pd.Timestamp.now()
+            next_interval = current_time.ceil(self.conversion)
             
            
             print(f"current time: {current_time}")
             print(f"\nSleeping for {(next_interval - current_time)} until the next interval.")
-            #time.sleep((next_interval - current_time).total_seconds())
-
             
-            df = strategy_func(start,end)
+            time.sleep((next_interval - current_time).total_seconds())
+
+            data = self.copy_chart_count_pos(symbol=self.symbol, 
+                                             timeframe=self.timeframe, 
+                                             start_index=1, 
+                                             count=400)
+            
+            if data.empty:
+                print("Dataframe is empty, cannot analyse market at this time")
+            df = strategy_func(data)
+
             #TradingBot.display_chart(df)
             df.to_csv('csv/main.csv', index=False)
 
@@ -576,7 +581,11 @@ class TradingBot:
             latest_signal = df.iloc[-1]
             
             # Open orders based on the latest signal
-            if latest_signal['is_buy2']:
+            if latest_signal['is_buy2'] and latest_signal["is_sell2"]:
+                print(f"Signal {latest_signal['time']} generated both buy and sell siganl simultaniously which is illegal")
+                continue
+            
+            elif latest_signal['is_buy2']:
                 order = self.open_buy_position(symbol=self.symbol, conditions_arr=latest_signal['conditions_arr'],lot=self.lot, tp=latest_signal['tp'] , sl=latest_signal['sl'])
 
 
@@ -584,12 +593,18 @@ class TradingBot:
                 order = self.open_sell_position(symbol=self.symbol, conditions_arr=latest_signal['conditions_arr'], lot=self.lot, tp=latest_signal['tp'], sl=latest_signal['sl'])
 
 
-            # Track rows to keep
-            # get the list of all positions to see if they need to be changed"
+
+
             running_positions=self.get_position_all(symbol=self.symbol)
             
             #Note that the variable row['comment'] stores the be_condition
             for index, row in running_positions.iterrows():
+                if(close_opposing_trades and order):
+                    if row['type'] != latest_signal['signal']:                        
+                        result = self.close_position(position_id=row['ticket'],lot=self.lot,symbol=self.symbol,position_type=latest_signal['signal'])                        
+                        continue
+                
+                
                 """
                 in the conditions array, the following is stored at these indexes
                 index 0: be_condition_increment

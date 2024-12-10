@@ -806,7 +806,6 @@ def find_levels(
 
 
 def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
-    print("applying auto trendline...")
     data = data.set_index(data['time'].astype('datetime64[s]'))
 
 
@@ -862,11 +861,6 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     data['sr_levels'] = pd.Series([[]] * len(data), index=data.index, dtype=object)
        
 
-        
-    start_total = time.perf_counter()
-
-    # First portion of the script
-    start_part1 = time.perf_counter()
 
     for i in range(lookback3, len(df_log) + 1):
         current_index = df_log.index[i-1]
@@ -893,10 +887,6 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
             data.at[data.index[idx], 'support_gradient_15'] = support_slope
             data.at[data.index[idx], 'resistance_gradient_15'] = resist_slope
 
-    end_part1 = time.perf_counter()
-    
-    # Second portion of the script
-    start_part2 = time.perf_counter()
     for i in range(lookback4, len(df_log) + 1):
         current_index = df_log.index[i - 1]
         window_data = df_log.iloc[i - lookback4:i]
@@ -987,8 +977,6 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
                 data.at[data.index[idx], 'lower_channel5'] = np.exp(lower_value)
                 data.at[data.index[idx], 'channel_slope5'] = slope
 
-    end_part2 = time.perf_counter()
-
         
     atr = (ta.atr((df_log['high']), (df_log['low']), (df_log['close']), lookback)).dropna()
     all_levels = set()
@@ -996,7 +984,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     df_log['resistance']=np.log(data['bb_upper'])
     df_log['support']=np.log(data['bb_lower'])
    
-    start_part3 = time.perf_counter()
+
     
     for i in range(lookback, len(df_log)):
         current_index = df_log.index[i-1]
@@ -1014,11 +1002,8 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
         all_levels.update(levels_sup)
 
         data.at[current_index, 'sr_levels'] = list(all_levels)
-    end_part3 = time.perf_counter()
 
-    # Total time
-    end_total = time.perf_counter()
-    print(f"Total time: {end_total - start_total:.4f} seconds")
+
     return data
 
 def nadaraya_watson_smoother(x, y, bandwidth):
@@ -1122,7 +1107,6 @@ def generate_trading_signals(data):
 
 
 def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
-    print("applying auto trendline...")
     data['time2'] = data['time'].astype('datetime64[s]')
     data = data.set_index('time', drop=True)
     print("hourly data:")
@@ -1341,7 +1325,6 @@ def auto_trendline(data: pd.DataFrame) -> pd.DataFrame:
 
 
 def auto_trendline_4H(data: pd.DataFrame) -> pd.DataFrame:
-    print("applying auto trendline...")
     data['time4h'] = data['time'].astype('datetime64[s]')
     data = data.set_index('time', drop=True)
     print("4 hour data:")
