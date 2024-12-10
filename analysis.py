@@ -830,7 +830,7 @@ def auto_trendline_15(data: pd.DataFrame) -> pd.DataFrame:
     lookback = 400
     lookback2 = 80
     lookback3 = 100
-    lookback4 = 15    #for linear regression channels
+    lookback4 = 60   #for linear regression channels
     lookback5 = 30
 
     # Initialize columns for trendlines and their gradients

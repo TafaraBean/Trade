@@ -18,8 +18,7 @@ def apply_strategy(df: pd.DataFrame) -> pd.DataFrame:
 
 def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     
-    adx = ta.adx(data['high'], data['low'], data['close'], timeperiod=400)
-    data['ADX'] = adx['ADX_14']
+    
 
     
     
@@ -27,9 +26,9 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     pip_size = 1
 
     # Set TP and SL in terms of pips
-    tp_pips = 12 * pip_size
-    sl_pips = 4* pip_size
-    be_pips =   5 * pip_size
+    tp_pips = 6 * pip_size
+    sl_pips = 20* pip_size
+    be_pips =   10 * pip_size
     data["be_increment"] = 3.0
     data["be_condition_increment"] = 5.0
     data['ticket'] = np.nan
@@ -79,55 +78,61 @@ def m15_gold_strategy(data: pd.DataFrame) -> pd.DataFrame:
     )
 
     # Generate signals
-    #data['is_buy2'] = (
+    data['is_buy2'] = (
+
+
+        (data['regression_channel_slope4'].shift(1)>0)&(data['regression_channel_slope4'].shift(2)<0)
+
 
     #    (data['close'].shift(1)>data['bb2_lower'].shift(1))&
-     #   (data['low'].shift(2)<data['bb2_lower'].shift(2))&
-     #   (data['bb2_lower'].shift(1)<data['bb_lower'].shift(1))&
-     #   (data['ADX']<27)
+    #    (data['low'].shift(2)<data['bb2_lower'].shift(2))&
+    #    (data['bb2_lower'].shift(1)<data['bb_lower'].shift(1))&
+    #    (data['ADX']<27)
 
-        # (data['close'].shift(1)>data['fixed_resistance_trendline_15'].shift(1))&
-        # (data['close'].shift(2)<data['fixed_resistance_trendline_15'].shift(2))&
-        # (data['ADX']>25)
+    #     (data['close'].shift(1)>data['fixed_resistance_trendline_15'].shift(1))&
+    #     (data['close'].shift(2)<data['fixed_resistance_trendline_15'].shift(2))&
+    #     (data['ADX']>25)
 
-        # (data['close'].shift(1)>data['bb2_lower'].shift(1))&
-        # (data['close'].shift(2)<data['bb2_lower'].shift(2))&
-        # (data['+DI'].shift(1)>data['-DI'].shift(1))
+    #     (data['close'].shift(1)>data['bb2_lower'].shift(1))&
+    #     (data['close'].shift(2)<data['bb2_lower'].shift(2))&
+    #     (data['+DI'].shift(1)>data['-DI'].shift(1))
 
-        # (data['+DI'].shift(1)>data['-DI'].shift(1))&(data['+DI'].shift(2)<data['-DI'].shift(2))
+    #     (data['+DI'].shift(1)>data['-DI'].shift(1))&(data['+DI'].shift(2)<data['-DI'].shift(2))
 
       
-        #(data['support_gradient']>0)&(data['resistance_gradient']>0)&(data['sr_cross_signal_buy'])
-    #)
+    #     (data['support_gradient']>0)&(data['resistance_gradient']>0)&(data['sr_cross_signal_buy'])
+    )
 
 
-    #data['is_sell2'] = (
+    data['is_sell2'] = (
+
+        (data['regression_channel_slope4'].shift(1)<0)&(data['regression_channel_slope4'].shift(2)>0)
         
     #    (data['close'].shift(1)<data['bb2_upper'].shift(1))&
     #    (data['high'].shift(2)>data['bb2_upper'].shift(2))&
     #    (data['bb2_upper'].shift(1)>data['bb_upper'].shift(1))&
     #    (data['ADX']<27)
 
-        # (data['close'].shift(1)<data['fixed_support_trendline_15'].shift(1))&
-        # (data['close'].shift(2)>data['fixed_support_trendline_15'].shift(2))&
-        # (data['ADX']>25)
+    #     (data['close'].shift(1)<data['fixed_support_trendline_15'].shift(1))&
+    #     (data['close'].shift(2)>data['fixed_support_trendline_15'].shift(2))&
+    #     (data['ADX']>25)
 
-        # (data['close'].shift(1)<data['bb2_upper'].shift(1))&
-        # (data['close'].shift(2)>data['bb2_upper'].shift(2))&
-        # (data['+DI'].shift(1)<data['-DI'].shift(1))
+    #     (data['close'].shift(1)<data['bb2_upper'].shift(1))&
+    #     (data['close'].shift(2)>data['bb2_upper'].shift(2))&
+    #     (data['+DI'].shift(1)<data['-DI'].shift(1))
 
-        #(data['+DI'].shift(1)<data['-DI'].shift(1))&(data['+DI'].shift(2)>data['-DI'].shift(2))
+    #     (data['+DI'].shift(1)<data['-DI'].shift(1))&(data['+DI'].shift(2)>data['-DI'].shift(2))
 
 
-        #(data['support_gradient']<0)&(data['resistance_gradient']<0)&(data['sr_cross_signal_sell'])
+    #     (data['support_gradient']<0)&(data['resistance_gradient']<0)&(data['sr_cross_signal_sell'])
         
-        #)
+        )
         
     
 
 
-    data['is_sell2'] = False
-    data['is_buy2'] = True
+    # data['is_sell2'] = False
+    # data['is_buy2'] = True
 
     data.loc[data['is_buy2'], 'signal'] = mt5.ORDER_TYPE_BUY
     data.loc[data['is_sell2'], 'signal'] = mt5.ORDER_TYPE_SELL 
