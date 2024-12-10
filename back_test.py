@@ -10,10 +10,15 @@ inital_balance = account_balance
 
 #start = pd.Timestamp("2024-12-05 00:00:01")
 end = pd.Timestamp('2024-12-05')
-start = pd.Timestamp
+start = end - pd.Timedelta(days=3)
 # start = end - pd.Timedelta(days=4)
 
-df = apply_strategy(start=start, end=end)
+data = bot.copy_chart_range(symbol=bot.symbol,
+                          start=start,
+                          end=end)
+
+df = apply_strategy(df=data)
+
 filtered_df = df[(df['is_buy2'] == True) | (df['is_sell2'] == True)].copy()
 
 if not filtered_df.empty:

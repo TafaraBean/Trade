@@ -596,6 +596,7 @@ class TradingBot:
 
 
             running_positions=self.get_position_all(symbol=self.symbol)
+            print(running_positions)
             
             #Note that the variable row['comment'] stores the be_condition
             for index, row in running_positions.iterrows():
